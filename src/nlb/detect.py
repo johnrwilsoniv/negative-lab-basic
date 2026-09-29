@@ -109,16 +109,31 @@ def _edge_trim(profile: np.ndarray, threshold: float, limit: int, skip: int) -> 
     return j
 
 
+REBATE_SEGMENTS = 8
+
+
+def _side_trim(lines: np.ndarray, threshold: float, limit: int, skip: int) -> int:
+    """Median over segments along the edge, so a slightly tilted band still gets trimmed.
+
+    `lines` is (depth, along): row 0 is the outermost line of this side.
+    """
+    n = lines.shape[1]
+    trims = [
+        _edge_trim(np.percentile(lines[:, k * n // REBATE_SEGMENTS:(k + 1) * n // REBATE_SEGMENTS],
+                                 10, axis=1), threshold, limit, skip)
+        for k in range(REBATE_SEGMENTS)
+    ]
+    return int(np.median(trims))
+
+
 def trim_rebate(gray: np.ndarray, box: Box) -> Box:
     """Shrink `box` past bands of clear film base (bright, uniform) along its edges."""
     crop = gray[box.y:box.y + box.h, box.x:box.x + box.w]
     threshold = 0.75 * float(np.percentile(crop, 99.5))
-    rows = np.percentile(crop, 10, axis=1)
-    cols = np.percentile(crop, 10, axis=0)
     lh, lw = int(0.08 * box.h), int(0.08 * box.w)
     sh, sw = int(0.03 * box.h), int(0.03 * box.w)
-    top = _edge_trim(rows, threshold, lh, sh)
-    bottom = _edge_trim(rows[::-1], threshold, lh, sh)
-    left = _edge_trim(cols, threshold, lw, sw)
-    right = _edge_trim(cols[::-1], threshold, lw, sw)
+    top = _side_trim(crop, threshold, lh, sh)
+    bottom = _side_trim(crop[::-1], threshold, lh, sh)
+    left = _side_trim(crop.T, threshold, lw, sw)
+    right = _side_trim(crop.T[::-1], threshold, lw, sw)
     return Box(box.x + left, box.y + top, box.w - left - right, box.h - top - bottom)

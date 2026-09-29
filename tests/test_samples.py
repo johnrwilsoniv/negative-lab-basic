@@ -40,3 +40,14 @@ def test_sample_detection(name):
 def test_sample_no_rebate_stripe(name):
     img = process(_small(name)).image
     assert img[:4].mean() > 0.08, "black rebate stripe along the top edge"
+
+
+@pytest.mark.parametrize("name", sorted(EXPECTED))
+def test_sample_no_dark_edge_stripe(name):
+    """No edge segment's outer 3 lines are much darker than lines 8-16 in (tilted rebate)."""
+    img = process(_small(name)).image
+    for edge, a in [("top", img), ("bottom", img[::-1]), ("left", img.T), ("right", img.T[::-1])]:
+        n = a.shape[1]
+        for k in range(8):
+            seg = a[:, k * n // 8:(k + 1) * n // 8]
+            assert seg[:3].mean() - seg[8:16].mean() > -0.45, f"dark stripe on {edge} edge, segment {k}"

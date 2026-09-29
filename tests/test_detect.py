@@ -96,3 +96,13 @@ def test_trim_rebate_respects_box_offset():
     g[100:600, 200:800] = _box_image()
     g[100:120, 200:800] = 0.95
     assert trim_rebate(g, Box(200, 100, 600, 500)) == Box(200, 120, 600, 480)
+
+
+def test_trim_rebate_handles_tilted_band():
+    # 8-row clear band sloping 16 rows across the width: no row is >=90% clear base
+    g = _box_image()
+    for x in range(600):
+        r0 = 2 + 16 * x // 600
+        g[:r0, x] = 0.05
+        g[r0:r0 + 8, x] = 0.95
+    assert 10 <= trim_rebate(g, Box(0, 0, 600, 500)).y <= 26  # whole-line p10 trim gives 0

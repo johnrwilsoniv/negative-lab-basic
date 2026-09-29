@@ -94,3 +94,31 @@ def detect_frame(rgb: np.ndarray) -> Detection:
     box = found.scale(1 / scale)
     box = Box(box.x, box.y, min(box.w, width - box.x), min(box.h, height - box.y))
     return Detection(box, flags, low)
+
+
+def _edge_trim(profile: np.ndarray, threshold: float, limit: int, skip: int) -> int:
+    """Lines to trim from the start of `profile`: skip a short dark remnant, then eat clear base."""
+    i = 0
+    while i < skip and profile[i] <= threshold:
+        i += 1
+    if i >= skip:
+        return 0
+    j = i
+    while j < limit and profile[j] > threshold:
+        j += 1
+    return j
+
+
+def trim_rebate(gray: np.ndarray, box: Box) -> Box:
+    """Shrink `box` past bands of clear film base (bright, uniform) along its edges."""
+    crop = gray[box.y:box.y + box.h, box.x:box.x + box.w]
+    threshold = 0.75 * float(np.percentile(crop, 99.5))
+    rows = np.percentile(crop, 10, axis=1)
+    cols = np.percentile(crop, 10, axis=0)
+    lh, lw = int(0.08 * box.h), int(0.08 * box.w)
+    sh, sw = int(0.03 * box.h), int(0.03 * box.w)
+    top = _edge_trim(rows, threshold, lh, sh)
+    bottom = _edge_trim(rows[::-1], threshold, lh, sh)
+    left = _edge_trim(cols, threshold, lw, sw)
+    right = _edge_trim(cols[::-1], threshold, lw, sw)
+    return Box(box.x + left, box.y + top, box.w - left - right, box.h - top - bottom)

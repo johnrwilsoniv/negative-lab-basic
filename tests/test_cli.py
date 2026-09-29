@@ -90,3 +90,43 @@ def test_missing_dir_and_empty_dir(tmp_path):
 
 def test_bad_gamma(roll):
     assert main(["preview", str(roll), "--gamma", "0"]) == 2
+
+
+def test_render_refuses_case_variant_of_input_dir(roll):
+    variant = roll.parent / roll.name.upper()
+    if not variant.exists():
+        pytest.skip("case-sensitive filesystem")
+    before = (roll / "IMG_0001.HEIC").read_bytes()
+    assert main(["render", str(roll), "--out", str(variant)]) == 2
+    assert (roll / "IMG_0001.HEIC").read_bytes() == before
+
+
+def test_preview_refuses_input_dir_as_work(roll):
+    assert main(["preview", str(roll), "--work", str(roll)]) == 2
+    assert sorted(p.name for p in roll.iterdir()) == ["IMG_0001.HEIC", "IMG_0002.HEIC"]
+
+
+def _process_failing_on_first(monkeypatch):
+    import nlb.cli
+    real, calls = nlb.cli.process, []
+
+    def flaky(rgb, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            raise IndexError("boom")
+        return real(rgb, **kw)
+    monkeypatch.setattr(nlb.cli, "process", flaky)
+
+
+def test_render_continues_past_processing_error(roll, monkeypatch):
+    _process_failing_on_first(monkeypatch)
+    assert main(["render", str(roll)]) == 1
+    out = default_out(roll)
+    assert (out / "IMG_0002.HEIC").exists() and (out / "contact.jpg").exists()
+
+
+def test_preview_continues_past_processing_error(roll, monkeypatch):
+    _process_failing_on_first(monkeypatch)
+    assert main(["preview", str(roll)]) == 1
+    manifest = json.loads((default_out(roll) / ".nlb-work" / "manifest.json").read_text())
+    assert [f["name"] for f in manifest["frames"]] == ["IMG_0002"]

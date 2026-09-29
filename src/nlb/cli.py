@@ -1,6 +1,7 @@
 """nlb command line: `preview` for review, `render` for full-resolution output."""
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -42,12 +43,9 @@ def _error(msg: str) -> None:
     print(f"error: {msg}", file=sys.stderr)
 
 
-def _load(path: Path) -> np.ndarray | None:
-    try:
-        return load_rgb(path)
-    except Exception as e:  # corrupt or unsupported file: report and move on
-        _error(f"{path.name}: {e}")
-        return None
+def _same_dir(a: Path, b: Path) -> bool:
+    """True when `a` is the folder `b`, including case variants and firmlinks on macOS."""
+    return a.exists() and os.path.samefile(a, b)
 
 
 def _report(path: Path, flags: list[str]) -> None:
@@ -56,17 +54,22 @@ def _report(path: Path, flags: list[str]) -> None:
 
 def cmd_preview(folder: Path, inputs: list[Path], args) -> int:
     work = args.work or default_out(folder) / ".nlb-work"
+    if _same_dir(work, folder):
+        _error("work folder is the input folder; refusing to write among originals")
+        return 2
     work.mkdir(parents=True, exist_ok=True)
     frames, cells, failed = [], [], 0
     for path in inputs:
-        rgb = _load(path)
-        if rgb is None:
+        try:
+            rgb = load_rgb(path)
+            small = _downscale(rgb, PREVIEW_WIDTH)
+            result = process(small, gamma=args.gamma)
+            preview = work / f"{path.stem}.jpg"
+            save_gray(preview, result.image, quality=88)
+        except Exception as e:  # corrupt file or processing failure: report and move on
+            _error(f"{path.name}: {e}")
             failed += 1
             continue
-        small = _downscale(rgb, PREVIEW_WIDTH)
-        result = process(small, gamma=args.gamma)
-        preview = work / f"{path.stem}.jpg"
-        save_gray(preview, result.image, quality=88)
         crop = result.crop.scale(rgb.shape[1] / small.shape[1])
         frames.append({
             "name": path.stem, "file": path.name, "preview": preview.name,
@@ -92,18 +95,20 @@ def cmd_render(folder: Path, inputs: list[Path], args) -> int:
         _error(f"--rotate names not in {folder}: {', '.join(sorted(unknown))}")
         return 2
     out = (args.out or default_out(folder)).resolve()
-    if out == folder:
+    if _same_dir(out, folder):
         _error("output folder is the input folder; refusing to overwrite originals")
         return 2
     out.mkdir(parents=True, exist_ok=True)
     cells, failed = [], 0
     for path in inputs:
-        rgb = _load(path)
-        if rgb is None:
+        try:
+            rgb = load_rgb(path)
+            result = process(rgb, rotation=rotations.get(path.stem, "none"), gamma=args.gamma)
+            save_gray(out / path.name, result.image)
+        except Exception as e:  # corrupt file or processing failure: report and move on
+            _error(f"{path.name}: {e}")
             failed += 1
             continue
-        result = process(rgb, rotation=rotations.get(path.stem, "none"), gamma=args.gamma)
-        save_gray(out / path.name, result.image)
         cells.append((path.stem, _downscale(result.image, SHEET_WIDTH), result.flags))
         _report(path, result.flags)
     contact_sheet(cells).save(out / "contact.jpg", quality=88)

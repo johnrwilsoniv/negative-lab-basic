@@ -160,3 +160,19 @@ def test_refuses_heic_and_dng_with_same_name(roll):
     assert main(["preview", str(roll)]) == 2
     assert main(["render", str(roll)]) == 2
     assert not default_out(roll).exists()
+
+
+def test_render_arw_writes_heic(tmp_path):
+    folder = tmp_path / "arw"
+    folder.mkdir()
+    write_dng(folder / "DSC01.ARW", make_negative())  # LibRaw reads by content, not suffix
+    assert main(["render", str(folder)]) == 0
+    out = default_out(folder)
+    assert load_rgb(out / "DSC01.HEIC").shape[2] == 3
+    assert not (out / "DSC01.ARW").exists()
+
+
+def test_refuses_heic_and_arw_with_same_name(roll):
+    write_dng(roll / "IMG_0001.ARW", make_negative())
+    assert main(["preview", str(roll)]) == 2
+    assert not default_out(roll).exists()

@@ -1,4 +1,4 @@
-"""HEIC/DNG input discovery, reading and grayscale HEIC writing."""
+"""HEIC/DNG/ARW input discovery, reading and grayscale HEIC writing."""
 from pathlib import Path
 
 import numpy as np
@@ -9,12 +9,12 @@ from PIL import Image
 pillow_heif.register_heif_opener()
 
 HEIF_SUFFIXES = (".heic", ".heif")
-RAW_SUFFIXES = (".dng",)
+RAW_SUFFIXES = (".dng", ".arw")  # ProRAW, Sony
 INPUT_SUFFIXES = HEIF_SUFFIXES + RAW_SUFFIXES
 
 
 def list_inputs(folder: Path) -> list[Path]:
-    """HEIC/HEIF/DNG files directly in `folder`, sorted, skipping dotfiles like `._IMG.HEIC`."""
+    """HEIC/HEIF/DNG/ARW files directly in `folder`, sorted, skipping dotfiles like `._IMG.HEIC`."""
     return sorted(
         p for p in folder.iterdir()
         if p.is_file() and not p.name.startswith(".") and p.suffix.lower() in INPUT_SUFFIXES
@@ -22,7 +22,7 @@ def list_inputs(folder: Path) -> list[Path]:
 
 
 def output_name(path: Path) -> str:
-    """HEIC inputs keep their name; DNG inputs become `<stem>.HEIC`."""
+    """HEIC inputs keep their name; raw inputs become `<stem>.HEIC`."""
     return path.name if path.suffix.lower() in HEIF_SUFFIXES else f"{path.stem}.HEIC"
 
 
@@ -35,7 +35,7 @@ def load_rgb(path: Path) -> np.ndarray:
 
 
 def _load_raw(path: Path) -> np.ndarray:
-    """Demosaic a DNG at 16 bits with as-shot white balance and the sRGB curve.
+    """Demosaic a raw file (DNG, ARW) at 16 bits with as-shot white balance and the sRGB curve.
 
     No auto-brightening: the tone stretch normalises exposure later, and an unscaled
     decode keeps the film base from clipping.

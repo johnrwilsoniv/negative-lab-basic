@@ -141,11 +141,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     inputs = list_inputs(folder)
     if not inputs:
-        _error(f"no HEIC or DNG files in {folder}")
+        _error(f"no HEIC, DNG or ARW files in {folder}")
         return 2
     stems = Counter(p.stem for p in inputs)
     clashes = sorted(stem for stem, n in stems.items() if n > 1)
     if clashes:
-        _error(f"several files share a name (e.g. HEIC + DNG); keep one of each: {', '.join(clashes)}")
+        _error(f"several files share a name (e.g. HEIC + DNG/ARW); keep one of each: {', '.join(clashes)}")
         return 2
     return (cmd_preview if args.cmd == "preview" else cmd_render)(folder, inputs, args)

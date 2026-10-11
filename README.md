@@ -1,7 +1,7 @@
 # Negative Lab Basic
 
-Turns iPhone photos of B&W negatives (lightbox + mount, HEIC or ProRAW/DNG) into
-cropped 3:2, flipped, inverted grayscale HEIC positives (`IMG_1.DNG` → `IMG_1.HEIC`).
+Turns photos of B&W negatives (lightbox + mount; iPhone HEIC or ProRAW/DNG, Sony ARW)
+into cropped 3:2, flipped, inverted grayscale HEIC positives (`IMG_1.DNG` → `IMG_1.HEIC`).
 A pun on Negative Lab Pro.
 
     uv run nlb preview <dir>                         # previews + contact sheet + manifest

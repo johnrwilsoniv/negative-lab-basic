@@ -1,14 +1,14 @@
 ---
 name: nlb-invert
-description: Negative Lab Basic. Convert iPhone photos of B&W film negatives (HEIC or DNG/ProRAW, shot on a lightbox) into cropped 3:2, flipped, rotated, inverted grayscale HEIC positives. Use when the user runs /nlb-invert or asks to invert or convert phone scans of negatives.
-argument-hint: "[folder of HEIC or DNG negatives]"
+description: Negative Lab Basic. Convert iPhone or camera photos of B&W film negatives (HEIC, DNG/ProRAW or Sony ARW, shot on a lightbox) into cropped 3:2, flipped, rotated, inverted grayscale HEIC positives. Use when the user runs /nlb-invert or asks to invert or convert phone or camera scans of negatives.
+argument-hint: "[folder of HEIC, DNG or ARW negatives]"
 ---
 
 # nlb-invert
 
 CLI: `uv run --project "<repo>" nlb ...` (called `NLB` below), where `<repo>` is
 `realpath "<this skill's base directory>/../.."` (the skill is symlinked from the repo). Originals are never modified. Output goes to `<dir>-positive/`,
-always as HEIC (`IMG_1.DNG` → `IMG_1.HEIC`).
+always as HEIC (`IMG_1.DNG` → `IMG_1.HEIC`, `DSC01.ARW` → `DSC01.HEIC`).
 
 ## 1. Preview
 
@@ -19,7 +19,7 @@ Resolve the input folder from `$ARGUMENTS` (default: cwd) to an absolute path. R
 It prints one line per frame (`ok` or flags) and the work dir
 (`<dir>-positive/.nlb-work/`), which holds `<name>.jpg` previews, `contact.jpg` and
 `manifest.json`. Exit 1 means some files were unreadable, so list them for the user and continue.
-Exit 2 with "several files share a name" means a HEIC and a DNG of the same shot are both
+Exit 2 with "several files share a name" means a HEIC and a DNG/ARW of the same shot are both
 present; ask the user which to keep and have them move the other out.
 
 ## 2. Review (one subagent)

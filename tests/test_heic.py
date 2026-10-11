@@ -8,16 +8,18 @@ from nlb.heic import list_inputs, load_rgb, output_name, save_gray, to_u8
 
 def test_list_inputs_filters(tmp_path):
     for name in ["b.heic", "a.HEIC", "c.HEIF", "d.jpg", "e.MOV", "f.DNG", "g.dng", "h.CR3",
-                 ".DS_Store", "._a.HEIC", "._f.DNG"]:
+                 "i.ARW", "j.arw", ".DS_Store", "._a.HEIC", "._f.DNG", "._i.ARW"]:
         (tmp_path / name).write_bytes(b"x")
     (tmp_path / "sub.heic").mkdir()
-    assert [p.name for p in list_inputs(tmp_path)] == ["a.HEIC", "b.heic", "c.HEIF", "f.DNG", "g.dng"]
+    assert [p.name for p in list_inputs(tmp_path)] == [
+        "a.HEIC", "b.heic", "c.HEIF", "f.DNG", "g.dng", "i.ARW", "j.arw"]
 
 
 def test_output_name():
     assert output_name(Path("IMG_1.HEIC")) == "IMG_1.HEIC"
     assert output_name(Path("IMG_1.heif")) == "IMG_1.heif"
     assert output_name(Path("IMG_1.DNG")) == "IMG_1.HEIC"
+    assert output_name(Path("DSC01.ARW")) == "DSC01.HEIC"
 
 
 def test_to_u8_clips_and_rounds():
@@ -51,3 +53,11 @@ def test_dng_load_matches_source(tmp_path):
     assert rgb.shape == srgb.shape
     assert rgb.dtype == np.float32
     assert np.abs(rgb - srgb).max() < 0.002
+
+
+def test_arw_decodes_via_libraw(tmp_path):
+    """LibRaw sniffs the format from content, so a DNG named .ARW checks the routing."""
+    srgb = make_negative()
+    path = tmp_path / "DSC01.ARW"
+    write_dng(path, srgb)
+    assert np.abs(load_rgb(path) - srgb).max() < 0.002

@@ -1,5 +1,6 @@
 import json
 
+import numpy as np
 import pytest
 from synth import make_negative, write_dng
 
@@ -176,3 +177,51 @@ def test_refuses_heic_and_arw_with_same_name(roll):
     write_dng(roll / "IMG_0001.ARW", make_negative())
     assert main(["preview", str(roll)]) == 2
     assert not default_out(roll).exists()
+
+
+def _raw_roll(tmp_path, roll_json=None):
+    from synth import make_raw_negative, neutral_wedge_scene
+
+    folder = tmp_path / "raw"
+    folder.mkdir()
+    lin, _ = make_raw_negative(neutral_wedge_scene())
+    srgb = np.where(lin <= 0.0031308, 12.92 * lin, 1.055 * lin ** (1 / 2.4) - 0.055)
+    for name in ("F1", "F2"):
+        write_dng(folder / f"{name}.DNG", srgb)
+    if roll_json is not None:
+        (folder / "roll.json").write_text(json.dumps(roll_json))
+    return folder
+
+
+def test_develop_renders_kept_frames_from_roll_json(tmp_path):
+    import tifffile
+
+    folder = _raw_roll(tmp_path, {"version": 1, "settings": {"film": "c41", "flip": False},
+                                  "frames": {"F1": {"file": "F1.DNG", "crop": [0.2, 0.3, 0.5, 0.4],
+                                                    "rotation": 90, "params": {"exposure": 0.2}},
+                                             "F2": {"file": "F2.DNG", "rejected": True}}})
+    out = tmp_path / "out"
+    assert main(["develop", str(folder), "--out", str(out)]) == 0
+    assert sorted(p.name for p in out.iterdir()) == ["F1.tif"]
+    img = tifffile.imread(out / "F1.tif")
+    assert img.dtype == np.uint16 and img.shape == (300, 160, 3)  # 0.5 x 600 wide, 0.4 x 400 tall, turned
+
+
+def test_develop_without_roll_json_needs_frames_or_arw(tmp_path):
+    folder = _raw_roll(tmp_path)  # DNGs only: develop looks for ARW without a roll.json
+    assert main(["develop", str(folder)]) == 2
+
+
+def test_develop_auto_frames_missing_crop_and_rejects_unknown_frame(tmp_path):
+    folder = _raw_roll(tmp_path, {"settings": {}, "frames": {"F1": {"file": "F1.DNG"}}})
+    out = tmp_path / "out"
+    assert main(["develop", str(folder), "--out", str(out), "--frames", "nope"]) == 2
+    assert main(["develop", str(folder), "--out", str(out), "--film", "bw"]) == 0
+    assert (out / "F1.tif").is_file()
+
+
+def test_develop_check_reports_exposure(tmp_path, capsys):
+    folder = _raw_roll(tmp_path, {"settings": {}, "frames": {"F1": {"file": "F1.DNG"}}})
+    assert main(["develop", str(folder), "--check"]) == 0
+    assert "F1: base at" in capsys.readouterr().out
+    assert not (tmp_path / "raw-positive").exists()

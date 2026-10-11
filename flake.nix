@@ -1,5 +1,5 @@
 {
-  description = "Negative Lab Basic: invert phone photos of B&W film negatives";
+  description = "Negative Lab Basic: invert phone and camera photos of B&W and C-41 film negatives";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -18,6 +18,7 @@
           pillow
           pillow-heif
           rawpy
+          tifffile
         ];
 
         nlb = python.pkgs.buildPythonApplication {
@@ -32,7 +33,7 @@
           # nixpkgs ships cv2 as `opencv4`, not the `opencv-python-headless` wheel.
           pythonRemoveDeps = [ "opencv-python-headless" ];
 
-          nativeCheckInputs = with python.pkgs; [ pytestCheckHook tifffile ];
+          nativeCheckInputs = with python.pkgs; [ pytestCheckHook ];
           pythonImportsCheck = [ "nlb" ];
         };
 
@@ -59,7 +60,7 @@
         devShells.default = pkgs.mkShell {
           packages = [
             (python.withPackages (ps: runtimeDeps ps
-              ++ (with ps; [ pytest tifffile ])
+              ++ (with ps; [ pytest ])
               ++ pkgs.lib.optional isLinux ps.gphoto2))
           ] ++ pkgs.lib.optionals isLinux captureTools;
           shellHook = ''

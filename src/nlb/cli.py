@@ -1,4 +1,4 @@
-"""nlb command line: `preview` for review, `render` for full-resolution output."""
+"""nlb command line: `preview` for review, `render` for full-resolution output, `develop` for raw rolls."""
 import argparse
 import json
 import os
@@ -117,6 +117,78 @@ def cmd_render(folder: Path, inputs: list[Path], args) -> int:
     return 1 if failed else 0
 
 
+def cmd_develop(args) -> int:
+    """Render a roll of raw negatives to 16-bit TIFFs from <dir>/roll.json (or auto settings)."""
+    from nlb import develop
+
+    folder = args.dir.resolve()
+    if not folder.is_dir():
+        _error(f"not a folder: {args.dir}")
+        return 2
+    roll_file = folder / "roll.json"
+    if roll_file.is_file():
+        roll = json.loads(roll_file.read_text())
+        settings, frames = roll.get("settings", {}), roll.get("frames", {})
+    else:
+        settings = {"film": args.film, "flip": False, "base": None, "levels": None}
+        frames = {p.stem: {"file": p.name} for p in sorted(folder.glob("*.[Aa][Rr][Ww]"))
+                  if not p.name.startswith("._")}
+    if args.film:
+        settings = {**settings, "film": args.film}
+    names = [n for n, f in frames.items() if not f.get("rejected")]
+    if args.frames:
+        wanted = set(args.frames.split(","))
+        unknown = wanted - set(frames)
+        if unknown:
+            _error(f"frames not in the roll: {', '.join(sorted(unknown))}")
+            return 2
+        names = [n for n in names if n in wanted]
+    if not names:
+        _error(f"no frames to develop in {folder}")
+        return 2
+    if args.check:
+        return _check_exposure(folder, frames, names, settings)
+    out = (args.out or default_out(folder)).resolve()
+    if _same_dir(out, folder):
+        _error("output folder is the input folder; refusing to write among originals")
+        return 2
+    out.mkdir(parents=True, exist_ok=True)
+    failed = 0
+    for name in names:
+        frame = frames[name]
+        path = folder / frame.get("file", f"{name}.ARW")
+        try:
+            lin = develop.load_linear(path, preview=args.preview)
+            if not frame.get("crop"):
+                frame = {**frame, **develop.auto_frame(lin, settings)}
+            develop.write_tiff(out / f"{name}.tif", develop.develop(lin, settings, frame))
+        except Exception as e:  # corrupt file or processing failure: report and move on
+            _error(f"{path.name}: {e}")
+            failed += 1
+            continue
+        print(f"{name}: ok")
+    print(f"positives: {out}")
+    return 1 if failed else 0
+
+
+def _check_exposure(folder: Path, frames: dict, names: list[str], settings: dict) -> int:
+    from nlb import develop
+
+    failed = 0
+    for name in names:
+        path = folder / frames[name].get("file", f"{name}.ARW")
+        try:
+            rep = develop.exposure_report(develop.load_linear(path, preview=True), settings)
+        except Exception as e:  # corrupt file: report and move on
+            _error(f"{path.name}: {e}")
+            failed += 1
+            continue
+        ratio = rep["floor_over_flare"]
+        print(f"{name}: base at {rep['base_headroom']:.0%} of full scale, "
+              f"floor/flare {f'{min(ratio):.1f}' if ratio else 'n/a'}: {rep['advice']}")
+    return 1 if failed else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="nlb", description="Negative Lab Basic")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -130,7 +202,18 @@ def main(argv: list[str] | None = None) -> int:
     rd.add_argument("--out", type=Path, help="default: <dir>-positive")
     for p in (pv, rd):
         p.add_argument("--gamma", type=float, default=1.0, help=">1 brightens midtones")
+    dv = sub.add_parser("develop", help="16-bit TIFF positives from raw captures and roll.json")
+    dv.add_argument("dir", type=Path)
+    dv.add_argument("--out", type=Path, help="default: <dir>-positive")
+    dv.add_argument("--frames", help="comma-separated frame names (default: all kept frames)")
+    dv.add_argument("--film", choices=["c41", "bw"], help="override settings.film (default c41 without roll.json)")
+    dv.add_argument("--preview", action="store_true", help="half-size decode, for a quick look")
+    dv.add_argument("--check", action="store_true", help="report capture exposure per frame; render nothing")
     args = ap.parse_args(argv)
+    if args.cmd == "develop":
+        if args.film is None and not (args.dir / "roll.json").is_file():
+            args.film = "c41"
+        return cmd_develop(args)
 
     folder = args.dir.resolve()
     if not folder.is_dir():

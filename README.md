@@ -10,7 +10,12 @@ A pun on Negative Lab Pro.
 In Claude Code: `/nlb-invert <dir>` runs preview → agent review → your confirmation → render.
 Install the skill: `ln -s "$PWD/skills/nlb-invert" ~/.claude/skills/nlb-invert`
 
-Shooting with a tethered Sony A7 IV: see [sony-capture/](sony-capture/README.md).
+Shooting with a tethered Sony A7 IV: see [sony-capture/](sony-capture/README.md). Raw
+captures of C-41 or B&W negatives develop to 16-bit TIFFs with the engine in
+`src/nlb/develop.py` (used by `nlb studio`, or headless):
+
+    uv run nlb develop <roll-dir>            # roll.json if present, else auto per frame
+    uv run nlb develop <roll-dir> --check    # capture exposure report, renders nothing
 
 Tests: `uv run pytest` (sample-based tests need `iphone-negatives/`).
 

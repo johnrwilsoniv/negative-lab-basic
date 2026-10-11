@@ -42,3 +42,52 @@ def write_dng(path, srgb):
         (50728, "2I", 3, (1, 1) * 3, True),         # AsShotNeutral
         (50778, "H", 1, (21,), True),               # CalibrationIlluminant1 = D65
     ])
+
+
+LIGHT = (0.34, 0.92, 0.48)           # bare light in camera RGB (green-heavy, like the sample lightbox)
+BASE_T = (0.38, 0.165, 0.10)         # C-41 orange mask transmittance per channel
+LAYER_GAMMA = (0.55, 0.6, 0.68)      # dye-layer contrast, deliberately unequal
+FLARE = (0.001, 0.003, 0.0015)
+E_REF = 10 ** -1.6                   # scene exposure that leaves the film at base density
+
+
+def neutral_wedge_scene(h=180, w=440, colors=True):
+    """Scene exposure (linear, H x W x 3): a neutral log wedge on top, color bars below.
+
+    The wedge spans 5 stops (1/32 .. 1), so it sets every channel's extremes; the bars sit inside.
+    """
+    e = np.empty((h, w, 3), np.float32)
+    wedge = np.logspace(-1.5, 0, w, dtype=np.float32)
+    e[: h // 2] = wedge[None, :, None]
+    bars = [(0.40, 0.08, 0.06), (0.06, 0.35, 0.08), (0.06, 0.10, 0.40), (0.15, 0.15, 0.15)]
+    if not colors:
+        bars = [(0.15, 0.15, 0.15)] * 4
+    for i, c in enumerate(bars):
+        e[h // 2:, i * w // 4:(i + 1) * w // 4] = c
+    return e
+
+
+def make_raw_negative(scene, size=(600, 400), exposure=1.0, falloff=0.0, flare=FLARE):
+    """Sensor-space capture of a C-41 negative of `scene` in a holder on a lightbox.
+
+    Returns (lin, picture_box) with picture_box = (x, y, w, h) in pixels. Layout like the
+    samples: dark holder, a film strip with sprocket holes along both long edges, a clean
+    rebate between holes and picture. `falloff` dims the light linearly toward the left edge.
+    """
+    width, height = size
+    ph, pw = scene.shape[:2]
+    light = np.float32(LIGHT) * exposure
+    x_frac = np.linspace(0, 1, width, dtype=np.float32)
+    illum = (1.0 - falloff * (1.0 - x_frac))[None, :, None] * light  # H x W x 3 via broadcast
+    trans = np.zeros((height, width, 3), np.float32)                  # holder: opaque
+    fy0, fy1, fx0, fx1 = 60, height - 60, 30, width - 30
+    trans[fy0:fy1, fx0:fx1] = BASE_T
+    for hy in (fy0 + 8, fy1 - 8 - 22):
+        for hx in range(fx0 + 10, fx1 - 30, 46):
+            trans[hy:hy + 22, hx:hx + 28] = 1.0
+    px, py = (width - pw) // 2, (height - ph) // 2
+    # density above base grows with log exposure; E_REF (below the wedge's darkest step) is base
+    dens = np.float32(LAYER_GAMMA) * np.maximum(np.log10(np.maximum(scene, 1e-6) / E_REF), 0.0)
+    trans[py:py + ph, px:px + pw] = np.float32(BASE_T) * 10.0 ** -dens
+    lin = trans * illum + np.float32(flare) * exposure
+    return np.clip(lin, 0, 1).astype(np.float32), (px, py, pw, ph)

@@ -92,9 +92,50 @@ gphoto2 --set-config /main/imgsettings/iso=100
 GUI alternatives for live-view framing and focus: `entangle`, or `darktable`'s
 tethering view.
 
+## Exposing for inversion
+
+A negative is a filter in front of the light, so "correct exposure" here means using the
+sensor's range for the film, not making the frame look right:
+
+- **Put the film base at 60-85% of full scale** in its brightest channel and let the
+  sprocket holes clip; they're only a light reference. Check every new setup with
+
+  ```sh
+  nix run .. -- develop rolls/roll01 --check   # base headroom, flare margin, advice per frame
+  ```
+
+  All captures so far sit at 9-16% (2.2-3 stops under). In those, the densest blue (a
+  bright sky) is ~100 raw counts above black and only 2-10x the flare, so highlights are
+  noisy and veiled. Fix it with a longer shutter at ISO 100. Keep the aperture at the
+  lens's sharpest stop (around f/8) rather than opening up.
+- **Keep the exposure fixed for the whole roll** (set it from the host, above). The
+  engine normalizes each frame to its own film base, but identical captures make roll-level
+  color locking more reliable.
+- **Light color.** In camera RGB, the light reads R:G:B ≈ 0.38 : 1 : 0.53, and the orange
+  mask then cuts blue to about a third of red, so blue sets the noise floor. A cooler or
+  high-CRI light (5000-6500 K) helps. An RGB / narrow-band light helps most, because it
+  also cuts the overlap between the dye colors.
+- **Flare.** Light that doesn't pass through the film scatters into the lens and veils
+  the dense end, blue first. Mask the lightbox around the holder, turn off room lights and
+  use a hood. The engine measures what's left on the holder next to the film and subtracts it.
+- **Keep holes, rebate and holder edge in frame.** The engine reads the film base from
+  the rebate, the light from the holes and the flare from the holder, so it needs no
+  separate calibration shots.
+- **Keep the strip level.** `nlb` deskews from the sprocket holes (frame-001 needed 5.8°),
+  but every degree costs picture at the corners.
+- **Optional flat-field.** If the light falls off toward an edge (DSC06700's left side),
+  shoot one frame of the bare light with the holder empty and the focus unchanged. Shoot
+  it darker, so nothing clips (aim for 50-80% of full scale). The studio turns it into a
+  gain map with `nlb.develop.make_flatfield`.
+
 ## Inverting negatives
 
-- `nix run .. -- preview rolls/roll01`, then `render` (see the top-level README)
+- `nix run .. -- develop rolls/roll01`: 16-bit sRGB TIFFs (C-41 or B&W) into
+  `rolls/roll01-positive/`. It uses `roll.json` from the studio when present, and otherwise
+  picks crop, deskew, film base and levels per frame (`--film bw` for B&W, `--preview`
+  for a quick half-size pass).
+- `nix run .. -- preview rolls/roll01`, then `render`: the phone-oriented B&W HEIC pipeline
+  (see the top-level README)
 - `darktable` → `negadoctor` module (orange-mask aware; the usual choice for C-41)
 - `rawtherapee` → `Film Negative` module
 - Scripted: `python3` in this shell has `rawpy` + `numpy` + `pillow`

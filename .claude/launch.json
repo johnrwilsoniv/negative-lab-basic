@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "studio",
+      "runtimeExecutable": "nix",
+      "runtimeArgs": ["develop", "-c", "python3", "-c", "import sys; from nlb.cli import main; sys.exit(main())",
+                      "studio", "sony-capture/rolls/roll02", "--no-open", "--port", "8765"],
+      "port": 8765
+    },
+    {
+      "name": "studio-fake",
+      "runtimeExecutable": "nix",
+      "runtimeArgs": ["develop", "-c", "python3", "-c", "import sys; from nlb.cli import main; sys.exit(main())",
+                      "studio", "sony-capture/rolls/fake-test",
+                      "--fake-camera", "sony-capture/rolls/roll01", "--no-open", "--port", "8766"],
+      "port": 8766
+    }
+  ]
+}

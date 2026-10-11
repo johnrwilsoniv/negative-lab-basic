@@ -48,6 +48,11 @@
               <button data-zoom="1" class="on">Fit</button><button data-zoom="2">2×</button><button data-zoom="4">4×</button>
             </span>
             <span class="muted">click to set zoom point</span>
+            <button class="focus-meter" id="focus-meter" title="Focus: sharpness of the zoomed area vs the sharpest seen since the last reset. Turn through focus, then back to 100%. Click (or F) to reset the peak.">
+              <span class="muted">Focus</span>
+              <span class="focus-bar"><span class="focus-fill" id="focus-fill"></span></span>
+              <span class="focus-pct" id="focus-pct">—</span>
+            </button>
           </span>
           <span class="test-tools">
             <span class="seg" id="test-view-seg">

@@ -16,6 +16,10 @@ HOLE_FRAC = {"c41": 0.5, "bw": 0.9}  # bare light: every channel above this frac
 HOLDER_FRAC = 0.08                    # holder: R and G below this fraction of the base
 FLARE_BAND = (0.0125, 0.025)          # holder band sampled for flare, in image widths from the film
 PICTURE_DENSITY = 0.05                # picture vs rebate, density above base
+FRAME_PICTURE = 36 / 4.75             # 135 picture length in sprocket-hole pitches (36 mm / 4.75 mm)
+FRAME_GAP = 0.2                       # _one_frame: gap band sampled at each end, in pitches
+FRAME_EXTRA = 0.1                     # ... box longer than a frame by this much: split it
+FRAME_GAP_THIN = 0.5                  # ... gaps at most this fraction of the picture's density
 EPS = 1e-6
 HOLE_ROW_MIN = 5                      # sprocket_rows: holes needed in a row
 HOLE_ROW_OFF = 0.003                  # ... median distance from the row's line, in image widths
@@ -112,7 +116,60 @@ def picture_box(thumb: np.ndarray, cal: Calibration) -> tuple[float, float, floa
         c0, c1 = _run(picture[r0:r1].mean(axis=0) > 0.5)
         if c1 - c0 < 0.1 * w:
             return None
+    frame = _one_frame(dens.max(axis=2), cal.hole, (r0, r1, c0, c1))
+    if frame is not None:
+        r0, r1, c0, c1 = frame
     return c0 / w, r0 / h, (c1 - c0) / w, (r1 - r0) / h
+
+
+def _one_frame(dens: np.ndarray, hole: np.ndarray, box: tuple[int, int, int, int]) -> tuple[int, int, int, int] | None:
+    """`box` narrowed to one whole frame when it runs on into the neighbours, else None.
+
+    The gaps between frames are clear film, but light falloff can leave them a little over
+    PICTURE_DENSITY, so the picture mask runs straight through them. The sprocket-hole pitch
+    gives the frame's length (FRAME_PICTURE pitches); the frame sits where the film just
+    outside both ends is thinnest, and its ends are then put on the actual density step.
+    """
+    found = sprocket_rows(hole)
+    if found is None:
+        return None
+    vertical, rows = found
+    pitch = float(np.median(np.concatenate([np.diff(np.sort(r[:, 0])) for r in rows])))
+    r0, r1, c0, c1 = box
+    lo, hi = (r0, r1) if vertical else (c0, c1)  # the box along the strip
+    # density along the strip, from the middle of the picture across it
+    if vertical:
+        m = (c1 - c0) // 5
+        prof = np.median(dens[:, c0 + m:c1 - m], axis=1)
+    else:
+        m = (r1 - r0) // 5
+        prof = np.median(dens[r0 + m:r1 - m], axis=0)
+    n, length = prof.size, int(round(FRAME_PICTURE * pitch))
+    gap = max(2, int(round(FRAME_GAP * pitch)))
+    if hi - lo < (1 + FRAME_EXTRA) * length or n < length + 2 * gap:
+        return None
+    best, start = np.inf, None
+    for s in range(gap, n - length - gap + 1):
+        edges = max(prof[s - gap:s].mean(), prof[s + length:s + length + gap].mean())
+        if edges < best:
+            best, start = edges, s
+    inside = float(np.median(prof[start:start + length]))
+    if not best < FRAME_GAP_THIN * inside:
+        return None  # no clear gaps: leave the box alone
+    # put each end on the step from gap to picture, within a third of a pitch
+    level = (best + inside) / 2
+    reach = max(2, int(pitch / 3))
+
+    def step(at: int, rising: bool) -> int:
+        a, b = max(0, at - reach), min(n, at + reach)
+        seg = prof[a:b] if rising else prof[a:b][::-1]
+        over = np.flatnonzero(seg > level)
+        if over.size == 0:
+            return at
+        return a + int(over[0]) if rising else b - int(over[0])
+
+    s0, s1 = step(start, True), step(start + length, False)
+    return (s0, s1, c0, c1) if vertical else (r0, r1, s0, s1)
 
 
 def _run(mask: np.ndarray) -> tuple[int, int]:
@@ -152,8 +209,14 @@ def sprocket_rows(hole: np.ndarray) -> tuple[bool, list[np.ndarray]] | None:
     None unless at least one row of HOLE_ROW_MIN holes passes that test.
     """
     n, _, stats, cents = cv2.connectedComponentsWithStats(hole.astype(np.uint8), connectivity=8)
-    area = stats[1:, cv2.CC_STAT_AREA].astype(float)
-    cents = cents[1:]
+    h, w = hole.shape
+    x0, y0 = stats[1:, cv2.CC_STAT_LEFT], stats[1:, cv2.CC_STAT_TOP]
+    x1, y1 = x0 + stats[1:, cv2.CC_STAT_WIDTH], y0 + stats[1:, cv2.CC_STAT_HEIGHT]
+    # whole holes only: a hole cut by the frame edge, or a sliver of bare light along it,
+    # has its centroid off the row's line and pitch
+    whole = (x0 > 0) & (y0 > 0) & (x1 < w) & (y1 < h)
+    area = stats[1:, cv2.CC_STAT_AREA].astype(float)[whole]
+    cents = cents[1:][whole]
     if area.size < HOLE_ROW_MIN:
         return None
     keep = (area > 0.3 * np.median(area)) & (area < 3.0 * np.median(area)) & (area >= 6)

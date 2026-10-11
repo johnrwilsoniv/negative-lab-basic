@@ -12,7 +12,7 @@ MIN_HOLES = 2
 
 def layout(thumb: np.ndarray, c: cal.Calibration) -> dict:
     """Where the picture, holes and holder are, and how the strip is tilted."""
-    return {"picture": cal.picture_box(thumb, c), "angle": cal.film_angle(c.hole),
+    return {"picture": cal.strip_box(thumb, c), "angle": cal.film_angle(c.hole),
             "holes": float(c.hole.mean()), "holder": float(c.holder.mean()), "film": float(c.film.mean())}
 
 

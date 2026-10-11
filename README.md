@@ -52,8 +52,8 @@ The conversion engine is `src/nlb/develop.py`; see
 [its plan](docs/superpowers/plans/2026-10-10-develop-engine.md).
 
 Headless, the same engine renders a roll from its `roll.json` (or picks crop, deskew, film
-base and levels per frame without one). Auto-framing handles a whole strip on a lightbox
-(sprocket holes visible) and a carrier that masks all but the picture, like the iPhone ProRAW
+base and levels per frame without one). Auto-framing handles a whole strip in a holder or
+straight on a lightbox (sprocket holes visible; their pitch sizes the 36 × 24 mm frame) and a carrier that masks all but the picture, like the iPhone ProRAW
 rig; turn on mirror (`flip`) for film shot emulsion side up.
 
     uv run nlb develop <roll-dir>            # 16-bit TIFFs into <roll-dir>-positive/

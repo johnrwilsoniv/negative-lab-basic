@@ -265,9 +265,19 @@ def test_scene_highlights_are_not_sprocket_holes():
     lin, _ = make_carrier_negative(_carrier_scene())
     c = cal.calibrate(cal.thumbnail(lin))
     assert c.hole.mean() > 0.05                          # thin shadows clear the bare-light threshold
-    assert cal.film_angle(c.hole) is None or not cal.holes_on_film(c.hole, cal.lit_region(cal.thumbnail(lin)))
+    assert cal.film_angle(c.hole) is None or not cal.holes_on_film(cal.thumbnail(lin), c.hole)
     _, strip, _ = _negative()
     assert cal.sprocket_rows(cal.calibrate(cal.thumbnail(strip)).hole) is not None
+
+
+def test_hole_rows_ignore_stray_bare_light():
+    _, strip, _ = _negative()
+    rows = cal.sprocket_rows(cal.calibrate(cal.thumbnail(strip)).hole)
+    stray = strip.copy()
+    stray[100:122, 560:588] = strip[68:90, 40:68]  # hole-sized bare light past the strip's end, off the row
+    stray[300:322, 4:32] = strip[68:90, 40:68]
+    found = cal.sprocket_rows(cal.calibrate(cal.thumbnail(stray)).hole)
+    assert found is not None and [len(r) for r in found[1]] == [len(r) for r in rows[1]]
 
 
 def test_auto_crop_never_raises():

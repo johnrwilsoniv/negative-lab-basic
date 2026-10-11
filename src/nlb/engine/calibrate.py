@@ -171,6 +171,7 @@ def sprocket_rows(hole: np.ndarray) -> tuple[bool, list[np.ndarray]] | None:
         groups = [order[:cut], order[cut:]]
     rows = []
     for idx in groups:
+        idx = idx[_row_inliers(along[idx], across[idx], HOLE_ROW_OFF * hole.shape[1])]
         if len(idx) < HOLE_ROW_MIN or np.ptp(along[idx]) == 0:
             continue
         a, c = along[idx], across[idx]
@@ -179,6 +180,28 @@ def sprocket_rows(hole: np.ndarray) -> tuple[bool, list[np.ndarray]] | None:
         if np.median(off) < HOLE_ROW_OFF * hole.shape[1] and pitch.std() < HOLE_PITCH_CV * pitch.mean():
             rows.append(np.stack([a, c], axis=1))
     return (bool(vertical), rows) if rows else None
+
+
+def _row_inliers(along: np.ndarray, across: np.ndarray, tol: float) -> np.ndarray:
+    """Indices of the blobs on the straight line through the most of them.
+
+    Bits of bare light past the end of the strip (a lightbox's edge, a cut hole) can be hole
+    sized; they sit off the row and would spoil its fit and pitch. Every pair of blobs
+    proposes a line; the one with the most blobs within 2 * tol of it wins.
+    """
+    best = np.arange(along.size)
+    if along.size < 3:
+        return best
+    most = 0
+    for i in range(along.size):
+        for j in range(i + 1, along.size):
+            if along[i] == along[j]:
+                continue
+            slope = (across[j] - across[i]) / (along[j] - along[i])
+            near = np.abs(across - (across[i] + slope * (along - along[i]))) < 2 * tol
+            if near.sum() > most:
+                most, best = int(near.sum()), np.flatnonzero(near)
+    return best
 
 
 def film_angle(hole: np.ndarray) -> float | None:
@@ -297,15 +320,108 @@ def window_box(region: np.ndarray) -> tuple[float, float, float, float] | None:
     return x0 / w, y0 / h, (x1 - x0) / w, (y1 - y0) / h
 
 
-def holes_on_film(hole: np.ndarray, region: np.ndarray) -> bool:
-    """True when credible sprocket-hole rows lie on the lit film (not beyond a carrier's edge)."""
+def holes_on_film(thumb: np.ndarray, hole: np.ndarray) -> bool:
+    """True when credible sprocket-hole rows sit in lit film (a strip), not beyond a carrier's edge.
+
+    A strip's holes are ringed by rebate; holes glimpsed past a carrier's edge by dark carrier.
+    The ring is judged against the holes' own brightness, not the lit window: on a lightbox
+    the bare light past the end of the strip can outshine the film and win the window.
+    """
     found = sprocket_rows(hole)
     if found is None:
         return False
     vertical, rows = found
-    pts = np.concatenate(rows).round().astype(int)
+    pts = np.concatenate(rows)
+    _, lab = cv2.connectedComponents(hole.astype(np.uint8), connectivity=8)
     x, y = (pts[:, 1], pts[:, 0]) if vertical else (pts[:, 0], pts[:, 1])
-    return bool(region[y, x].mean() > 0.5)
+    ids = np.unique(lab[y.round().astype(int), x.round().astype(int)])
+    blobs = np.isin(lab, ids[ids > 0])
+    if not blobs.any():
+        return False
+    k = max(2, round(0.006 * hole.shape[1]))
+    ring = cv2.dilate(blobs.astype(np.uint8), _disk(k)).astype(bool) & ~hole
+    g = thumb[..., 1]
+    return bool((g[ring] > 0.05 * np.median(g[blobs])).mean() > 0.5)
+
+
+# 135 film (ISO 1007): perforation pitch, picture, distance between the two rows' centers, mm
+PERF_PITCH_MM, FRAME_MM, PERF_ROWS_MM = 4.75, (36.0, 24.0), 28.17
+FRAME_TOL = (0.03, 0.04)   # strip_box: camera gates differ a little from 36 x 24
+EDGE_RISE = 0.02           # ... density step across 4 px at the picture's edge
+EDGE_MIN = 0.5             # ... fraction of the edge that must step for it to count
+ROWS_TOL = 0.1             # ... hole rows' spacing vs the pitch, relative to 135's
+
+
+def _edge_steps(dens: np.ndarray, k: int = 2) -> tuple[np.ndarray, np.ndarray]:
+    """Per column: fraction of rows getting denser going right (a left edge), and thinner (a right edge)."""
+    step = np.zeros_like(dens)
+    step[:, k:-k] = dens[:, 2 * k:] - dens[:, :-2 * k]
+    return (step > EDGE_RISE).mean(axis=0), (step < -EDGE_RISE).mean(axis=0)
+
+
+def _edge_pair(lead: np.ndarray, trail: np.ndarray, lo: int, hi: int, size: float, tol: float):
+    """(lead score, trail score, start, end) of the best pair of edges `size` (± tol) apart in [lo, hi)."""
+    best = (-1.0, -1.0, 0, 0)
+    for s in range(int(size * (1 - tol)), int(size * (1 + tol)) + 1):
+        if s >= hi - lo:
+            break
+        both = lead[lo:hi - s] + trail[lo + s:hi]
+        i = int(np.argmax(both))
+        if both[i] > best[0] + best[1]:
+            best = (float(lead[lo + i]), float(trail[lo + i + s]), lo + i, lo + i + s)
+    return best
+
+
+def strip_box(thumb: np.ndarray, c: Calibration) -> tuple[float, float, float, float] | None:
+    """Normalized [x, y, w, h] of the picture on a strip with sprocket holes (deskewed thumbnail).
+
+    The hole pitch gives the scale, so the picture's size is known: a 36 x 24 mm frame between
+    the hole rows. Each axis takes the pair of edges that far apart where the most of the film
+    steps up in density: a camera gate leaves a sharp edge even where the picture is nearly as
+    thin as the gap beside it, and a gap or rebate a little denser than the base can't pass
+    for picture. An axis without two clear edges (a frame cut by the strip's end, a half-frame
+    camera) takes picture_box's extent instead. None if neither finds anything.
+    """
+    old = picture_box(thumb, c)
+    found = sprocket_rows(c.hole)
+    if found is None:
+        return old
+    vertical, rows = found
+    img = thumb.transpose(1, 0, 2) if vertical else thumb  # strip runs along x
+    h, w = img.shape[:2]
+    pitches = np.concatenate([np.diff(np.sort(r[:, 0])) for r in rows])
+    pitch = np.median(pitches[pitches < 1.5 * np.median(pitches)])  # a missing hole doubles a gap
+    mm = pitch / PERF_PITCH_MM
+    dens = -np.log10(np.maximum(img.mean(axis=2), EPS))
+    across = sorted(float(np.median(r[:, 1])) for r in rows)
+    if len(across) == 2 and abs(np.diff(across)[0] / (PERF_ROWS_MM * mm) - 1) > ROWS_TOL:
+        return old  # not 135 proportions: the frame size is unknown
+    if len(across) == 1:  # one row: the picture is on the side with more film
+        a = across[0]
+        across = [a, a + PERF_ROWS_MM * mm] if a < h / 2 else [a - PERF_ROWS_MM * mm, a]
+    ylo, yhi = max(int(across[0]), 0), min(int(across[-1]) + 1, h)
+    if yhi - ylo < 0.5 * FRAME_MM[1] * mm:
+        return old
+    fw, fh = FRAME_MM[0] * mm, FRAME_MM[1] * mm
+    m = round(0.3 * (yhi - ylo))
+    x = _edge_pair(*_edge_steps(dens[ylo + m:yhi - m]), 0, w, fw, FRAME_TOL[0])
+    xs = (x[2], x[3]) if x[2] < x[3] else (0, w)
+    m = round(0.1 * (xs[1] - xs[0]))
+    y = _edge_pair(*_edge_steps(dens[:, xs[0] + m:xs[1] - m].T), ylo, yhi, fh, FRAME_TOL[1])
+    if min(y[:2]) >= EDGE_MIN:  # the found rows sharpen the column scores
+        m = round(0.1 * (y[3] - y[2]))
+        x = _edge_pair(*_edge_steps(dens[y[2] + m:y[3] - m]), 0, w, fw, FRAME_TOL[0])
+    fb = old and ((old[1], old[0], old[3], old[2]) if vertical else old)  # in the strip's own axes
+    sides = []
+    for (lead, trail, s, e), n, o in ((x, w, fb and (fb[0], fb[2])), (y, h, fb and (fb[1], fb[3]))):
+        if min(lead, trail) >= EDGE_MIN:
+            sides.append(((s + 1) / n, (e - s - 1) / n))  # first and last pixel inside the steps
+        elif o is not None:
+            sides.append(o)
+        else:
+            return None
+    (bx, bw), (by, bh) = sides
+    return (by, bx, bh, bw) if vertical else (bx, by, bw, bh)
 
 
 def _px_box(shape: tuple, box) -> tuple[int, int, int, int]:
@@ -370,7 +486,7 @@ def window_rebate(thumb: np.ndarray, hole: np.ndarray) -> np.ndarray | None:
     so a few percent of thin picture may still read brighter than the rebate.
     """
     region = lit_region(thumb)
-    if not region.any() or holes_on_film(hole, region):
+    if not region.any() or holes_on_film(thumb, hole):
         return None
     angle = outline_angle(region)
     if angle:

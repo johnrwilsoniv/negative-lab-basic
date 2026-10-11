@@ -120,7 +120,7 @@ def auto_frame(lin: np.ndarray, settings: dict) -> dict:
         film = _film(settings)
         c = cal.calibrate(thumb, film)
         region = cal.lit_region(thumb)
-        strip = cal.holes_on_film(c.hole, region)
+        strip = cal.holes_on_film(thumb, c.hole)
         angle = (cal.film_angle(c.hole) if strip else cal.outline_angle(region)) or 0.0
         if abs(angle) >= MIN_ANGLE:
             thumb = warp(thumb, False, angle)
@@ -131,7 +131,7 @@ def auto_frame(lin: np.ndarray, settings: dict) -> dict:
         else:
             angle = 0.0
         if strip:
-            box = cal.picture_box(thumb, c)
+            box = cal.strip_box(thumb, c)
         else:
             box = cal.window_box(region)
             box = box and cal.trim_rebate(thumb, box)

@@ -1,6 +1,7 @@
 """Checks against real captures of C-41 negatives. Skipped when they're absent.
 
-Sony A7 IV strips on a lightbox, and iPhone ProRAW frames through a carrier (Kodak Gold 200).
+Sony A7 IV strips in a holder and on a bare lightbox, and iPhone ProRAW frames through a carrier
+(Kodak Gold 200).
 """
 from functools import cache
 from pathlib import Path
@@ -19,6 +20,7 @@ ROLLS = next((p for p in (REPO / "sony-capture" / "rolls", REPO / "nextcloud") i
 IPHONE = REPO / "nextcloud" / "italy-kodak-gold-200"
 FILES = {"DSC06699": ROLLS / "roll01" / "DSC06699.ARW", "DSC06700": ROLLS / "roll01" / "DSC06700.ARW",
          "frame-001": ROLLS / "test" / "frame-001.ARW",
+         **{f"frame-00{i}": ROLLS / "test" / f"frame-00{i}.ARW" for i in range(2, 6)},
          **{n: IPHONE / f"{n}.DNG" for n in ("IMG_4199", "IMG_4214", "IMG_4221", "IMG_4228")}}
 C41 = {"film": "c41", "flip": False, "base": None, "levels": None}
 
@@ -137,3 +139,26 @@ def test_iphone_carrier_frame(name):
     np.testing.assert_allclose(geo["crop"], IPHONE_CROP[name], atol=0.008)
     thumb = cal.thumbnail(lin)
     assert cal.window_rebate(thumb, cal.calibrate(thumb).hole) is not None
+
+
+# A7 IV, a Kodak GC 400 strip straight on a round lightbox: no holder, bare light past the end of
+# the strip outshines the film, the gap to the next frame and the rebate between the holes sit
+# only ~0.05 above the base, and the left of the picture is dark trees nearly as thin as the gap.
+# 002/003 and 004/005 are the same framing a stop apart. Crops checked by eye.
+LIGHTBOX_CROP = {"frame-002": [0.1078, 0.0844, 0.7595, 0.7506], "frame-003": [0.1078, 0.0826, 0.7595, 0.7524],
+                 "frame-004": [0.1893, 0.1734, 0.6627, 0.657], "frame-005": [0.1967, 0.1733, 0.6578, 0.6533]}
+
+
+@pytest.mark.parametrize("name", sorted(LIGHTBOX_CROP))
+def test_strip_on_bare_lightbox(name):
+    _need(name)
+    lin = _preview(name)
+    thumb = cal.thumbnail(lin)
+    c = cal.calibrate(thumb)
+    assert cal.holes_on_film(thumb, c.hole)  # a strip, though the bare light wins the lit window
+    geo = d.auto_frame(lin, C41)
+    assert geo["angle"] == pytest.approx(0.0, abs=0.15)
+    np.testing.assert_allclose(geo["crop"], LIGHTBOX_CROP[name], atol=0.008)
+    x, y, w, h = geo["crop"]
+    flipped = d.auto_frame(lin, {**C41, "flip": True})["crop"]
+    np.testing.assert_allclose(flipped, [1 - x - w, y, w, h], atol=0.003)

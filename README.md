@@ -10,6 +10,8 @@ A pun on Negative Lab Pro.
 In Claude Code: `/nlb-invert <dir>` runs preview → agent review → your confirmation → render.
 Install the skill: `ln -s "$PWD/skills/nlb-invert" ~/.claude/skills/nlb-invert`
 
+Shooting with a tethered Sony A7 IV: see [sony-capture/](sony-capture/README.md).
+
 Tests: `uv run pytest` (sample-based tests need `iphone-negatives/`).
 
 With Nix (no uv needed; dependencies come from nixpkgs):

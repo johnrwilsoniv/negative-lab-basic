@@ -35,6 +35,21 @@
           nativeCheckInputs = with python.pkgs; [ pytestCheckHook tifffile ];
           pythonImportsCheck = [ "nlb" ];
         };
+
+        # Tethered capture from a Sony A7 IV; see sony-capture/README.md.
+        # entangle and the gphoto2 tethering stack are Linux-only.
+        captureTools = with pkgs; [
+          gphoto2 # CLI: capture, download, get/set every camera setting
+          libgphoto2 # lib + lib/libgphoto2/print-camera-list
+          darktable # tethering + `negadoctor` negative inversion
+          entangle # dedicated tether app: live view, capture, auto-import
+          rawtherapee # has a "Film Negative" module
+          libraw # dcraw_emu (maintained dcraw replacement), raw-identify
+          imagemagick
+          exiftool
+          usbutils # lsusb, to confirm the camera enumerated
+        ];
+        isLinux = pkgs.stdenv.hostPlatform.isLinux;
       in
       {
         packages.default = nlb;
@@ -43,10 +58,19 @@
 
         devShells.default = pkgs.mkShell {
           packages = [
-            (python.withPackages (ps: runtimeDeps ps ++ (with ps; [ pytest tifffile ])))
-          ];
+            (python.withPackages (ps: runtimeDeps ps
+              ++ (with ps; [ pytest tifffile ])
+              ++ pkgs.lib.optional isLinux ps.gphoto2))
+          ] ++ pkgs.lib.optionals isLinux captureTools;
           shellHook = ''
             export PYTHONPATH="$PWD/src''${PYTHONPATH:+:$PYTHONPATH}"
+          '' + pkgs.lib.optionalString isLinux ''
+            # python-gphoto2 and anything linking libgphoto2 directly need these.
+            # (The gphoto2 CLI is already wrapped with them.) The two plugin dirs
+            # are versioned independently -- camlibs by the libgphoto2 version,
+            # iolibs by the libgphoto2_port version -- so glob rather than guess.
+            export CAMLIBS="${pkgs.libgphoto2}/lib/libgphoto2/${pkgs.libgphoto2.version}"
+            export IOLIBS="$(echo ${pkgs.libgphoto2}/lib/libgphoto2_port/*/)"
           '';
         };
       });

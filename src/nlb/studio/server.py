@@ -13,11 +13,11 @@ from urllib.parse import parse_qs, urlparse
 
 import numpy as np
 
-from nlb import develop
+from nlb import darktable, develop
 from nlb.heic import RAW_SUFFIXES
 from nlb.studio import feedback
-from nlb.studio.cache import LRU, Previews, edit_hash, to_jpeg
-from nlb.studio.camera import CameraWorker, FakeBackend, GPhotoBackend
+from nlb.studio.cache import LRU, DarktablePreviews, Previews, edit_hash, to_jpeg
+from nlb.studio.camera import CameraWorker, FakeBackend, GPhotoBackend, gphoto_missing
 from nlb.studio.roll import Roll
 
 STATIC = Path(__file__).parent / "static"
@@ -26,7 +26,7 @@ CONTENT_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; c
 VIEWS = ("crop", "full", "negative")
 TEST_VIEWS = ("frame", "result", "sensor")
 SHOOT_MODES = ("test", "direct")
-TEMPLATE_KEYS = ("rotation", "angle", "params")
+TEMPLATE_KEYS = ("rotation", "angle", "params", "engine")
 
 
 class RenderJob:
@@ -57,11 +57,19 @@ class RenderJob:
                 self.state["current"] = name
             try:
                 snap = roll.snapshot()
-                frame = snap["frames"][name]
-                lin = develop.load_linear(roll.path(name), preview=False)
+                settings, frame, path = snap["settings"], snap["frames"][name], roll.path(name)
+                lin = None
+                if frame.get("crop") is None or frame.get("engine") != "darktable":
+                    lin = develop.load_linear(path, preview=False)
                 if frame.get("crop") is None:
-                    frame["crop"] = develop.auto_crop(lin, snap["settings"])
-                img = develop.develop(lin, snap["settings"], frame, view="crop")
+                    frame["crop"] = develop.auto_crop(lin, settings)
+                if frame.get("engine") == "darktable":
+                    positive = darktable.render(path, settings["film"], darktable.sensor_shape(path),
+                                                base=settings.get("base"))
+                    img = develop.place(positive, settings, frame, view="crop")
+                    del positive
+                else:
+                    img = develop.develop(lin, settings, frame, view="crop")
                 del lin
                 develop.write_tiff(out / f"{name}.tif", img)
             except Exception as e:
@@ -99,6 +107,7 @@ class Studio:
         self.rolls: dict[str, Roll] = {}
         self.rolls_lock = threading.Lock()
         self.previews = Previews()
+        self.darktable = DarktablePreviews(self.previews)
         self.jpegs = LRU(300)
         self.pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="prepare")
         self.job = RenderJob()
@@ -112,8 +121,12 @@ class Studio:
         names = self.roll_names()
         self.open_roll(roll or (max(names, key=lambda n: (self.library / n).stat().st_mtime)
                                 if names else "roll01"), create=True)
-        make_backend = (lambda: FakeBackend(fake_camera)) if fake_camera else GPhotoBackend
-        self.camera = CameraWorker(make_backend, self.library / ".nlb" / "incoming", self.camera_files)
+        incoming = self.library / ".nlb" / "incoming"
+        if fake_camera:
+            self.camera = CameraWorker(lambda: FakeBackend(fake_camera), incoming, self.camera_files)
+        else:
+            self.camera = CameraWorker(GPhotoBackend, incoming, self.camera_files,
+                                       detect=GPhotoBackend.detect, unavailable=gphoto_missing())
         self.camera.start()
         self.restore_test()
 
@@ -364,9 +377,15 @@ class Studio:
         key = (str(roll.folder), name, view, thumb, h)
         jpeg = self.jpegs.get(key)
         if jpeg is None:
-            lin = self.previews.linear(roll.path(name), thumb=thumb)
-            jpeg = to_jpeg(develop.develop(lin, snap["settings"], frame, view=view),
-                           quality=80 if thumb else 90)
+            path = roll.path(name)
+            if frame.get("engine") == "darktable" and view != "negative":
+                positive = self.darktable.positive(path, snap["settings"]["film"], snap["settings"].get("base"),
+                                                   thumb=thumb)
+                img = develop.place(positive, snap["settings"], frame, view=view)
+            else:
+                img = develop.develop(self.previews.linear(path, thumb=thumb), snap["settings"], frame,
+                                      view=view)
+            jpeg = to_jpeg(img, quality=80 if thumb else 90)
             self.jpegs.put(key, jpeg)
         return jpeg, h
 
@@ -381,6 +400,7 @@ class Studio:
                 "rolls": self.roll_names(), "folder": str(roll.folder), "out": str(out_dir(roll)),
                 "settings": snap["settings"], "frames": frames, "params": develop.PARAMS,
                 "next_name": roll.next_name(), "camera": self.camera.snapshot(),
+                "darktable": darktable.status(),
                 "job": self.job.snapshot(), "shoot_mode": self.shoot_mode, "test": self.test_state()}
 
     # --- roll-level actions ---
@@ -687,7 +707,9 @@ def serve(folder: Path, host: str = "127.0.0.1", port: int = 8765, prefix: str =
         studio = Studio(folder.parent, roll=folder.name, prefix=prefix, fake_camera=fake_camera)
     else:
         studio = Studio(folder, prefix=prefix, fake_camera=fake_camera)
-    if connect:
+    if studio.camera.unavailable:
+        print(f"nlb studio: capture disabled. {studio.camera.unavailable}", flush=True)
+    elif connect:
         studio.camera.submit("connect")  # failure just shows up as camera status in the UI
     server = ThreadingHTTPServer((host, port), make_handler(studio))
     server.daemon_threads = True

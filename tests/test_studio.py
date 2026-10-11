@@ -1,5 +1,6 @@
 import json
 import threading
+import time
 import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
@@ -8,6 +9,9 @@ import numpy as np
 import pytest
 from synth import make_negative, write_dng
 
+from nlb import darktable
+from nlb.studio import camera as camera_mod
+from nlb.studio.camera import CameraWorker, FakeBackend
 from nlb.studio.roll import Roll, clamp_crop
 from nlb.studio.server import Studio, make_handler
 
@@ -64,6 +68,8 @@ def test_update_frame_validates(tmp_path):
         roll.update_frame("A", {"rotation": 45})
     with pytest.raises(ValueError):
         roll.update_frame("A", {"bogus": 1})
+    with pytest.raises(ValueError):
+        roll.update_frame("A", {"engine": "lightroom"})
     f = roll.update_frame("A", {"angle": 12, "params": {"exposure": 0.5}})
     assert f["angle"] == 5.0
     f = roll.update_frame("A", {"params": {"contrast": 0.2}})
@@ -273,3 +279,109 @@ def test_leftover_test_shot_comes_back(tmp_path):
     st = Studio(tmp_path, roll="roll", fake_camera=source)
     assert st.test is not None and st.test["id"] == 8
     assert [p.name for p in old.iterdir()] == ["0008"]
+
+
+# --- camera worker: missing gphoto2, no camera, hotplug ---
+
+def wait_status(worker, status, timeout=10):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if worker.snapshot()["status"] == status:
+            return worker.snapshot()
+        time.sleep(0.02)
+    raise AssertionError(f"status {worker.snapshot()['status']!r}, wanted {status!r}")
+
+
+def test_camera_unavailable(tmp_path):
+    worker = CameraWorker(lambda: pytest.fail("must not open a camera"), tmp_path / "in",
+                          lambda files: None, unavailable="no gphoto2 here")
+    worker.start()
+    assert worker.snapshot()["status"] == "unavailable"
+    with pytest.raises(RuntimeError, match="no gphoto2 here"):
+        worker.submit("connect").result(timeout=5)
+    with pytest.raises(RuntimeError):
+        worker.submit("capture").result(timeout=5)
+    snap = worker.snapshot()
+    assert snap["status"] == "unavailable" and snap["message"] == "no gphoto2 here"
+
+
+def test_camera_backend_import_error_does_not_hang(tmp_path):
+    def make_backend():
+        raise ImportError("No module named 'gphoto2'")
+    worker = CameraWorker(make_backend, tmp_path / "in", lambda files: None)
+    worker.start()
+    with pytest.raises(RuntimeError):
+        worker.submit("connect").result(timeout=5)
+    assert worker.snapshot()["status"] == "error"  # not stuck on "connecting"
+
+
+def test_camera_hotplug(tmp_path, monkeypatch):
+    monkeypatch.setattr(camera_mod, "DETECT_EVERY", 0.05)
+    source = raw_folder(tmp_path / "source", n=1)
+    plugged = threading.Event()
+    got = []
+
+    def make_backend():
+        if not plugged.is_set():
+            raise RuntimeError("[-105] Unknown model")
+        return FakeBackend(source)
+
+    worker = CameraWorker(make_backend, tmp_path / "in", got.append, detect=plugged.is_set)
+    worker.start()
+    with pytest.raises(RuntimeError, match="No camera found"):
+        worker.submit("connect").result(timeout=5)
+    assert worker.snapshot()["status"] == "nocamera"
+
+    plugged.set()  # connects by itself
+    assert wait_status(worker, "ready")["model"].startswith("Fake camera")
+    assert worker.submit("capture").result(timeout=5)
+
+    worker.backend.preview = lambda: (_ for _ in ()).throw(OSError("unplugged"))
+    plugged.clear()
+    worker.add_viewer(1)  # live view notices the camera is gone
+    wait_status(worker, "nocamera")
+    worker.add_viewer(-1)
+    plugged.set()
+    wait_status(worker, "ready")
+
+    # after an explicit disconnect, a replug doesn't grab the camera
+    worker.submit("disconnect").result(timeout=5)
+    plugged.clear()
+    wait_status(worker, "nocamera")
+    plugged.set()
+    wait_status(worker, "disconnected")
+    worker.submit("connect").result(timeout=5)
+    assert worker.snapshot()["status"] == "ready"
+
+
+@pytest.mark.skipif(darktable.executable() is None, reason="needs darktable-cli")
+def test_darktable_engine(studio, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    assert call(studio, "GET", "/api/state")["darktable"]["available"]
+    call(studio, "POST", "/api/camera/connect")
+    call(studio, "POST", "/api/camera/capture", {})
+    call(studio, "PATCH", "/api/frames/frame-001", {"engine": "darktable", "rotation": 90})
+    # a new capture keeps the processing of the frame before it
+    call(studio, "POST", "/api/camera/capture", {})
+    assert call(studio, "GET", "/api/state")["frames"][1]["engine"] == "darktable"
+    call(studio, "PATCH", "/api/frames/frame-002", {"engine": "nlb", "rejected": True})
+    studio.pool.shutdown(wait=True)
+
+    for view in ("crop", "full"):
+        assert call(studio, "GET", f"/api/frames/frame-001/image?view={view}&size=thumb")[:2] == b"\xff\xd8"
+    previews = tmp_path / "cache" / "nlb" / "darktable" / "previews"
+    assert len(list(previews.glob("*.png"))) == 1
+
+    # a picked film base becomes negadoctor's Dmin: a new darktable render
+    call(studio, "POST", "/api/base", {"name": "frame-001", "x": 0.5, "y": 0.5})
+    assert call(studio, "GET", "/api/frames/frame-001/image?size=thumb")[:2] == b"\xff\xd8"
+    assert len(list(previews.glob("*.png"))) == 2
+    assert (tmp_path / "cache" / "nlb" / "darktable" / "transforms.json").is_file()
+
+    call(studio, "POST", "/api/render", {})
+    while call(studio, "GET", "/api/state")["job"]["running"]:
+        pass
+    assert call(studio, "GET", "/api/state")["job"]["errors"] == []
+    import cv2
+    img = cv2.imread(str(studio.library / "roll-positive" / "frame-001.tif"), cv2.IMREAD_UNCHANGED)
+    assert img.dtype == np.uint16 and img.shape[0] > img.shape[1]

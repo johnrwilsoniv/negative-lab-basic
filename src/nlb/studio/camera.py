@@ -3,7 +3,8 @@
 `CameraWorker` owns a backend: `GPhotoBackend` for a real camera (Sony A7 IV in PC Remote
 mode, see sony-capture/README.md) or `FakeBackend`, which replays raw files from a folder.
 Live view runs only while a browser is streaming it; otherwise the worker polls for
-files added by pressing the shutter on the camera.
+files added by pressing the shutter on the camera. With no camera connected it watches
+for one to be plugged in and connects to it.
 """
 import itertools
 import queue
@@ -22,6 +23,22 @@ from nlb.heic import RAW_SUFFIXES
 CONFIG_KEYS = ("iso", "shutterspeed", "f-number", "imagequality", "pcsaveimgsize")
 # Locked on connect: without these the A7 IV sends a 1616x1080 JPEG proxy instead of the raw.
 REQUIRED_CONFIG = (("imagequality", "RAW"), ("pcsaveimgsize", "Original"))
+NO_CAMERA = ("No camera found. Plug it in and turn it on (USB Connection Mode = PC Remote, "
+             "USB Streaming off); it connects automatically.")
+DETECT_EVERY = 2.0  # seconds between looks for a newly plugged-in camera
+
+
+def gphoto_missing() -> str | None:
+    """Why tethered capture can't work on this machine, or None if it can."""
+    try:
+        import gphoto2  # noqa: F401
+    except ImportError as e:
+        if e.name == "gphoto2":
+            return ("Tethered capture needs the gphoto2 Python module, which isn't installed. "
+                    "Install it with `pip install 'nlb[camera]'` (needs libgphoto2), "
+                    "or run nlb inside `nix develop`. Review and rendering still work.")
+        return f"Tethered capture needs libgphoto2, which failed to load: {e}"
+    return None
 
 
 class GPhotoBackend:
@@ -29,6 +46,12 @@ class GPhotoBackend:
         import gphoto2 as gp  # optional dependency; only needed with a real camera
         self.gp = gp
         self.cam = None
+
+    @staticmethod
+    def detect() -> bool:
+        """Is a camera plugged in? Cheap (~50 ms); doesn't open it."""
+        import gphoto2 as gp
+        return len(gp.Camera.autodetect()) > 0
 
     def open(self) -> dict:
         gp = self.gp
@@ -153,13 +176,20 @@ class FakeBackend:
 class CameraWorker(threading.Thread):
     """Serialises every camera call. `on_files(paths)` gets each batch of downloaded files."""
 
-    def __init__(self, make_backend, tmp: Path, on_files):
+    def __init__(self, make_backend, tmp: Path, on_files, detect=None,
+                 unavailable: str | None = None):
+        """`detect()` says whether a camera is plugged in (None: assume one is). With
+        `unavailable` set (the reason) the worker never touches a camera."""
         super().__init__(daemon=True, name="camera")
         self.make_backend, self.tmp, self.on_files = make_backend, tmp, on_files
+        self.detect, self.unavailable = detect, unavailable
+        self.auto_connect = True  # connect when a camera is plugged in
+        self.present = None               # last detect() result
+        self.next_detect = 0.0
         self.backend = None
         self.commands: queue.Queue = queue.Queue()
-        self.state = {"status": "disconnected", "model": None, "message": "", "config": {},
-                      "busy": False}
+        self.state = {"status": "unavailable" if unavailable else "disconnected", "model": None,
+                      "message": unavailable or "", "config": {}, "busy": False}
         self.state_lock = threading.Lock()
         self.frame = None           # latest live-view JPEG
         self.frame_seq = 0
@@ -200,7 +230,10 @@ class CameraWorker(threading.Thread):
             try:
                 fut.set_result(getattr(self, f"_cmd_{cmd}")(*args))
             except Exception as e:
-                traceback.print_exc()
+                if cmd == "connect":  # expected (no camera, ...); the UI shows why
+                    print(f"nlb studio: camera: {e}", flush=True)
+                else:
+                    traceback.print_exc()
                 fut.set_exception(e)
                 if self.backend is not None and cmd in ("capture", "connect"):
                     self._set(message=str(e))
@@ -212,6 +245,7 @@ class CameraWorker(threading.Thread):
 
     def _idle(self) -> None:
         if self.backend is None:
+            self._watch()
             return
         try:
             if self._streaming():
@@ -229,24 +263,56 @@ class CameraWorker(threading.Thread):
             traceback.print_exc()
             self._drop(f"camera lost: {e}")
 
+    def _watch(self) -> None:
+        """Not connected: notice a camera being plugged in or out."""
+        if self.unavailable or self.detect is None or time.monotonic() < self.next_detect:
+            return
+        self.next_detect = time.monotonic() + DETECT_EVERY
+        try:
+            present = self.detect()
+        except Exception:
+            traceback.print_exc()
+            return
+        was, self.present = self.present, present
+        status = self.snapshot()["status"]
+        if not present:
+            if status != "nocamera":
+                self._set(status="nocamera", message=NO_CAMERA)
+        elif was is False and self.auto_connect:
+            try:
+                self._cmd_connect()
+            except Exception as e:
+                print(f"nlb studio: camera: {e}", flush=True)
+        elif status == "nocamera":
+            self._set(status="disconnected", message="")
+
     def _cmd_connect(self) -> dict:
+        if self.unavailable:
+            raise RuntimeError(self.unavailable)
         if self.backend is not None:
             return self.snapshot()
+        self.auto_connect = True
         self._set(status="connecting", message="")
-        backend = self.make_backend()
+        backend = None
         try:
+            backend = self.make_backend()
             info = backend.open()
             config = backend.get_config()
         except Exception as e:
-            backend.close()
-            self._set(status="error", message=connect_hint(str(e)))
-            raise
-        self.backend = backend
+            if backend is not None:
+                backend.close()
+            status, message = connect_hint(str(e))
+            if status == "nocamera":
+                self.present = False  # so plugging one in connects
+            self._set(status=status, message=message)
+            raise RuntimeError(message) from e
+        self.backend, self.present = backend, True
         self._set(status="ready", model=info["model"], config=config,
                   message="; ".join(info["warnings"]))
         return self.snapshot()
 
     def _cmd_disconnect(self) -> dict:
+        self.auto_connect = False  # leave the camera alone until asked again
         self._drop("")
         return self.snapshot()
 
@@ -293,10 +359,10 @@ class CameraWorker(threading.Thread):
             self.state.update(kw)
 
 
-def connect_hint(err: str) -> str:
+def connect_hint(err: str) -> tuple[str, str]:
+    """(status, message) for a failed connect."""
     if "-105" in err or "Unknown model" in err:
-        return (f"{err} - no camera found. Is it on, in USB Connection Mode = PC Remote, "
-                "with USB Streaming off?")
+        return "nocamera", NO_CAMERA
     if "-53" in err or "busy" in err.lower():
-        return f"{err} - another program has the camera; try `gio mount -s gphoto2`."
-    return err
+        return "error", f"{err} - another program has the camera; try `gio mount -s gphoto2`."
+    return "error", err

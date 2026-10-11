@@ -19,6 +19,7 @@ const ui = {
   liveSrc: "live",       // capture viewer: live | test
   testView: load("testView", "frame"),  // frame | result | sensor
   testSeen: null,        // test shot id the viewer last switched to
+  loadingMain: false,    // main image requested but not loaded yet (darktable takes seconds)
 };
 
 function load(key, fallback) {
@@ -174,12 +175,30 @@ function spotNewCaptures() {
   ui.knownFrames = new Set(names);
 }
 
+const CAMERA_LABELS = { unavailable: "no gphoto2", nocamera: "no camera" };
+
 function renderCameraPill() {
   const c = ui.state.camera;
   const pill = $("#cam-pill");
   const busy = c.busy || c.status === "capturing" || c.status === "connecting";
   pill.className = "cam-pill " + (c.status === "error" ? "error" : busy ? "busy" : c.status === "ready" ? "ready" : "");
-  $("#cam-pill-text").textContent = c.model ? `${c.model} · ${c.status}` : c.status;
+  const label = CAMERA_LABELS[c.status] || c.status;
+  $("#cam-pill-text").textContent = c.model ? `${c.model} · ${label}` : label;
+  pill.title = c.message || "camera status";
+  const tab = $('.tab[data-tab="capture"]');
+  tab.classList.toggle("unavailable", c.status === "unavailable");
+  tab.title = c.status === "unavailable" ? c.message : "";
+}
+
+const cameraConnected = () => ["ready", "capturing"].includes(ui.state?.camera.status);
+
+// why the shutter is grayed out, or "" when it isn't
+function captureBlocker(c) {
+  if (cameraConnected()) return "";
+  if (c.status === "unavailable") return "Capture unavailable: gphoto2 isn't installed.";
+  if (c.status === "nocamera") return "No camera found. Plug one in and it connects automatically.";
+  if (c.status === "connecting") return "Connecting to the camera…";
+  return "Camera not connected.";
 }
 
 function renderJob() {
@@ -194,7 +213,7 @@ function renderJob() {
 
 function renderStrip() {
   const fs = frames();
-  const sig = fs.map((f) => `${f.name}:${f.hash}:${f.rejected}:${!!f.crop}`).join("|");
+  const sig = fs.map((f) => `${f.name}:${f.hash}:${f.rejected}:${!!f.crop}:${f.engine}`).join("|");
   if (sig !== ui.stripSig) {
     ui.stripSig = sig;
     const strip = $("#strip");
@@ -208,7 +227,7 @@ function renderStrip() {
         el.innerHTML = `<img alt="" loading="lazy"><span class="label"></span>`;
         el.addEventListener("click", () => select(f.name));
       }
-      el.querySelector(".label").textContent = f.name;
+      el.querySelector(".label").textContent = f.name + (f.engine === "darktable" ? " · dt" : "");
       el.classList.toggle("rejected", !!f.rejected);
       el.classList.toggle("pending", !f.crop);
       const img = el.querySelector("img");
@@ -226,11 +245,15 @@ function renderStrip() {
 
 function renderCapture() {
   const c = ui.state.camera;
-  const connected = c.status === "ready" || c.status === "capturing";
+  const connected = cameraConnected();
+  const unavailable = c.status === "unavailable";
   const live = $("#live");
   live.classList.toggle("connected", connected);
+  live.classList.toggle("unavailable", unavailable);
   $("#live-message").textContent = c.status === "connecting" ? "Connecting…" : c.message || "Camera not connected.";
-  $("#connect-btn").disabled = c.status === "connecting";
+  $("#connect-btn").disabled = c.status === "connecting" || unavailable;
+  $("#connect-btn").hidden = unavailable;
+  $("#connect-hint").hidden = unavailable || c.status === "nocamera";  // the message says it
   $("#cam-model").textContent = c.model || "—";
   $("#cam-msg").textContent = connected ? c.message : "";
   $("#capture-btn").disabled = !connected || ui.busy || c.busy;
@@ -240,9 +263,11 @@ function renderCapture() {
   const testMode = ui.state.shoot_mode === "test";
   $$("#shoot-mode button").forEach((b) => b.classList.toggle("on", b.dataset.mode === ui.state.shoot_mode));
   $("#capture-label").textContent = testMode ? "Test shot" : "Capture";
-  $("#shoot-hint").textContent = testMode
+  const why = captureBlocker(c);
+  $("#capture-why").textContent = why || (testMode
     ? "Each shot gets feedback first; keep the ones you like. The camera's shutter button works too."
-    : "Shots go straight into the roll. The camera's shutter button works too.";
+    : "Shots go straight into the roll. The camera's shutter button works too.");
+  $("#capture-why").classList.toggle("blocked", !!why);
 
   const test = ui.state.test;
   if (test && test.status !== "analyzing" && ui.testSeen !== test.id) {
@@ -473,6 +498,7 @@ function renderReview() {
   stage.classList.toggle("view-full", ui.view === "full");
   $$("#view-seg button").forEach((b) => b.classList.toggle("on", b.dataset.view === ui.view));
   $("#view-hint").textContent = ui.picking ? "Click the clear film rebate (between the sprocket holes and the picture)"
+    : ui.loadingMain && f?.engine === "darktable" && ui.view !== "negative" ? "Developing in darktable…"
     : ui.view === "full" ? "Drag to move or resize the crop" : "";
   const wrap = $("#img-wrap");
   wrap.classList.toggle("cropping", ui.view === "full" && !!f);
@@ -489,11 +515,21 @@ function showMain(url) {
   const img = $("#main-img");
   if (img.dataset.want === url) return;
   img.dataset.want = url;
+  ui.loadingMain = true;
   const pre = new Image();
   pre.onload = () => {
     if (img.dataset.want !== url) return;
+    ui.loadingMain = false;
     img.src = url;
     requestAnimationFrame(layoutCrop);
+    renderReview();
+  };
+  pre.onerror = async () => {
+    if (img.dataset.want !== url) return;
+    ui.loadingMain = false;
+    const data = await fetch(url).then((r) => r.json()).catch(() => ({}));
+    toast(data.error || "Could not load the image", true);
+    renderReview();
   };
   pre.src = url;
 }
@@ -535,6 +571,18 @@ function renderFramePanel(f) {
   });
   angle.dataset.default = 0;
 
+  const engine = f.engine || "nlb";
+  const dt = ui.state.darktable;
+  $$("#engine-seg button").forEach((b) => {
+    b.classList.toggle("on", b.dataset.engine === engine);
+    if (b.dataset.engine === "darktable" && !dt.available) { b.disabled = engine !== "darktable"; b.title = dt.error; }
+  });
+  $("#engine-hint").textContent = engine === "darktable"
+    ? `Style “${dt.styles?.[ui.state.settings.film] ?? "?"}”, Dmin ` +
+      (ui.state.settings.base ? "from the picked film base." : "from the style (pick the film base to set it per roll).") +
+      " The sliders and levels apply to nlb only."
+    : "";
+
   const box = $("#param-sliders");
   for (const p of ui.state.params) {
     const el = slider(box, {
@@ -543,6 +591,7 @@ function renderFramePanel(f) {
       onChange: (v) => debouncedParam(p.key, v, true),
     });
     el.dataset.default = p.default;
+    el.querySelector("input").disabled = engine === "darktable";
   }
   $("#paste-params").disabled = !ui.clipboard;
   $("#paste-all").disabled = !ui.clipboard;
@@ -720,6 +769,11 @@ async function rotate(delta) {
   if (f) await act(() => patchFrame(f.name, { rotation: (f.rotation + delta + 360) % 360 }));
 }
 
+async function setEngine(engine) {
+  const f = current();
+  if (f && (f.engine || "nlb") !== engine) await act(() => patchFrame(f.name, { engine }));
+}
+
 async function toggleReject() {
   const f = current();
   if (f) await act(() => patchFrame(f.name, { rejected: !f.rejected }));
@@ -770,6 +824,7 @@ function wire() {
   $("#rot-ccw").addEventListener("click", () => rotate(-90));
   $("#rot-cw").addEventListener("click", () => rotate(90));
   $("#reject-btn").addEventListener("click", toggleReject);
+  $$("#engine-seg button").forEach((b) => b.addEventListener("click", () => setEngine(b.dataset.engine)));
   $("#reset-params").addEventListener("click", () => act(async () => {
     const params = Object.fromEntries(ui.state.params.map((p) => [p.key, p.default]));
     await patchFrame(ui.selected, { params, angle: 0 });
@@ -777,8 +832,8 @@ function wire() {
   $("#copy-params").addEventListener("click", () => {
     const f = current();
     if (!f) return;
-    ui.clipboard = { rotation: f.rotation, angle: f.angle, params: { ...f.params } };
-    toast(`Copied ${f.name}'s rotation and adjustments`);
+    ui.clipboard = { rotation: f.rotation, angle: f.angle, params: { ...f.params }, engine: f.engine || "nlb" };
+    toast(`Copied ${f.name}'s rotation, adjustments and processing`);
     render();
   });
   $("#paste-params").addEventListener("click", () => act(() => patchFrame(ui.selected, ui.clipboard)));
@@ -819,8 +874,8 @@ function wire() {
     const k = e.key;
     if (ui.tab === "capture") {
       const test = ui.state && ui.state.test;
-      if (k === " ") { e.preventDefault(); shoot(); return; }
-      if ((k === "r" || k === "R") && ui.lastCaptured) { capture(ui.lastCaptured); return; }
+      if (k === " ") { e.preventDefault(); if (cameraConnected()) shoot(); return; }
+      if ((k === "r" || k === "R") && ui.lastCaptured) { if (cameraConnected()) capture(ui.lastCaptured); return; }
       if (test && k === "Enter") { e.preventDefault(); keepTest(false); return; }
       if (test && (k === "Delete" || k === "Backspace")) { e.preventDefault(); discardTest(); return; }
       if (test && (k === "l" || k === "L")) { setLiveSrc(ui.liveSrc === "test" ? "live" : "test"); return; }
@@ -830,6 +885,7 @@ function wire() {
     else if (k === "ArrowRight") { e.preventDefault(); step(1); }
     else if (ui.tab !== "review") return;
     else if (k === "x" || k === "X") toggleReject();
+    else if ((k === "d" || k === "D") && current()) setEngine(current().engine === "darktable" ? "nlb" : "darktable");
     else if (k === "[" || e.code === "BracketLeft") rotate(-90);
     else if (k === "]" || e.code === "BracketRight") rotate(90);
     else if (k === "v" || k === "V") setView("crop");

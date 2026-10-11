@@ -67,6 +67,10 @@ Two related settings that do *not* work over USB, for reference:
 
 ## Capturing a roll
 
+The easy way is `nlb studio <roll-dir>` (see the top-level README): it sets the two
+settings below on connect, shows live view, names and numbers frames, and lets you
+review and reshoot as you go. The raw gphoto2 equivalent:
+
 ```sh
 # Set these once per session, then shoot
 gphoto2 --set-config imagequality=RAW --set-config pcsaveimgsize=Original

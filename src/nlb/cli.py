@@ -130,7 +130,23 @@ def main(argv: list[str] | None = None) -> int:
     rd.add_argument("--out", type=Path, help="default: <dir>-positive")
     for p in (pv, rd):
         p.add_argument("--gamma", type=float, default=1.0, help=">1 brightens midtones")
+    st = sub.add_parser("studio", help="web app: tethered capture, review and 16-bit TIFF render")
+    st.add_argument("dir", type=Path, help="roll folder (created if missing)")
+    st.add_argument("--port", type=int, default=8765)
+    st.add_argument("--host", default="127.0.0.1")
+    st.add_argument("--prefix", default="frame", help="new captures are <prefix>-NNN (default: frame)")
+    st.add_argument("--fake-camera", type=Path, metavar="DIR",
+                    help="no camera: replay the raw files in DIR as captures")
+    st.add_argument("--no-open", action="store_true", help="don't open a browser")
     args = ap.parse_args(argv)
+
+    if args.cmd == "studio":
+        from nlb.studio.server import serve
+        if args.fake_camera and not args.fake_camera.is_dir():
+            _error(f"not a folder: {args.fake_camera}")
+            return 2
+        return serve(args.dir, host=args.host, port=args.port, prefix=args.prefix,
+                     fake_camera=args.fake_camera, open_browser=not args.no_open)
 
     folder = args.dir.resolve()
     if not folder.is_dir():

@@ -12,7 +12,7 @@ import rawpy
 
 from nlb.engine import calibrate as cal
 from nlb.engine import tone
-from nlb.engine.view import crop_px, warp, warp_grid
+from nlb.engine.view import crop_px, rotate90, warp, warp_grid
 
 PARAMS = [
     {"key": "exposure", "label": "Exposure", "min": -2.0, "max": 2.0, "step": 0.05, "default": 0.0},
@@ -232,6 +232,21 @@ def develop(lin: np.ndarray, settings: dict, frame: dict, view: str = "crop") ->
         upright[y:y + STRIP_ROWS] = tone.render(tone.density(img[y:y + STRIP_ROWS], base, flare, film),
                                                 lv, p, film)
     return out
+
+
+def place(img: np.ndarray, settings: dict, frame: dict, view: str = "crop") -> np.ndarray:
+    """The studio's geometry on an image that is already a positive, like darktable's.
+
+    `img` is in sensor orientation and covers the same pixels as `load_linear`; no flat-field
+    and no tone. view: "crop" | "full".
+    """
+    flip, angle = bool(settings.get("flip")), float(frame.get("angle", 0.0) or 0.0)
+    if view == "full":
+        return warp(img, flip, angle)
+    if view != "crop":
+        raise ValueError(f"unknown view {view!r}")
+    region = crop_px(img.shape, frame.get("crop") or FALLBACK_CROP)
+    return rotate90(warp(img, flip, angle, region), int(frame.get("rotation", 0) or 0))
 
 
 def _srgb(x: np.ndarray) -> np.ndarray:

@@ -24,6 +24,14 @@ holder): capture, review and render a roll, C-41 color or B&W, to 16-bit TIFF.
 - **Review**: per frame crop (drag; `C`), rotate (`[` `]`), straighten, exposure / contrast /
   color sliders, reject (`X`); `←` `→` to move. Per roll: film type, mirror, film base
   (*Pick from rebate* on the negative view) and *Lock levels to roll* for consistent color.
+- **Process** (per frame, `D` toggles): nlb's own engine, or darktable. The darktable
+  option runs `darktable-cli` headless with the negadoctor styles in
+  [sony-capture/darktable/](sony-capture/darktable/README.md) (C-41 or B&W, following the
+  roll's film type), then applies the frame's crop, rotation and straighten. A picked film
+  base (*Pick from rebate*) becomes negadoctor's Dmin for the roll; on *Auto* the style's own
+  Dmin is used. The sliders and levels only affect nlb. A darktable preview takes a few seconds the first time
+  and is cached in `~/.cache/nlb/darktable/`. *Copy* / *Paste to all* include this setting, and
+  new captures inherit it from the previous frame.
 - **Render roll**: full-res 16-bit TIFFs of the kept frames into `<roll>-positive/`.
 
 Edits live in `<roll>/roll.json`; originals are never modified (reshoots move the old

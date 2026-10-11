@@ -10,6 +10,20 @@ Two styles for inverting negatives in darktable 5.6 with `negadoctor`:
 Import: lighttable → styles → import. Apply in either mode (append or overwrite).
 Regenerate after changing a value: `python3 make_styles.py`.
 
+`nlb studio` also uses these files headless: switch a frame's *Process* to darktable and it
+runs `darktable-cli` with the matching style on the full frame (from a private config dir in
+`~/.cache/nlb/darktable/` that the styles are imported into, so your own darktable library is
+untouched), then crops and rotates the result like its own renders. Edits to the .dtstyle files take
+effect the next time the studio starts.
+
+The studio's *Pick from rebate* replaces step 2 below: the picked film base becomes negadoctor's
+Dmin for the roll. Dmin is in negadoctor's input space, darktable's linear Rec2020 working RGB
+after this style's white balance and exposure, so the studio maps the base (camera RGB) into
+it. The map is fitted once per camera and style from a render with negadoctor off, and cached in
+`~/.cache/nlb/darktable/transforms.json`. Picked on `test/frame-001` it gives
+0.374 / 0.180 / 0.088, against the 0.367 / 0.177 / 0.0855 fitted here. D max, offset and the
+print settings stay as in the style.
+
 ## What the styles do
 
 | Module | Setting | Why |

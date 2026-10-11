@@ -99,11 +99,15 @@
             <button id="rot-cw" title="]">⟳ 90°</button>
             <button id="reject-btn" title="X">Reject <kbd>X</kbd></button>
           </div>
+          <div class="kv"><span>Process</span>
+            <span class="seg" id="engine-seg"><button data-engine="nlb">nlb</button><button data-engine="darktable" title="D">darktable</button></span>
+          </div>
+          <p class="hint" id="engine-hint"></p>
           <div class="slider" id="angle-slider"></div>
           <div id="param-sliders"></div>
           <div class="row">
             <button id="reset-params">Reset</button>
-            <button id="copy-params" title="Copy rotation, straighten and adjustments">Copy</button>
+            <button id="copy-params" title="Copy rotation, straighten, adjustments and processing">Copy</button>
             <button id="paste-params" disabled>Paste</button>
             <button id="paste-all" disabled title="Paste to every frame">Paste to all</button>
           </div>

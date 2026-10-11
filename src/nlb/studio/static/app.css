@@ -59,6 +59,7 @@ header button { white-space: nowrap; }
 .tabs { display: flex; gap: 4px; }
 .tab { background: transparent; border-color: transparent; }
 .tab.on { background: var(--bg-3); border-color: var(--line); }
+.roll-select { width: auto; max-width: 220px; font-weight: 600; }
 .roll-path { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .spacer { flex: 1; }
 .cam-pill { display: flex; align-items: center; gap: 6px; color: var(--muted); white-space: nowrap; }

@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from nlb import develop
+from nlb.heic import RAW_SUFFIXES
 from nlb.studio.cache import LRU, Previews, edit_hash, to_jpeg
 from nlb.studio.camera import CameraWorker, FakeBackend, GPhotoBackend
 from nlb.studio.roll import Roll
@@ -67,121 +68,174 @@ class RenderJob:
             self.state["current"] = None
 
 
+ROLL_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ -]{0,63}$")
+
+
+def out_dir(roll: Roll) -> Path:
+    return roll.folder.parent / f"{roll.folder.name}-positive"
+
+
+def is_roll_dir(path: Path) -> bool:
+    """A folder that is a roll itself (has roll.json or raw files), not a library of rolls."""
+    return (path / "roll.json").exists() or any(
+        p.is_file() and p.suffix.lower() in RAW_SUFFIXES for p in path.iterdir())
+
+
 class Studio:
-    def __init__(self, folder: Path, prefix: str = "frame", fake_camera: Path | None = None):
-        self.roll = Roll(folder, prefix=prefix)
-        self.out = self.roll.folder.parent / f"{self.roll.folder.name}-positive"
+    """A library folder whose subfolders are rolls; one roll is current at a time."""
+
+    def __init__(self, library: Path, roll: str | None = None, prefix: str = "frame",
+                 fake_camera: Path | None = None):
+        self.library = library.resolve()
+        self.library.mkdir(parents=True, exist_ok=True)
+        self.prefix = prefix
+        self.rolls: dict[str, Roll] = {}
+        self.rolls_lock = threading.Lock()
         self.previews = Previews()
         self.jpegs = LRU(300)
         self.pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="prepare")
         self.job = RenderJob()
         self.ingest_lock = threading.Lock()
+        names = self.roll_names()
+        self.open_roll(roll or (max(names, key=lambda n: (self.library / n).stat().st_mtime)
+                                if names else "roll01"), create=True)
         make_backend = (lambda: FakeBackend(fake_camera)) if fake_camera else GPhotoBackend
-        self.camera = CameraWorker(make_backend, self.roll.folder / ".nlb" / "incoming",
+        self.camera = CameraWorker(make_backend, self.library / ".nlb" / "incoming",
                                    lambda files: self.ingest(files))
         self.camera.start()
-        for name, frame in self.roll.frames.items():
+
+    # --- rolls ---
+
+    def roll_names(self) -> list[str]:
+        return sorted(p.name for p in self.library.iterdir()
+                      if p.is_dir() and not p.name.startswith(".") and not p.name.endswith("-positive"))
+
+    def get_roll(self, name: str | None, create: bool = False) -> Roll:
+        if name is None:
+            return self.roll
+        if not ROLL_NAME.match(name) or name.endswith("-positive"):
+            raise ValueError(f"bad roll name {name!r}")
+        with self.rolls_lock:
+            if name not in self.rolls:
+                if not create and name not in self.roll_names():
+                    raise KeyError(f"no roll {name!r}")
+                self.rolls[name] = Roll(self.library / name, prefix=self.prefix)
+            return self.rolls[name]
+
+    def open_roll(self, name: str, create: bool = False) -> Roll:
+        roll = self.get_roll(name, create=create)
+        self.roll = roll
+        self.prepare_missing(roll)
+        return roll
+
+    def prepare_missing(self, roll: Roll) -> None:
+        for name, frame in roll.snapshot()["frames"].items():
             if frame.get("crop") is None:
-                self.pool.submit(self.prepare, name)
+                self.pool.submit(self.prepare, roll, name)
 
     # --- frames ---
 
-    def prepare(self, name: str) -> None:
+    def prepare(self, roll: Roll, name: str) -> None:
         """Decode the preview and set the initial crop, so the first view is instant."""
         try:
-            with self.roll.lock:
-                if name not in self.roll.frames:
+            with roll.lock:
+                if name not in roll.frames:
                     return
-                path = self.roll.path(name)
+                path = roll.path(name)
             lin = self.previews.linear(path)
-            if self.roll.frames.get(name, {}).get("crop") is None:
-                crop = develop.auto_crop(lin, self.roll.snapshot()["settings"])
-                self.roll.update_frame(name, {"crop": crop})
+            if roll.frames.get(name, {}).get("crop") is None:
+                crop = develop.auto_crop(lin, roll.snapshot()["settings"])
+                roll.update_frame(name, {"crop": crop})
         except Exception:
             traceback.print_exc()
 
     def ingest(self, files: list[Path], reshoot: str | None = None) -> str:
-        """Files fresh off the camera become one frame (RAW+JPEG share a name)."""
+        """Files fresh off the camera become one frame (RAW+JPEG share a name) in the current roll."""
+        roll = self.roll
         with self.ingest_lock:
-            snap = self.roll.snapshot()["frames"]
+            snap = roll.snapshot()["frames"]
             if reshoot and reshoot in snap:
                 name, template = reshoot, snap[reshoot]
-                self.roll.discard(reshoot)
+                roll.discard(reshoot)
             else:
-                name = self.roll.next_name()
+                name = roll.next_name()
                 template = snap[list(snap)[-1]] if snap else None
             for f in files:
-                self.roll.add_capture(f, name)
-            if name in self.roll.frames and template:
+                roll.add_capture(f, name)
+            if name in roll.frames and template:
                 # same holder, same film: carry orientation and adjustments over
-                self.roll.update_frame(name, {k: template[k] for k in ("rotation", "angle", "params")
-                                              if k in template})
-        self.pool.submit(self.prepare, name)
+                roll.update_frame(name, {k: template[k] for k in ("rotation", "angle", "params")
+                                         if k in template})
+        self.pool.submit(self.prepare, roll, name)
         return name
 
-    def image(self, name: str, view: str, thumb: bool) -> tuple[bytes, str]:
-        snap = self.roll.snapshot()
+    def image(self, roll: Roll, name: str, view: str, thumb: bool) -> tuple[bytes, str]:
+        snap = roll.snapshot()
         frame = snap["frames"][name]
         if frame.get("crop") is None:
-            self.prepare(name)
-            snap = self.roll.snapshot()
+            self.prepare(roll, name)
+            snap = roll.snapshot()
             frame = snap["frames"][name]
         h = edit_hash(snap["settings"], frame)
-        key = (name, view, thumb, h)
+        key = (str(roll.folder), name, view, thumb, h)
         jpeg = self.jpegs.get(key)
         if jpeg is None:
-            lin = self.previews.linear(self.roll.path(name), thumb=thumb)
+            lin = self.previews.linear(roll.path(name), thumb=thumb)
             jpeg = to_jpeg(develop.develop(lin, snap["settings"], frame, view=view),
                            quality=80 if thumb else 90)
             self.jpegs.put(key, jpeg)
         return jpeg, h
 
     def state(self) -> dict:
-        if self.roll.scan():  # files added or removed by hand
-            for name, frame in self.roll.snapshot()["frames"].items():
-                if frame.get("crop") is None:
-                    self.pool.submit(self.prepare, name)
-        snap = self.roll.snapshot()
+        roll = self.roll
+        if roll.scan():  # files added or removed by hand
+            self.prepare_missing(roll)
+        snap = roll.snapshot()
         frames = [{"name": n, **f, "hash": edit_hash(snap["settings"], f)}
                   for n, f in snap["frames"].items()]
-        return {"version": self.roll.version, "folder": str(self.roll.folder), "out": str(self.out),
+        return {"version": roll.version, "library": str(self.library), "roll": roll.folder.name,
+                "rolls": self.roll_names(), "folder": str(roll.folder), "out": str(out_dir(roll)),
                 "settings": snap["settings"], "frames": frames, "params": develop.PARAMS,
-                "next_name": self.roll.next_name(), "camera": self.camera.snapshot(),
+                "next_name": roll.next_name(), "camera": self.camera.snapshot(),
                 "job": self.job.snapshot()}
 
     # --- roll-level actions ---
 
     def set_settings(self, patch: dict) -> None:
-        old = self.roll.snapshot()["settings"]
-        self.roll.update_settings(patch)
+        roll = self.roll
+        old = roll.snapshot()["settings"]
+        roll.update_settings(patch)
         if "flip" in patch and bool(patch["flip"]) != bool(old.get("flip")):
             # crops live in full-view space, which just got mirrored
-            for name, frame in self.roll.snapshot()["frames"].items():
+            for name, frame in roll.snapshot()["frames"].items():
                 if frame.get("crop"):
                     x, y, w, h = frame["crop"]
-                    self.roll.update_frame(name, {"crop": [1.0 - x - w, y, w, h]})
+                    roll.update_frame(name, {"crop": [1.0 - x - w, y, w, h]})
 
     def pick_base(self, name: str, x: float, y: float) -> list[float]:
-        snap = self.roll.snapshot()
-        lin = self.previews.linear(self.roll.path(name))
+        roll = self.roll
+        snap = roll.snapshot()
+        lin = self.previews.linear(roll.path(name))
         base = develop.sample_base(lin, snap["settings"], snap["frames"][name], x, y)
-        self.roll.update_settings({"base": base})
+        roll.update_settings({"base": base})
         return base
 
     def lock_levels(self, lock: bool) -> None:
+        roll = self.roll
         if not lock:
-            self.roll.update_settings({"levels": None})
+            roll.update_settings({"levels": None})
             return
-        snap = self.roll.snapshot()
+        snap = roll.snapshot()
         settings = {**snap["settings"], "levels": None}
-        samples = [(self.previews.linear(self.roll.path(n)), f) for n, f in snap["frames"].items()
+        samples = [(self.previews.linear(roll.path(n)), f) for n, f in snap["frames"].items()
                    if not f.get("rejected") and f.get("crop")]
-        self.roll.update_settings({"levels": develop.analyze_roll(samples, settings)})
+        roll.update_settings({"levels": develop.analyze_roll(samples, settings)})
 
     def render(self, names: list[str] | None) -> bool:
-        frames = self.roll.snapshot()["frames"]
+        roll = self.roll
+        frames = roll.snapshot()["frames"]
         names = [n for n in (names or frames) if n in frames and not frames[n].get("rejected")]
-        return self.job.start(self.roll, names, self.out)
+        return self.job.start(roll, names, out_dir(roll))
 
 
 class ApiError(Exception):
@@ -208,6 +262,22 @@ def make_handler(studio: Studio):
     def get_state(h, body, q):
         return studio.state()
 
+    @route("POST", r"/api/rolls")
+    def create_roll(h, body, q):
+        name = str(body.get("name", "")).strip()
+        if name in studio.roll_names():
+            raise ApiError(409, f"roll {name!r} already exists")
+        studio.open_roll(name, create=True)
+        return studio.state()
+
+    @route("POST", r"/api/rolls/open")
+    def open_roll(h, body, q):
+        try:
+            studio.open_roll(str(body.get("name", "")))
+        except KeyError as e:
+            raise ApiError(404, str(e))
+        return studio.state()
+
     @route("PATCH", r"/api/settings")
     def patch_settings(h, body, q):
         studio.set_settings(body)
@@ -227,7 +297,13 @@ def make_handler(studio: Studio):
         view = q.get("view", "crop")
         if view not in VIEWS:
             raise ApiError(400, f"view must be one of {VIEWS}")
-        jpeg, digest = studio.image(frame_name(name), view, q.get("size") == "thumb")
+        try:  # the URL names its roll, so images requested just before a roll switch still resolve
+            roll = studio.get_roll(q.get("roll"))
+        except (KeyError, ValueError) as e:
+            raise ApiError(404, str(e))
+        if name not in roll.frames:
+            raise ApiError(404, f"no frame {name!r}")
+        jpeg, digest = studio.image(roll, name, view, q.get("size") == "thumb")
         # URLs carry the edit hash, so a matching hash can be cached forever
         cache = "public, max-age=31536000, immutable" if q.get("h") == digest else "no-cache"
         h.send_bytes(jpeg, "image/jpeg", cache)
@@ -371,13 +447,19 @@ def make_handler(studio: Studio):
 
 def serve(folder: Path, host: str = "127.0.0.1", port: int = 8765, prefix: str = "frame",
           fake_camera: Path | None = None, open_browser: bool = True, connect: bool = True) -> int:
-    studio = Studio(folder, prefix=prefix, fake_camera=fake_camera)
+    """`folder` is a library of roll subfolders, or one roll (then its parent is the library)."""
+    folder = folder.resolve()
+    if not folder.exists() or is_roll_dir(folder):
+        studio = Studio(folder.parent, roll=folder.name, prefix=prefix, fake_camera=fake_camera)
+    else:
+        studio = Studio(folder, prefix=prefix, fake_camera=fake_camera)
     if connect:
         studio.camera.submit("connect")  # failure just shows up as camera status in the UI
     server = ThreadingHTTPServer((host, port), make_handler(studio))
     server.daemon_threads = True
     url = f"http://{host}:{server.server_address[1]}/"
-    print(f"nlb studio: {studio.roll.folder} at {url}  (Ctrl-C to stop)", flush=True)
+    print(f"nlb studio: {studio.library} (roll {studio.roll.folder.name}) at {url}  (Ctrl-C to stop)",
+          flush=True)
     if open_browser:
         webbrowser.open(url)
     try:

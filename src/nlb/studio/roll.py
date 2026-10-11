@@ -29,7 +29,8 @@ class Roll:
         self.settings = {**DEFAULT_SETTINGS, **data.get("settings", {})}
         self.frames: dict[str, dict] = data.get("frames", {})
         self.camera: dict = data.get("camera", {})
-        self.scan()
+        if not self.scan() and not self.json_path.exists():
+            self._save()  # marks an empty folder as a roll
 
     # --- files ---
 

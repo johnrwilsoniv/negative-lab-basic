@@ -80,7 +80,7 @@ def test_clamp_crop():
 @pytest.fixture
 def studio(tmp_path):
     source = raw_folder(tmp_path / "source")
-    st = Studio(tmp_path / "roll", fake_camera=source)
+    st = Studio(tmp_path, roll="roll", fake_camera=source)
     server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(st))
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -126,7 +126,7 @@ def test_capture_review_render(studio):
         pass
     job = call(studio, "GET", "/api/state")["job"]
     assert job["errors"] == [] and job["total"] == 1  # rejected frame skipped
-    tif = studio.out / "frame-001.tif"
+    tif = studio.library / "roll-positive" / "frame-001.tif"
     import cv2
     img = cv2.imread(str(tif), cv2.IMREAD_UNCHANGED)
     assert img.dtype == np.uint16 and img.shape[0] > img.shape[1]  # rotated to portrait
@@ -144,6 +144,32 @@ def test_reshoot_keeps_name_and_edits(studio):
     # a new frame inherits the previous frame's orientation
     call(studio, "POST", "/api/camera/capture", {})
     assert call(studio, "GET", "/api/state")["frames"][1]["rotation"] == 180
+
+
+def test_rolls(studio, tmp_path):
+    (tmp_path / "older").mkdir()
+    write_dng(tmp_path / "older" / "A.DNG", make_negative())
+    (tmp_path / "older-positive").mkdir()
+    state = call(studio, "GET", "/api/state")
+    assert state["roll"] == "roll" and state["rolls"] == ["older", "roll", "source"]
+
+    state = call(studio, "POST", "/api/rolls/open", {"name": "older"})
+    assert state["roll"] == "older" and [f["name"] for f in state["frames"]] == ["A"]
+    assert call(studio, "GET", "/api/frames/A/image?size=thumb&roll=older")[:2] == b"\xff\xd8"
+
+    state = call(studio, "POST", "/api/rolls", {"name": "roll02"})
+    assert state["roll"] == "roll02" and state["frames"] == []
+    assert (tmp_path / "roll02" / "roll.json").exists()
+    call(studio, "POST", "/api/camera/connect")
+    assert call(studio, "POST", "/api/camera/capture", {})["name"] == "frame-001"
+    assert (tmp_path / "roll02" / "frame-001.DNG").exists()
+
+    for bad in ({"name": "roll02"}, {"name": "../x"}, {"name": "x-positive"}):
+        with pytest.raises(urllib.error.HTTPError):
+            call(studio, "POST", "/api/rolls", bad)
+    with pytest.raises(urllib.error.HTTPError) as e:
+        call(studio, "POST", "/api/rolls/open", {"name": "nope"})
+    assert e.value.code == 404
 
 
 def test_errors(studio):

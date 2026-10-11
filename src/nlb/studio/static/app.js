@@ -6,13 +6,14 @@ const $$ = (sel) => [...document.querySelectorAll(sel)];
 const ui = {
   state: null,
   tab: load("tab", "review"),
-  selected: load("selected", null),
+  selected: null,
   view: "crop",          // crop | full | negative
   picking: false,        // picking the film base on the negative view
   lastCaptured: null,
   knownFrames: null,     // names seen so far, to spot captures from the camera's own shutter button
   clipboard: null,
   stripSig: "",
+  rollName: null,
   liveZoom: 1,
   busy: false,
 };
@@ -67,13 +68,14 @@ const frames = () => (ui.state ? ui.state.frames : []);
 const frameByName = (n) => frames().find((f) => f.name === n);
 const current = () => frameByName(ui.selected);
 const imgUrl = (f, view, thumb) =>
-  `/api/frames/${encodeURIComponent(f.name)}/image?view=${view}&h=${f.hash}${thumb ? "&size=thumb" : ""}`;
+  `/api/frames/${encodeURIComponent(f.name)}/image?roll=${encodeURIComponent(ui.state.roll)}` +
+  `&view=${view}&h=${f.hash}${thumb ? "&size=thumb" : ""}`;
 const paramDefault = (key) => ui.state.params.find((p) => p.key === key).default;
 
 function select(name) {
   if (!name) return;
   ui.selected = name;
-  save("selected", name);
+  save("selected." + ui.rollName, name);
   render();
   const el = $(`.thumb[data-name="${CSS.escape(name)}"]`);
   if (el) el.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -98,7 +100,9 @@ function render() {
   if (!s) return;
   document.body.className = "tab-" + ui.tab;
   $$(".tab").forEach((b) => b.classList.toggle("on", b.dataset.tab === ui.tab));
-  $("#roll-path").textContent = s.folder;
+  if (s.roll !== ui.rollName) enterRoll(s.roll);
+  renderRollSelect();
+  $("#roll-path").textContent = s.library;
   $("#roll-path").title = s.folder;
 
   if (!frameByName(ui.selected)) ui.selected = s.frames.length ? s.frames[s.frames.length - 1].name : null;
@@ -108,6 +112,49 @@ function render() {
   renderStrip();
   renderCapture();
   renderReview();
+}
+
+function enterRoll(name) {
+  // a different roll: forget per-roll UI state
+  ui.rollName = name;
+  ui.selected = load("selected." + name, null);
+  ui.knownFrames = null;
+  ui.lastCaptured = null;
+  ui.stripSig = "";
+  ui.picking = false;
+  $("#strip").replaceChildren();
+  delete $("#main-img").dataset.want;
+  $("#main-img").removeAttribute("src");
+  $("#last-img").removeAttribute("src");
+}
+
+const NEW_ROLL = "\u0000new";
+
+function renderRollSelect() {
+  const sel = $("#roll-select");
+  const s = ui.state;
+  const sig = s.rolls.join("|") + "#" + s.roll;
+  if (sel.dataset.sig === sig) return;
+  sel.dataset.sig = sig;
+  sel.replaceChildren(...s.rolls.map((r) => new Option(r, r, false, r === s.roll)),
+    new Option("+ New roll…", NEW_ROLL));
+}
+
+function suggestRollName() {
+  const nums = ui.state.rolls.map((r) => /^roll(\d+)$/.exec(r)).filter(Boolean).map((m) => +m[1]);
+  return "roll" + String(Math.max(0, ...nums) + 1).padStart(2, "0");
+}
+
+async function chooseRoll(value) {
+  if (value === NEW_ROLL) {
+    const name = prompt("Name for the new roll folder:", suggestRollName());
+    if (!name) { $("#roll-select").dataset.sig = ""; renderRollSelect(); return; }
+    await act(async () => { ui.state = await api("POST", "/api/rolls", { name: name.trim() }); render(); toast(`Created ${name.trim()}`); });
+  } else {
+    await act(async () => { ui.state = await api("POST", "/api/rolls/open", { name: value }); render(); });
+  }
+  $("#roll-select").dataset.sig = "";
+  renderRollSelect();
 }
 
 function spotNewCaptures() {
@@ -516,6 +563,7 @@ async function toggleReject() {
 
 function wire() {
   $$(".tab").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab)));
+  $("#roll-select").addEventListener("change", (e) => chooseRoll(e.target.value));
   $$("#view-seg button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
   $("#connect-btn").addEventListener("click", () => act(async () => {
     const p = api("POST", "/api/camera/connect");

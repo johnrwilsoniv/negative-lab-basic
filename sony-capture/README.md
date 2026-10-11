@@ -78,6 +78,14 @@ gphoto2 --capture-image-and-download -I 2 -F 36 --filename "rolls/roll01/frame-%
 gphoto2 --capture-tethered --filename "rolls/roll01/frame-%03n.%C"
 ```
 
+Or with the script here, which sets the two settings above, shoots a frame each
+time you press Enter, and prints each saved path (`frame-NNN.ARW`, numbered after
+any frames already in the directory; non-RAW files are skipped):
+
+```sh
+./capture.py rolls/roll01
+```
+
 `%C` expands to the real extension, so you get `frame-001.ARW`. At ~73 MB/frame a
 36-exposure roll is ~2.6 GB.
 

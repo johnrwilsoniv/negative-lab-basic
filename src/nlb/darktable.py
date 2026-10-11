@@ -41,7 +41,10 @@ PREVIEW_CACHE_FILES = 400
 RUN_STYLE = "nlb | run"  # the style each run writes and applies
 PROBE_WIDTH = 1200       # input_transform renders at this width
 TRANSFORM_VERSION = 1
-DMIN_RANGE = (1e-4, 1.5)
+# darktable's Dmin slider stops at 1.5 but the parameter takes more, and a lightbox capture
+# exposed to the right puts the base well above it (red ~3 for the A7 IV); clipping there
+# skews the channel ratios into a cyan-green cast
+DMIN_RANGE = (1e-4, 20.0)
 
 
 class DarktableError(RuntimeError):

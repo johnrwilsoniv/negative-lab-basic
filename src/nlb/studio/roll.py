@@ -10,8 +10,9 @@ from pathlib import Path
 from nlb.heic import RAW_SUFFIXES
 
 DEFAULT_SETTINGS = {"film": "c41", "flip": False, "base": None, "levels": None}
-FRAME_KEYS = {"crop", "rotation", "angle", "rejected", "params"}
+FRAME_KEYS = {"crop", "rotation", "angle", "rejected", "params", "engine"}
 ROTATIONS = (0, 90, 180, 270)
+ENGINES = ("nlb", "darktable")  # how a frame is developed; a missing "engine" means nlb
 
 
 class Roll:
@@ -111,6 +112,8 @@ class Roll:
                     raise ValueError(f"unknown frame field {k!r}")
                 if k == "rotation" and v not in ROTATIONS:
                     raise ValueError(f"rotation must be one of {ROTATIONS}")
+                if k == "engine" and v not in ENGINES:
+                    raise ValueError(f"engine must be one of {ENGINES}")
                 if k == "crop":
                     v = clamp_crop(v)
                 if k == "angle":

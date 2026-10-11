@@ -16,6 +16,7 @@ const ui = {
   rollName: null,
   liveZoom: 1,
   busy: false,
+  loadingMain: false,    // main image requested but not loaded yet (darktable takes seconds)
 };
 
 function load(key, fallback) {
@@ -191,7 +192,7 @@ function renderJob() {
 
 function renderStrip() {
   const fs = frames();
-  const sig = fs.map((f) => `${f.name}:${f.hash}:${f.rejected}:${!!f.crop}`).join("|");
+  const sig = fs.map((f) => `${f.name}:${f.hash}:${f.rejected}:${!!f.crop}:${f.engine}`).join("|");
   if (sig !== ui.stripSig) {
     ui.stripSig = sig;
     const strip = $("#strip");
@@ -205,7 +206,7 @@ function renderStrip() {
         el.innerHTML = `<img alt="" loading="lazy"><span class="label"></span>`;
         el.addEventListener("click", () => select(f.name));
       }
-      el.querySelector(".label").textContent = f.name;
+      el.querySelector(".label").textContent = f.name + (f.engine === "darktable" ? " · dt" : "");
       el.classList.toggle("rejected", !!f.rejected);
       el.classList.toggle("pending", !f.crop);
       const img = el.querySelector("img");
@@ -310,6 +311,7 @@ function renderReview() {
   stage.classList.toggle("view-full", ui.view === "full");
   $$("#view-seg button").forEach((b) => b.classList.toggle("on", b.dataset.view === ui.view));
   $("#view-hint").textContent = ui.picking ? "Click the clear film rebate (between the sprocket holes and the picture)"
+    : ui.loadingMain && f?.engine === "darktable" && ui.view !== "negative" ? "Developing in darktable…"
     : ui.view === "full" ? "Drag to move or resize the crop" : "";
   const wrap = $("#img-wrap");
   wrap.classList.toggle("cropping", ui.view === "full" && !!f);
@@ -326,11 +328,21 @@ function showMain(url) {
   const img = $("#main-img");
   if (img.dataset.want === url) return;
   img.dataset.want = url;
+  ui.loadingMain = true;
   const pre = new Image();
   pre.onload = () => {
     if (img.dataset.want !== url) return;
+    ui.loadingMain = false;
     img.src = url;
     requestAnimationFrame(layoutCrop);
+    renderReview();
+  };
+  pre.onerror = async () => {
+    if (img.dataset.want !== url) return;
+    ui.loadingMain = false;
+    const data = await fetch(url).then((r) => r.json()).catch(() => ({}));
+    toast(data.error || "Could not load the image", true);
+    renderReview();
   };
   pre.src = url;
 }
@@ -372,6 +384,18 @@ function renderFramePanel(f) {
   });
   angle.dataset.default = 0;
 
+  const engine = f.engine || "nlb";
+  const dt = ui.state.darktable;
+  $$("#engine-seg button").forEach((b) => {
+    b.classList.toggle("on", b.dataset.engine === engine);
+    if (b.dataset.engine === "darktable" && !dt.available) { b.disabled = engine !== "darktable"; b.title = dt.error; }
+  });
+  $("#engine-hint").textContent = engine === "darktable"
+    ? `Style “${dt.styles?.[ui.state.settings.film] ?? "?"}”, Dmin ` +
+      (ui.state.settings.base ? "from the picked film base." : "from the style (pick the film base to set it per roll).") +
+      " The sliders and levels apply to nlb only."
+    : "";
+
   const box = $("#param-sliders");
   for (const p of ui.state.params) {
     const el = slider(box, {
@@ -380,6 +404,7 @@ function renderFramePanel(f) {
       onChange: (v) => debouncedParam(p.key, v, true),
     });
     el.dataset.default = p.default;
+    el.querySelector("input").disabled = engine === "darktable";
   }
   $("#paste-params").disabled = !ui.clipboard;
   $("#paste-all").disabled = !ui.clipboard;
@@ -556,6 +581,11 @@ async function rotate(delta) {
   if (f) await act(() => patchFrame(f.name, { rotation: (f.rotation + delta + 360) % 360 }));
 }
 
+async function setEngine(engine) {
+  const f = current();
+  if (f && (f.engine || "nlb") !== engine) await act(() => patchFrame(f.name, { engine }));
+}
+
 async function toggleReject() {
   const f = current();
   if (f) await act(() => patchFrame(f.name, { rejected: !f.rejected }));
@@ -593,6 +623,7 @@ function wire() {
   $("#rot-ccw").addEventListener("click", () => rotate(-90));
   $("#rot-cw").addEventListener("click", () => rotate(90));
   $("#reject-btn").addEventListener("click", toggleReject);
+  $$("#engine-seg button").forEach((b) => b.addEventListener("click", () => setEngine(b.dataset.engine)));
   $("#reset-params").addEventListener("click", () => act(async () => {
     const params = Object.fromEntries(ui.state.params.map((p) => [p.key, p.default]));
     await patchFrame(ui.selected, { params, angle: 0 });
@@ -600,8 +631,8 @@ function wire() {
   $("#copy-params").addEventListener("click", () => {
     const f = current();
     if (!f) return;
-    ui.clipboard = { rotation: f.rotation, angle: f.angle, params: { ...f.params } };
-    toast(`Copied ${f.name}'s rotation and adjustments`);
+    ui.clipboard = { rotation: f.rotation, angle: f.angle, params: { ...f.params }, engine: f.engine || "nlb" };
+    toast(`Copied ${f.name}'s rotation, adjustments and processing`);
     render();
   });
   $("#paste-params").addEventListener("click", () => act(() => patchFrame(ui.selected, ui.clipboard)));
@@ -647,6 +678,7 @@ function wire() {
     else if (k === "ArrowRight") { e.preventDefault(); step(1); }
     else if (ui.tab !== "review") return;
     else if (k === "x" || k === "X") toggleReject();
+    else if ((k === "d" || k === "D") && current()) setEngine(current().engine === "darktable" ? "nlb" : "darktable");
     else if (k === "[" || e.code === "BracketLeft") rotate(-90);
     else if (k === "]" || e.code === "BracketRight") rotate(90);
     else if (k === "v" || k === "V") setView("crop");

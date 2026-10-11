@@ -10,9 +10,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from nlb import develop
+from nlb import darktable, develop
 from nlb.heic import RAW_SUFFIXES
-from nlb.studio.cache import LRU, Previews, edit_hash, to_jpeg
+from nlb.studio.cache import LRU, DarktablePreviews, Previews, edit_hash, to_jpeg
 from nlb.studio.camera import CameraWorker, FakeBackend, GPhotoBackend
 from nlb.studio.roll import Roll
 
@@ -50,11 +50,19 @@ class RenderJob:
                 self.state["current"] = name
             try:
                 snap = roll.snapshot()
-                frame = snap["frames"][name]
-                lin = develop.load_linear(roll.path(name), preview=False)
+                settings, frame, path = snap["settings"], snap["frames"][name], roll.path(name)
+                lin = None
+                if frame.get("crop") is None or frame.get("engine") != "darktable":
+                    lin = develop.load_linear(path, preview=False)
                 if frame.get("crop") is None:
-                    frame["crop"] = develop.auto_crop(lin, snap["settings"])
-                img = develop.develop(lin, snap["settings"], frame, view="crop")
+                    frame["crop"] = develop.auto_crop(lin, settings)
+                if frame.get("engine") == "darktable":
+                    positive = darktable.render(path, settings["film"], darktable.sensor_shape(path),
+                                                base=settings.get("base"))
+                    img = develop.place(positive, settings, frame, view="crop")
+                    del positive
+                else:
+                    img = develop.develop(lin, settings, frame, view="crop")
                 del lin
                 develop.write_tiff(out / f"{name}.tif", img)
             except Exception as e:
@@ -92,6 +100,7 @@ class Studio:
         self.rolls: dict[str, Roll] = {}
         self.rolls_lock = threading.Lock()
         self.previews = Previews()
+        self.darktable = DarktablePreviews(self.previews)
         self.jpegs = LRU(300)
         self.pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="prepare")
         self.job = RenderJob()
@@ -164,7 +173,7 @@ class Studio:
                 roll.add_capture(f, name)
             if name in roll.frames and template:
                 # same holder, same film: carry orientation and adjustments over
-                roll.update_frame(name, {k: template[k] for k in ("rotation", "angle", "params")
+                roll.update_frame(name, {k: template[k] for k in ("rotation", "angle", "params", "engine")
                                          if k in template})
         self.pool.submit(self.prepare, roll, name)
         return name
@@ -180,9 +189,15 @@ class Studio:
         key = (str(roll.folder), name, view, thumb, h)
         jpeg = self.jpegs.get(key)
         if jpeg is None:
-            lin = self.previews.linear(roll.path(name), thumb=thumb)
-            jpeg = to_jpeg(develop.develop(lin, snap["settings"], frame, view=view),
-                           quality=80 if thumb else 90)
+            path = roll.path(name)
+            if frame.get("engine") == "darktable" and view != "negative":
+                positive = self.darktable.positive(path, snap["settings"]["film"], snap["settings"].get("base"),
+                                                   thumb=thumb)
+                img = develop.place(positive, snap["settings"], frame, view=view)
+            else:
+                img = develop.develop(self.previews.linear(path, thumb=thumb), snap["settings"], frame,
+                                      view=view)
+            jpeg = to_jpeg(img, quality=80 if thumb else 90)
             self.jpegs.put(key, jpeg)
         return jpeg, h
 
@@ -197,6 +212,7 @@ class Studio:
                 "rolls": self.roll_names(), "folder": str(roll.folder), "out": str(out_dir(roll)),
                 "settings": snap["settings"], "frames": frames, "params": develop.PARAMS,
                 "next_name": roll.next_name(), "camera": self.camera.snapshot(),
+                "darktable": darktable.status(),
                 "job": self.job.snapshot()}
 
     # --- roll-level actions ---

@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from synth import make_negative, write_dng
 
+from nlb import darktable
 from nlb.studio.roll import Roll, clamp_crop
 from nlb.studio.server import Studio, make_handler
 
@@ -64,6 +65,8 @@ def test_update_frame_validates(tmp_path):
         roll.update_frame("A", {"rotation": 45})
     with pytest.raises(ValueError):
         roll.update_frame("A", {"bogus": 1})
+    with pytest.raises(ValueError):
+        roll.update_frame("A", {"engine": "lightroom"})
     f = roll.update_frame("A", {"angle": 12, "params": {"exposure": 0.5}})
     assert f["angle"] == 5.0
     f = roll.update_frame("A", {"params": {"contrast": 0.2}})
@@ -182,3 +185,36 @@ def test_errors(studio):
     with pytest.raises(urllib.error.HTTPError) as e:
         call(studio, "GET", "/../pyproject.toml")
     assert e.value.code == 404
+
+
+@pytest.mark.skipif(darktable.executable() is None, reason="needs darktable-cli")
+def test_darktable_engine(studio, tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    assert call(studio, "GET", "/api/state")["darktable"]["available"]
+    call(studio, "POST", "/api/camera/connect")
+    call(studio, "POST", "/api/camera/capture", {})
+    call(studio, "PATCH", "/api/frames/frame-001", {"engine": "darktable", "rotation": 90})
+    # a new capture keeps the processing of the frame before it
+    call(studio, "POST", "/api/camera/capture", {})
+    assert call(studio, "GET", "/api/state")["frames"][1]["engine"] == "darktable"
+    call(studio, "PATCH", "/api/frames/frame-002", {"engine": "nlb", "rejected": True})
+    studio.pool.shutdown(wait=True)
+
+    for view in ("crop", "full"):
+        assert call(studio, "GET", f"/api/frames/frame-001/image?view={view}&size=thumb")[:2] == b"\xff\xd8"
+    previews = tmp_path / "cache" / "nlb" / "darktable" / "previews"
+    assert len(list(previews.glob("*.png"))) == 1
+
+    # a picked film base becomes negadoctor's Dmin: a new darktable render
+    call(studio, "POST", "/api/base", {"name": "frame-001", "x": 0.5, "y": 0.5})
+    assert call(studio, "GET", "/api/frames/frame-001/image?size=thumb")[:2] == b"\xff\xd8"
+    assert len(list(previews.glob("*.png"))) == 2
+    assert (tmp_path / "cache" / "nlb" / "darktable" / "transforms.json").is_file()
+
+    call(studio, "POST", "/api/render", {})
+    while call(studio, "GET", "/api/state")["job"]["running"]:
+        pass
+    assert call(studio, "GET", "/api/state")["job"]["errors"] == []
+    import cv2
+    img = cv2.imread(str(studio.library / "roll-positive" / "frame-001.tif"), cv2.IMREAD_UNCHANGED)
+    assert img.dtype == np.uint16 and img.shape[0] > img.shape[1]

@@ -36,6 +36,11 @@
           # nixpkgs ships cv2 as `opencv4`, not the `opencv-python-headless` wheel.
           pythonRemoveDeps = [ "opencv-python-headless" ];
 
+          # `nlb studio` can develop frames with darktable-cli and the negadoctor styles
+          makeWrapperArgs = pkgs.lib.optionals isLinux [
+            "--prefix" "PATH" ":" (pkgs.lib.makeBinPath [ pkgs.darktable ])
+          ];
+
           nativeCheckInputs = with python.pkgs; [ pytestCheckHook ];
           pythonImportsCheck = [ "nlb" ];
         };

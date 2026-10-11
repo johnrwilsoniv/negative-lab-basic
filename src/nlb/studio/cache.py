@@ -1,4 +1,4 @@
-"""In-memory caches: preview-res linear decodes and rendered JPEGs."""
+"""In-memory caches: preview-res linear decodes, darktable positives and rendered JPEGs."""
 import hashlib
 import io
 import json
@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from nlb import develop
+from nlb import darktable, develop
 
 PREVIEW_WIDTH = 1600
 THUMB_WIDTH = 400
@@ -64,6 +64,46 @@ class Previews:
                 big = _resize(develop.load_linear(path, preview=True), PREVIEW_WIDTH)
                 self.full.put(key, big)
             small = _resize(big, THUMB_WIDTH)
+            self.thumb.put(key, small)
+            return small if thumb else big
+
+    def _key_lock(self, key) -> threading.Lock:
+        with self.lock:
+            return self.key_locks.setdefault(key, threading.Lock())
+
+
+class DarktablePreviews:
+    """darktable positives at preview and thumbnail size, pixel-aligned with `Previews` of the same file.
+
+    A darktable run takes seconds, so results are also cached on disk (see `darktable.render`).
+    """
+
+    def __init__(self, previews: Previews):
+        self.previews = previews
+        self.full = LRU(12)
+        self.thumb = LRU(400)
+        self.key_locks: dict = {}
+        self.lock = threading.Lock()
+
+    def positive(self, path: Path, film: str, base: list[float] | None = None,
+                 thumb: bool = False) -> np.ndarray:
+        """`base` is the roll's picked film base (negadoctor's Dmin); None keeps the style's."""
+        key = (str(path), path.stat().st_mtime_ns, film, tuple(base) if base else None)
+        cache = self.thumb if thumb else self.full
+        hit = cache.get(key)
+        if hit is not None:
+            return hit
+        with self._key_lock(key):
+            hit = cache.get(key)
+            if hit is not None:
+                return hit
+            big = self.full.get(key)
+            if big is None:
+                shape = self.previews.linear(path).shape[:2]
+                big = darktable.render(path, film, shape, width=PREVIEW_WIDTH, base=base)
+                self.full.put(key, big)
+            small = cv2.resize(big, self.previews.linear(path, thumb=True).shape[1::-1],
+                               interpolation=cv2.INTER_AREA)
             self.thumb.put(key, small)
             return small if thumb else big
 

@@ -6,8 +6,8 @@ argument-hint: "[folder of HEIC or DNG negatives]"
 
 # nlb-invert
 
-CLI: `uv run --project /Users/jrwiv/Developer/Experiments/claude/negative-lab-basic nlb ...`
-(called `NLB` below). Originals are never modified. Output goes to `<dir>-positive/`,
+CLI: `uv run --project "<repo>" nlb ...` (called `NLB` below), where `<repo>` is
+`realpath "<this skill's base directory>/../.."` (the skill is symlinked from the repo). Originals are never modified. Output goes to `<dir>-positive/`,
 always as HEIC (`IMG_1.DNG` → `IMG_1.HEIC`).
 
 ## 1. Preview

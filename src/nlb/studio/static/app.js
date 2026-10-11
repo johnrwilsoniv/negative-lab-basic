@@ -284,8 +284,9 @@ function renderCapture() {
   // live view stream only while it is on screen (the server runs live view only for viewers)
   const img = $("#live-img");
   const want = ui.tab === "capture" && connected && !showTest;
-  if (want && !img.dataset.on) { img.src = "/api/camera/live?t=" + Date.now(); img.dataset.on = "1"; }
+  if (want && !img.dataset.on) { img.src = "/api/camera/live?t=" + Date.now(); img.dataset.on = "1"; resetFocusPeak(); }
   if (!want && img.dataset.on) { img.src = "data:,"; delete img.dataset.on; }
+  if (want) pollFocus();
   $("#live-frame").classList.toggle("invert", $("#live-invert").checked);
 
   renderCameraConfig(c.config || {});
@@ -469,6 +470,56 @@ function setLiveSrc(src) {
   if (src === "test" && !(ui.state && ui.state.test)) return;
   ui.liveSrc = src;
   renderCapture();
+}
+
+// ---------- live view focus meter ----------
+// The score is only comparable within one scene and region, so it shows as a fraction of
+// the best since the last reset (peak hold): turn through focus, then come back to 100%.
+
+const focusMeter = { peak: 0, smooth: null, seq: -1, polling: false };
+const FOCUS_SMOOTH = 0.4;   // weight of the newest frame: live-view noise jitters the score
+const FOCUS_NEAR = 0.9, FOCUS_PEAK = 0.97;
+
+function focusRegion() {
+  // the part of the live frame on screen: zoom s about origin o shows [o(1 - 1/s), +1/s]
+  const s = ui.liveZoom;
+  if (s === 1) return [0, 0, 1, 1];
+  const [ox, oy] = ($("#live-img").style.transformOrigin || "50% 50%").split(" ").map((v) => parseFloat(v) / 100);
+  return [ox * (1 - 1 / s), oy * (1 - 1 / s), 1 / s, 1 / s];
+}
+
+function resetFocusPeak() {
+  Object.assign(focusMeter, { peak: 0, smooth: null });
+  renderFocus();
+}
+
+function renderFocus() {
+  const { peak, smooth } = focusMeter;
+  const frac = peak > 0 && smooth != null ? smooth / peak : null;
+  $("#focus-fill").style.width = frac == null ? "0" : `${(frac * 100).toFixed(1)}%`;
+  $("#focus-pct").textContent = frac == null ? "—" : `${Math.round(frac * 100)}%`;
+  $("#focus-meter").classList.toggle("peak", frac != null && frac >= FOCUS_PEAK);
+  $("#focus-meter").classList.toggle("near", frac != null && frac >= FOCUS_NEAR && frac < FOCUS_PEAK);
+}
+
+async function pollFocus() {
+  if (focusMeter.polling) return;
+  focusMeter.polling = true;
+  while ($("#live-img").dataset.on && !document.hidden) {
+    const [x, y, w, h] = focusRegion().map((v) => v.toFixed(4));
+    try {
+      const r = await api("GET", `/api/camera/focus?x=${x}&y=${y}&w=${w}&h=${h}`);
+      if (r.seq !== focusMeter.seq && r.score != null) {
+        focusMeter.seq = r.seq;
+        focusMeter.smooth = focusMeter.smooth == null ? r.score
+          : FOCUS_SMOOTH * r.score + (1 - FOCUS_SMOOTH) * focusMeter.smooth;
+        focusMeter.peak = Math.max(focusMeter.peak, focusMeter.smooth);
+        renderFocus();
+      }
+    } catch { /* camera busy or gone: the status line says so */ }
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  focusMeter.polling = false;
 }
 
 async function capture(reshoot) {
@@ -811,7 +862,9 @@ function wire() {
     ui.liveZoom = +b.dataset.zoom;
     $$("#live-zoom button").forEach((x) => x.classList.toggle("on", x === b));
     $("#live-img").style.transform = `scale(${ui.liveZoom})`;
+    resetFocusPeak();  // a different region: the old peak is not comparable
   }));
+  $("#focus-meter").addEventListener("click", resetFocusPeak);
   $("#live-frame").addEventListener("click", (e) => {
     const img = $("#live-img");
     const r = img.getBoundingClientRect();
@@ -819,6 +872,7 @@ function wire() {
     // r is the scaled box; convert the click into the unscaled image's percentage
     const ox = ((e.clientX - r.left) / r.width) * 100, oy = ((e.clientY - r.top) / r.height) * 100;
     img.style.transformOrigin = `${clamp(ox, 0, 100)}% ${clamp(oy, 0, 100)}%`;
+    resetFocusPeak();
   });
 
   $("#rot-ccw").addEventListener("click", () => rotate(-90));
@@ -879,6 +933,7 @@ function wire() {
       if (test && k === "Enter") { e.preventDefault(); keepTest(false); return; }
       if (test && (k === "Delete" || k === "Backspace")) { e.preventDefault(); discardTest(); return; }
       if (test && (k === "l" || k === "L")) { setLiveSrc(ui.liveSrc === "test" ? "live" : "test"); return; }
+      if (k === "f" || k === "F") { resetFocusPeak(); return; }
     }
     if (e.target.type === "range") return;
     if (k === "ArrowLeft") { e.preventDefault(); step(-1); }

@@ -15,7 +15,7 @@ import numpy as np
 
 from nlb import darktable, develop
 from nlb.heic import RAW_SUFFIXES
-from nlb.studio import feedback
+from nlb.studio import feedback, focus
 from nlb.studio.cache import LRU, DarktablePreviews, Previews, edit_hash, to_jpeg
 from nlb.studio.camera import CameraWorker, FakeBackend, GPhotoBackend, gphoto_missing
 from nlb.studio.roll import Roll
@@ -118,6 +118,7 @@ class Studio:
         self.test_seq = 0
         self.test_lock = threading.Lock()
         self.test_history: list[dict] = []  # {"id", "headroom", "edge_px"}, for focus comparisons
+        self.focus_cache = None  # ((frame seq, region), score): several viewers poll the same frame
         names = self.roll_names()
         self.open_roll(roll or (max(names, key=lambda n: (self.library / n).stat().st_mtime)
                                 if names else "roll01"), create=True)
@@ -402,6 +403,17 @@ class Studio:
                 "darktable": darktable.status(),
                 "job": self.job.snapshot(), "shoot_mode": self.shoot_mode, "test": self.test_state()}
 
+    # --- live view focus meter ---
+
+    def live_focus(self, region: tuple[float, float, float, float]) -> dict:
+        """Sharpness of the latest live-view frame within `region`; `seq` says which frame."""
+        seq, jpeg = self.camera.latest()
+        key = (seq, region)
+        cached = self.focus_cache
+        if cached is None or cached[0] != key:
+            cached = self.focus_cache = (key, focus.sharpness(jpeg, region) if jpeg else None)
+        return {"seq": seq, "score": cached[1]}
+
     # --- roll-level actions ---
 
     def set_settings(self, patch: dict) -> None:
@@ -611,6 +623,14 @@ def make_handler(studio: Studio):
     @route("GET", r"/api/camera/live")
     def camera_live(h, body, q):
         h.stream_mjpeg(studio.camera)
+
+    @route("GET", r"/api/camera/focus")
+    def camera_focus(h, body, q):
+        try:
+            region = tuple(float(q.get(k, d)) for k, d in (("x", 0), ("y", 0), ("w", 1), ("h", 1)))
+        except ValueError:
+            raise ApiError(400, "x, y, w, h must be numbers")
+        return studio.live_focus(region)
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"

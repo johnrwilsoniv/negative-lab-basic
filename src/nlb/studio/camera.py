@@ -95,7 +95,9 @@ class GPhotoBackend:
         self.cam.set_single_config(name, w)
 
     def preview(self) -> bytes:
-        return bytes(memoryview(self.cam.capture_preview().get_data_and_size()))
+        # keep the CameraFile alive until the copy is made: its buffer is freed with it
+        f = self.cam.capture_preview()
+        return bytes(memoryview(f.get_data_and_size()))
 
     def capture(self, tmp: Path) -> list[Path]:
         path = self.cam.capture(self.gp.GP_CAPTURE_IMAGE)
@@ -210,6 +212,10 @@ class CameraWorker(threading.Thread):
     def add_viewer(self, delta: int) -> None:
         with self.frame_cond:
             self.viewers = max(0, self.viewers + delta)
+
+    def latest(self) -> tuple[int, bytes | None]:
+        with self.frame_cond:
+            return self.frame_seq, self.frame
 
     def wait_frame(self, after: int, timeout: float = 5.0) -> tuple[int, bytes | None]:
         with self.frame_cond:

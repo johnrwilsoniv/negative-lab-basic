@@ -5,12 +5,14 @@ import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
 
+import cv2
 import numpy as np
 import pytest
 from synth import make_negative, write_dng
 
 from nlb import darktable
 from nlb.studio import camera as camera_mod
+from nlb.studio import focus
 from nlb.studio.camera import CameraWorker, FakeBackend
 from nlb.studio.roll import Roll, clamp_crop
 from nlb.studio.server import Studio, make_handler
@@ -399,3 +401,49 @@ def test_mirroring_the_roll_mirrors_crop_and_deskew(studio):
     call(studio, "PATCH", "/api/settings", {"flip": False})
     frame = call(studio, "GET", "/api/state")["frames"][0]
     assert frame["angle"] == -1.5 and frame["crop"] == pytest.approx([0.4, 0.2, 0.5, 0.6])
+
+
+# --- live view focus meter ---
+
+def _jpeg(img):
+    return cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 90])[1].tobytes()
+
+
+def _checkerboard(blur=0.0, gain=1.0):
+    """Live-view-sized scene with 8 px detail, optionally defocused and brighter or dimmer."""
+    rng = np.random.default_rng(0)
+    cells = (rng.random((85, 128)) > 0.5).astype(np.float32) * 160 + 40
+    img = cv2.resize(cells, (1024, 680), interpolation=cv2.INTER_NEAREST)
+    if blur:
+        img = cv2.GaussianBlur(img, (0, 0), blur)
+    return np.clip(img * gain, 0, 255).astype(np.uint8)
+
+
+def test_sharpness_falls_with_defocus_and_ignores_exposure():
+    scores = [focus.sharpness(_jpeg(_checkerboard(b))) for b in (0, 1, 2, 4, 8)]
+    assert scores == sorted(scores, reverse=True) and scores[-1] < 0.05 * scores[0]
+    sharp, dim = scores[0], focus.sharpness(_jpeg(_checkerboard(gain=0.6)))
+    assert dim == pytest.approx(sharp, rel=0.1)
+
+
+def test_sharpness_region():
+    img = _checkerboard()
+    img[:, 512:] = cv2.GaussianBlur(img, (0, 0), 4)[:, 512:]  # right half out of focus
+    jpeg = _jpeg(img)
+    left, right = focus.sharpness(jpeg, (0, 0, 0.5, 1)), focus.sharpness(jpeg, (0.5, 0, 0.5, 1))
+    assert left > 5 * right
+    assert focus.sharpness(jpeg, (0.5, 0.5, 0.01, 0.01)) is None  # too small to mean anything
+    assert focus.sharpness(b"not a jpeg") is None
+
+
+def test_focus_endpoint_scores_latest_live_frame(studio):
+    assert call(studio, "GET", "/api/camera/focus") == {"seq": 0, "score": None}  # no live view yet
+    cam = studio.camera
+    with cam.frame_cond:
+        cam.frame, cam.frame_seq = _jpeg(_checkerboard()), 1
+    whole = call(studio, "GET", "/api/camera/focus")
+    zoomed = call(studio, "GET", "/api/camera/focus?x=0.375&y=0.375&w=0.25&h=0.25")
+    assert whole["seq"] == zoomed["seq"] == 1 and whole["score"] > 0 and zoomed["score"] > 0
+    with pytest.raises(urllib.error.HTTPError) as e:
+        call(studio, "GET", "/api/camera/focus?x=left")
+    assert e.value.code == 400

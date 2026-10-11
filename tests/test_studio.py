@@ -389,3 +389,13 @@ def test_darktable_engine(studio, tmp_path, monkeypatch):
     import cv2
     img = cv2.imread(str(studio.library / "roll-positive" / "frame-001.tif"), cv2.IMREAD_UNCHANGED)
     assert img.dtype == np.uint16 and img.shape[0] > img.shape[1]
+
+
+def test_mirroring_the_roll_mirrors_crop_and_deskew(studio):
+    call(studio, "POST", "/api/camera/connect")
+    call(studio, "POST", "/api/camera/capture", {})
+    studio.pool.shutdown(wait=True)
+    call(studio, "PATCH", "/api/frames/frame-001", {"crop": [0.1, 0.2, 0.5, 0.6], "angle": 1.5})
+    call(studio, "PATCH", "/api/settings", {"flip": False})
+    frame = call(studio, "GET", "/api/state")["frames"][0]
+    assert frame["angle"] == -1.5 and frame["crop"] == pytest.approx([0.4, 0.2, 0.5, 0.6])

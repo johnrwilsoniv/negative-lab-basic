@@ -24,8 +24,9 @@ EDGE_SPAN = 0.7                       # outline fits use the central part of eac
 REBATE_MAX = (0.06, 0.025)            # trim_rebate: deepest band along the long, short sides
 REBATE_STEP = 0.03                    # ... density rise across 2 px that marks the picture edge
 REBATE_COLS = 0.6                     # ... fraction of the side that must rise together
-REBATE_MIN_PX = 150                   # window_rebate: rebate pixels needed to trust it as the base
-REBATE_THINNER = 0.02                 # ... most picture allowed to be thinner than that rebate
+REBATE_MIN_ROWS = 3                   # window_rebate: shallowest band of rebate it samples
+REBATE_MIN_PX = 150                   # ... rebate pixels needed to trust it as the base
+REBATE_THINNER = (1.15, 0.05)         # ... at most 5% of the picture 15% thinner (light falloff)
 
 
 @dataclass
@@ -365,7 +366,8 @@ def window_rebate(thumb: np.ndarray, hole: np.ndarray) -> np.ndarray | None:
 
     None for a strip with its sprocket holes on the lit film (calibrate's own base is right
     there), when too little rebate shows, or when much of the picture is thinner than it
-    (then it wasn't rebate).
+    (then it wasn't rebate). The window's center gets a little more light than its edges,
+    so a few percent of thin picture may still read brighter than the rebate.
     """
     region = lit_region(thumb)
     if not region.any() or holes_on_film(hole, region):
@@ -382,7 +384,7 @@ def window_rebate(thumb: np.ndarray, hole: np.ndarray) -> np.ndarray | None:
     px = []
     for side, (rim, cut) in _rebate_cuts(thumb, box).items():
         a, b = rim + 1, cut - 2  # clear of both transitions
-        if b - a < 1:
+        if b - a < REBATE_MIN_ROWS:  # a sliver is mostly transition
             continue
         if side == "top":
             px.append(thumb[y0 + a:y0 + b, x0 + mx:x1 - mx])
@@ -393,11 +395,15 @@ def window_rebate(thumb: np.ndarray, hole: np.ndarray) -> np.ndarray | None:
         else:
             px.append(thumb[y0 + my:y1 - my, x1 - b:x1 - a])
     px = np.concatenate([p.reshape(-1, 3) for p in px]) if px else np.empty((0, 3), np.float32)
+    if len(px):  # where the film sits off center the band crosses bits of dark carrier
+        g = px[:, 1]
+        px = px[g > 0.5 * np.percentile(g, 95)]
     if len(px) < REBATE_MIN_PX:
         return None
     rebate = np.median(px, axis=0).astype(np.float32)
     tx0, ty0, tx1, ty1 = _px_box(thumb.shape, trim_rebate(thumb, box))
     picture = thumb[ty0:ty1, tx0:tx1].reshape(-1, 3)
-    if picture.size == 0 or (picture > 1.05 * rebate).all(axis=1).mean() > REBATE_THINNER:
+    k, most = REBATE_THINNER
+    if picture.size == 0 or (picture > k * rebate).all(axis=1).mean() > most:
         return None
     return rebate

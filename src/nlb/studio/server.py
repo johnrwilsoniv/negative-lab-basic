@@ -62,7 +62,7 @@ class RenderJob:
                 if frame.get("crop") is None or frame.get("engine") != "darktable":
                     lin = develop.load_linear(path, preview=False)
                 if frame.get("crop") is None:
-                    frame["crop"] = develop.auto_crop(lin, settings)
+                    frame.update(develop.auto_frame(lin, settings))
                 if frame.get("engine") == "darktable":
                     positive = darktable.render(path, settings["film"], darktable.sensor_shape(path),
                                                 base=settings.get("base"))
@@ -170,8 +170,7 @@ class Studio:
                 path = roll.path(name)
             lin = self.previews.linear(path)
             if roll.frames.get(name, {}).get("crop") is None:
-                crop = develop.auto_crop(lin, roll.snapshot()["settings"])
-                roll.update_frame(name, {"crop": crop})
+                roll.update_frame(name, develop.auto_frame(lin, roll.snapshot()["settings"]))
         except Exception:
             traceback.print_exc()
 
@@ -410,11 +409,13 @@ class Studio:
         old = roll.snapshot()["settings"]
         roll.update_settings(patch)
         if "flip" in patch and bool(patch["flip"]) != bool(old.get("flip")):
-            # crops live in full-view space, which just got mirrored
+            # crops live in full-view space, which just got mirrored; so did the deskew
             for name, frame in roll.snapshot()["frames"].items():
+                patch = {"angle": -float(frame.get("angle") or 0.0)}
                 if frame.get("crop"):
                     x, y, w, h = frame["crop"]
-                    roll.update_frame(name, {"crop": [1.0 - x - w, y, w, h]})
+                    patch["crop"] = [1.0 - x - w, y, w, h]
+                roll.update_frame(name, patch)
 
     def pick_base(self, name: str, x: float, y: float) -> list[float]:
         roll = self.roll

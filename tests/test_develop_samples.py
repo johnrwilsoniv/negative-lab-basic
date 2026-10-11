@@ -1,4 +1,7 @@
-"""Checks against real Sony A7 IV captures of C-41 negatives. Skipped when they're absent."""
+"""Checks against real captures of C-41 negatives. Skipped when they're absent.
+
+Sony A7 IV strips on a lightbox, and iPhone ProRAW frames through a carrier (Kodak Gold 200).
+"""
 from functools import cache
 from pathlib import Path
 
@@ -10,9 +13,13 @@ import rawpy
 from nlb import develop as d
 from nlb.engine import calibrate as cal
 
-ROLLS = Path(__file__).resolve().parent.parent / "sony-capture" / "rolls"
+REPO = Path(__file__).resolve().parent.parent
+ROLLS = next((p for p in (REPO / "sony-capture" / "rolls", REPO / "nextcloud") if (p / "roll01").is_dir()),
+             REPO / "sony-capture" / "rolls")
+IPHONE = REPO / "nextcloud" / "italy-kodak-gold-200"
 FILES = {"DSC06699": ROLLS / "roll01" / "DSC06699.ARW", "DSC06700": ROLLS / "roll01" / "DSC06700.ARW",
-         "frame-001": ROLLS / "test" / "frame-001.ARW"}
+         "frame-001": ROLLS / "test" / "frame-001.ARW",
+         **{n: IPHONE / f"{n}.DNG" for n in ("IMG_4199", "IMG_4214", "IMG_4221", "IMG_4228")}}
 C41 = {"film": "c41", "flip": False, "base": None, "levels": None}
 
 
@@ -84,7 +91,7 @@ def test_auto_crop_on_dsc06699_excludes_holes_and_rebate():
         assert (edge > cal.PICTURE_DENSITY).mean() > 0.5
 
 
-@pytest.mark.parametrize("name", sorted(FILES))
+@pytest.mark.parametrize("name", ["DSC06699", "DSC06700", "frame-001"])
 def test_no_orange_cast_and_sane_exposure(name):
     _need(name)
     lin = _preview(name)
@@ -113,3 +120,20 @@ def test_exposure_report_flags_underexposed_samples():
     _need("frame-001")
     rep = d.exposure_report(_preview("frame-001"), C41)
     assert rep["base_headroom"] < 0.2 and rep["advice"].startswith("underexposed")
+
+
+# iPhone through a carrier: no bare light, holes beyond the carrier's edge, a thin rebate around
+# the picture (wider along the top). Crops checked by eye on 30 frames of the roll.
+IPHONE_CROP = {"IMG_4199": [0.2053, 0.2442, 0.6431, 0.5717], "IMG_4214": [0.2103, 0.2392, 0.6419, 0.5782],
+               "IMG_4221": [0.2079, 0.2393, 0.6468, 0.5798], "IMG_4228": [0.2115, 0.2458, 0.6382, 0.5684]}
+
+
+@pytest.mark.parametrize("name", sorted(IPHONE_CROP))
+def test_iphone_carrier_frame(name):
+    _need(name)
+    lin = _preview(name)
+    geo = d.auto_frame(lin, C41)
+    assert 0.4 < geo["angle"] < 1.1  # the phone sat a little crooked on every frame
+    np.testing.assert_allclose(geo["crop"], IPHONE_CROP[name], atol=0.008)
+    thumb = cal.thumbnail(lin)
+    assert cal.window_rebate(thumb, cal.calibrate(thumb).hole) is not None

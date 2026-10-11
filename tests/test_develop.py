@@ -253,6 +253,14 @@ def test_auto_frame_finds_carrier_window_and_skips_rebate():
     assert (x + 0.96 * w) / W < cx + cw <= (x + w + 1) / W and (y + 0.96 * h) / H < cy + ch <= (y + h + 1) / H
 
 
+def test_carrier_base_comes_from_the_rebate():
+    lin, _ = make_carrier_negative(_carrier_scene(), angle=0.8)
+    c = cal.calibrate(cal.thumbnail(lin))
+    np.testing.assert_allclose(c.base, np.float32(BASE_T) * LIGHT + FLARE, rtol=0.05)
+    _, strip, _ = _negative()  # a strip with holes on the film keeps its own base
+    assert cal.window_rebate(cal.thumbnail(strip), cal.calibrate(cal.thumbnail(strip)).hole) is None
+
+
 def test_scene_highlights_are_not_sprocket_holes():
     lin, _ = make_carrier_negative(_carrier_scene())
     c = cal.calibrate(cal.thumbnail(lin))

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>nlb studio</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header>
+    <div class="brand">nlb studio</div>
+    <nav class="tabs">
+      <button data-tab="capture" class="tab">Capture</button>
+      <button data-tab="review" class="tab">Review</button>
+    </nav>
+    <select id="roll-select" class="roll-select" title="Roll"></select>
+    <div class="roll-path" id="roll-path"></div>
+    <div class="spacer"></div>
+    <div class="cam-pill" id="cam-pill" title="camera status"><span class="dot"></span><span id="cam-pill-text">camera</span></div>
+    <div class="job" id="job"></div>
+    <button id="render-btn" class="primary" title="Render kept frames to 16-bit TIFF">Render roll</button>
+  </header>
+
+  <main>
+    <section class="viewer" id="viewer">
+      <!-- capture -->
+      <div class="live" id="live">
+        <div class="live-frame" id="live-frame"><img id="live-img" alt=""></div>
+        <div class="placeholder" id="live-placeholder">
+          <p id="live-message">Camera not connected.</p>
+          <button id="connect-btn" class="primary">Connect camera</button>
+          <p class="hint">A7 IV: USB Connection Mode → PC Remote, USB Streaming → Off.</p>
+        </div>
+        <div class="overlay-tools">
+          <label><input type="checkbox" id="live-invert" checked> Invert</label>
+          <span class="seg" id="live-zoom">
+            <button data-zoom="1" class="on">Fit</button><button data-zoom="2">2×</button><button data-zoom="4">4×</button>
+          </span>
+          <span class="muted">click to set zoom point</span>
+        </div>
+      </div>
+      <!-- review -->
+      <div class="stage" id="stage">
+        <div class="img-wrap" id="img-wrap">
+          <img id="main-img" alt="">
+          <div class="crop-layer" id="crop-layer">
+            <div class="crop-rect" id="crop-rect">
+              <span class="h nw" data-h="nw"></span><span class="h n" data-h="n"></span><span class="h ne" data-h="ne"></span>
+              <span class="h w" data-h="w"></span><span class="h e" data-h="e"></span>
+              <span class="h sw" data-h="sw"></span><span class="h s" data-h="s"></span><span class="h se" data-h="se"></span>
+            </div>
+          </div>
+        </div>
+        <div class="empty" id="empty">No frames yet. Capture some, or drop raw files into the roll folder.</div>
+        <div class="overlay-tools">
+          <span class="seg" id="view-seg">
+            <button data-view="crop" class="on" title="V">Result</button><button data-view="full" title="C">Crop</button><button data-view="negative" title="N">Negative</button>
+          </span>
+          <label id="lock-aspect-wrap"><input type="checkbox" id="lock-aspect" checked> 3:2</label>
+          <span class="muted" id="view-hint"></span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel" id="panel">
+      <!-- capture panel -->
+      <div id="capture-panel">
+        <section>
+          <h2>Camera</h2>
+          <div class="kv"><span>Model</span><span id="cam-model">—</span></div>
+          <div class="cam-msg" id="cam-msg"></div>
+          <div id="cam-config"></div>
+          <div class="row">
+            <button id="disconnect-btn">Disconnect</button>
+          </div>
+        </section>
+        <section>
+          <h2>Shoot</h2>
+          <button id="capture-btn" class="big primary">Capture <kbd>Space</kbd></button>
+          <div class="kv"><span>Next frame</span><span id="next-name">—</span></div>
+          <p class="hint">The shutter button on the camera works too.</p>
+        </section>
+        <section id="last-section" hidden>
+          <h2>Last capture <span class="muted" id="last-name"></span></h2>
+          <img id="last-img" class="last" alt="">
+          <div class="row">
+            <button id="reshoot-btn" title="R">Reshoot <kbd>R</kbd></button>
+            <button id="last-review-btn">Review</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- review panel -->
+      <div id="review-panel">
+        <section>
+          <h2>Frame <span id="frame-name" class="muted"></span></h2>
+          <div class="row">
+            <button id="rot-ccw" title="[">⟲ 90°</button>
+            <button id="rot-cw" title="]">⟳ 90°</button>
+            <button id="reject-btn" title="X">Reject <kbd>X</kbd></button>
+          </div>
+          <div class="slider" id="angle-slider"></div>
+          <div id="param-sliders"></div>
+          <div class="row">
+            <button id="reset-params">Reset</button>
+            <button id="copy-params" title="Copy rotation, straighten and adjustments">Copy</button>
+            <button id="paste-params" disabled>Paste</button>
+            <button id="paste-all" disabled title="Paste to every frame">Paste to all</button>
+          </div>
+        </section>
+        <section>
+          <h2>Roll</h2>
+          <div class="kv"><span>Film</span>
+            <span class="seg" id="film-seg"><button data-film="c41">C-41</button><button data-film="bw">B&amp;W</button></span>
+          </div>
+          <div class="kv"><span>Mirror</span><label><input type="checkbox" id="flip"> flip horizontally</label></div>
+          <div class="kv"><span>Film base</span>
+            <span class="base"><span class="swatch" id="base-swatch"></span><span id="base-text">auto</span></span>
+          </div>
+          <div class="row">
+            <button id="pick-base">Pick from rebate</button>
+            <button id="auto-base">Auto</button>
+          </div>
+          <div class="kv"><span>Levels</span><span id="levels-text">per frame</span></div>
+          <div class="row">
+            <button id="lock-levels" title="One color mapping for the whole roll">Lock to roll</button>
+            <button id="unlock-levels">Per frame</button>
+          </div>
+          <p class="hint" id="out-path"></p>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="strip" id="strip"></footer>
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -12,6 +12,30 @@ wheels = [
 ]
 
 [[package]]
+name = "gphoto2"
+version = "2.6.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/66/53/da9007f2902e56be9afa6606df781c85243f9f5f189c1916c2237b953360/gphoto2-2.6.4.tar.gz", hash = "sha256:78b83a9462aec01bb15cb8b05202c6652a711827a0b794c60d39272c7d604cf7", size = 578665, upload-time = "2026-06-09T15:29:42.152Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a0/cc/47f1b92458825ad530c61884294034a4ac52379227657a6414d675a58b93/gphoto2-2.6.4-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:74e223c018589f5f14f3da588e9046d8583099d591d49040f9ac60266b6c26ed", size = 6455437, upload-time = "2026-06-09T14:32:50.633Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/76/2635780dd6d1afacbc398e814b4cd25ce3b529376da901dc47a3aa97327f/gphoto2-2.6.4-cp312-cp312-macosx_15_0_x86_64.whl", hash = "sha256:51e2ba0e9fe0913b6155756172ff1920890af1fb10b8ec7db6e36ba692d1bbec", size = 7459189, upload-time = "2026-06-09T15:23:03.36Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/ae/6c09c1624a77298d359d4d51cf7274d4e2592c2f2322725cf380c0c1567d/gphoto2-2.6.4-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:383feb6cc6c2efcc5c675a6f4173d21899a8a263b930ed0783e5cedc7e41c56f", size = 11785217, upload-time = "2026-06-09T14:34:44.365Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/65/dda79a67f47c61822ce37384b1603f6cefa54dd6adde1a8fdabc07d1ebd7/gphoto2-2.6.4-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:c0e79387703cf3c55aa8fd63ba5304bcb6819f8538cdaf84866e14290a9cbd2b", size = 12948217, upload-time = "2026-06-09T14:37:12.357Z" },
+    { url = "https://files.pythonhosted.org/packages/86/61/cb05fb1e9d9079cc5a73e89df1d60867e8ae2f16aa6f6e41e4fc79103caa/gphoto2-2.6.4-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:79c1a10f66a9536bdba546e6d2defc95b2d4373899cf7a55c73b61a5042be49e", size = 6460754, upload-time = "2026-06-09T14:38:13.361Z" },
+    { url = "https://files.pythonhosted.org/packages/04/c0/f58420bd0675e902ecef91ddd044b2832049772ad4a6cc3107af2e325015/gphoto2-2.6.4-cp313-cp313-macosx_15_0_x86_64.whl", hash = "sha256:c34fd8de7f214e95f27923f4053630a4bbdf69f2b8f4ee716bd37b75a609d384", size = 7468668, upload-time = "2026-06-09T15:24:15.289Z" },
+    { url = "https://files.pythonhosted.org/packages/31/94/da733e303943ad93ef202518829359ceba4193ceb3363be865b4a078a63a/gphoto2-2.6.4-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:736eb1b64a8cc573f699bb1545381e22155f2214becb0923d28b2010f207ae16", size = 11747458, upload-time = "2026-06-09T14:40:03.912Z" },
+    { url = "https://files.pythonhosted.org/packages/be/3b/0c28237bfc8d45b8c12ff5a9a504771554c2dba627bb291af765f40b79c6/gphoto2-2.6.4-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:6a03fa34a6a0c42c2803228079133591f88e107c2eac06f102ab0d32c76929f3", size = 12915680, upload-time = "2026-06-09T14:42:37.5Z" },
+    { url = "https://files.pythonhosted.org/packages/52/ef/d59bb8d76d4fc77f91abc2000aa985047a68074c6938876d767c53b90ab1/gphoto2-2.6.4-cp314-cp314-macosx_14_0_arm64.whl", hash = "sha256:adec0868cbfc90aa71a1f8a6e60b9e0f575ded76b5c32c95cc5af92cf64da5a6", size = 6461319, upload-time = "2026-06-09T14:43:39.957Z" },
+    { url = "https://files.pythonhosted.org/packages/81/6b/6c65798bfea04f258a9e71249f8f8504960f3ce8306862dea25721a1b1eb/gphoto2-2.6.4-cp314-cp314-macosx_15_0_x86_64.whl", hash = "sha256:d6ba1ea5b2665de768a8068bcc675e535216f41d0cc2ee7532f58e62986f32d0", size = 7469530, upload-time = "2026-06-09T15:25:29.589Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/09/320f20d82df8e173d2d1084affa604d3f578e509d4e3479d160662b68b1e/gphoto2-2.6.4-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:e13f136fc8d36af5e53213b04a62e6eb5f4f9becf6cfbf30b9d401768693ddb7", size = 11740932, upload-time = "2026-06-09T14:45:41.909Z" },
+    { url = "https://files.pythonhosted.org/packages/96/2a/69a27e6443ef80202cafdc9f4993ee4a0f0691747287d386f312ea496c47/gphoto2-2.6.4-cp314-cp314-manylinux_2_28_aarch64.whl", hash = "sha256:ba607e49dd74d4e427f7b813e3906dcaa06abebbc1558d7f60d048093ef305ca", size = 12903626, upload-time = "2026-06-09T14:48:05.558Z" },
+    { url = "https://files.pythonhosted.org/packages/58/80/0da76201efcdeb42dcec32f37e70be61172267ebb0f52c0f804f784a3586/gphoto2-2.6.4-cp314-cp314t-macosx_14_0_arm64.whl", hash = "sha256:31f3cb97b519efecb00da5ea9c1fe0c1eff7e62c5f5c2edc1827854a0b5b8284", size = 6471367, upload-time = "2026-06-09T14:49:08.784Z" },
+    { url = "https://files.pythonhosted.org/packages/39/95/35c7287b19cec0385926ebd16c0e847e875d5049d03778bf161ad031b935/gphoto2-2.6.4-cp314-cp314t-macosx_15_0_x86_64.whl", hash = "sha256:eddbd0867f74c8348ade3c49ce314f2765503126d19b63d2b1dff02d36dff9e5", size = 7479021, upload-time = "2026-06-09T15:26:49.322Z" },
+    { url = "https://files.pythonhosted.org/packages/32/73/ea89e6f0e1f505e6758848157811724d81cd9aa2ed88d60e0c07c790ff64/gphoto2-2.6.4-cp314-cp314t-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:394727ecf476726ca7106e47d68d57439e7c74df8816fed0a56259951e95492f", size = 11816826, upload-time = "2026-06-09T14:51:20.538Z" },
+    { url = "https://files.pythonhosted.org/packages/00/54/82d4431e80dc79591bcbad0d7e5cd6abd019bd2d4f9db48be0b9f4742b1e/gphoto2-2.6.4-cp314-cp314t-manylinux_2_28_aarch64.whl", hash = "sha256:5e511d23cf786530f05dfe84bc95de5ef22b09743a3ad38524e5cc84506580ff", size = 13067414, upload-time = "2026-06-09T14:53:39.28Z" },
+]
+
+[[package]]
 name = "iniconfig"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -33,6 +57,11 @@ dependencies = [
     { name = "tifffile" },
 ]
 
+[package.optional-dependencies]
+camera = [
+    { name = "gphoto2" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
@@ -40,6 +69,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "gphoto2", marker = "extra == 'camera'", specifier = ">=2.5" },
     { name = "numpy", specifier = ">=2" },
     { name = "opencv-python-headless", specifier = ">=4.10" },
     { name = "pillow", specifier = ">=11" },
@@ -47,6 +77,7 @@ requires-dist = [
     { name = "rawpy", specifier = ">=0.27.1" },
     { name = "tifffile", specifier = ">=2026.1.14" },
 ]
+provides-extras = ["camera"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8" }]

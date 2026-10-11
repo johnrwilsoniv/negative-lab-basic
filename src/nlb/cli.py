@@ -209,11 +209,28 @@ def main(argv: list[str] | None = None) -> int:
     dv.add_argument("--film", choices=["c41", "bw"], help="override settings.film (default c41 without roll.json)")
     dv.add_argument("--preview", action="store_true", help="half-size decode, for a quick look")
     dv.add_argument("--check", action="store_true", help="report capture exposure per frame; render nothing")
+    st = sub.add_parser("studio", help="web app: tethered capture, review and 16-bit TIFF render")
+    st.add_argument("dir", type=Path, help="roll folder (created if missing)")
+    st.add_argument("--port", type=int, default=8765)
+    st.add_argument("--host", default="127.0.0.1")
+    st.add_argument("--prefix", default="frame", help="new captures are <prefix>-NNN (default: frame)")
+    st.add_argument("--fake-camera", type=Path, metavar="DIR",
+                    help="no camera: replay the raw files in DIR as captures")
+    st.add_argument("--no-open", action="store_true", help="don't open a browser")
     args = ap.parse_args(argv)
+
     if args.cmd == "develop":
         if args.film is None and not (args.dir / "roll.json").is_file():
             args.film = "c41"
         return cmd_develop(args)
+
+    if args.cmd == "studio":
+        from nlb.studio.server import serve
+        if args.fake_camera and not args.fake_camera.is_dir():
+            _error(f"not a folder: {args.fake_camera}")
+            return 2
+        return serve(args.dir, host=args.host, port=args.port, prefix=args.prefix,
+                     fake_camera=args.fake_camera, open_browser=not args.no_open)
 
     folder = args.dir.resolve()
     if not folder.is_dir():

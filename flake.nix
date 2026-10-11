@@ -11,6 +11,7 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         python = pkgs.python3;
+        isLinux = pkgs.stdenv.hostPlatform.isLinux;
 
         runtimeDeps = ps: with ps; [
           numpy
@@ -28,7 +29,9 @@
           src = ./.;
 
           build-system = [ python.pkgs.hatchling ];
-          dependencies = runtimeDeps python.pkgs;
+          # python-gphoto2 drives the camera in `nlb studio` (Linux-only, like the tether stack)
+          dependencies = runtimeDeps python.pkgs
+            ++ pkgs.lib.optional isLinux python.pkgs.gphoto2;
 
           # nixpkgs ships cv2 as `opencv4`, not the `opencv-python-headless` wheel.
           pythonRemoveDeps = [ "opencv-python-headless" ];
@@ -50,7 +53,6 @@
           exiftool
           usbutils # lsusb, to confirm the camera enumerated
         ];
-        isLinux = pkgs.stdenv.hostPlatform.isLinux;
       in
       {
         packages.default = nlb;

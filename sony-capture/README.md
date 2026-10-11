@@ -67,6 +67,10 @@ Two related settings that do *not* work over USB, for reference:
 
 ## Capturing a roll
 
+The easy way is `nlb studio <roll-dir>` (see the top-level README): it sets the two
+settings below on connect, shows live view, names and numbers frames, and lets you
+review and reshoot as you go. The raw gphoto2 equivalent:
+
 ```sh
 # Set these once per session, then shoot
 gphoto2 --set-config imagequality=RAW --set-config pcsaveimgsize=Original
@@ -76,6 +80,14 @@ gphoto2 --capture-image-and-download -I 2 -F 36 --filename "rolls/roll01/frame-%
 
 # Or: you press the shutter, gphoto2 downloads each frame as it lands
 gphoto2 --capture-tethered --filename "rolls/roll01/frame-%03n.%C"
+```
+
+Or with the script here, which sets the two settings above, shoots a frame each
+time you press Enter, and prints each saved path (`frame-NNN.ARW`, numbered after
+any frames already in the directory; non-RAW files are skipped):
+
+```sh
+./capture.py rolls/roll01
 ```
 
 `%C` expands to the real extension, so you get `frame-001.ARW`. At ~73 MB/frame a
@@ -136,7 +148,8 @@ sensor's range for the film, not making the frame look right:
   for a quick half-size pass).
 - `nix run .. -- preview rolls/roll01`, then `render`: the phone-oriented B&W HEIC pipeline
   (see the top-level README)
-- `darktable` → `negadoctor` module (orange-mask aware; the usual choice for C-41)
+- `darktable` → `negadoctor` module (orange-mask aware; the usual choice for C-41).
+  Styles calibrated for this rig: [darktable/](darktable/README.md)
 - `rawtherapee` → `Film Negative` module
 - Scripted: `python3` in this shell has `rawpy` + `numpy` + `pillow`
 

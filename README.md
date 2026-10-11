@@ -10,11 +10,32 @@ A pun on Negative Lab Pro.
 In Claude Code: `/nlb-invert <dir>` runs preview → agent review → your confirmation → render.
 Install the skill: `ln -s "$PWD/skills/nlb-invert" ~/.claude/skills/nlb-invert`
 
-Shooting with a tethered Sony A7 IV: see [sony-capture/](sony-capture/README.md). Raw
-captures of C-41 or B&W negatives develop to 16-bit TIFFs with the engine in
-`src/nlb/develop.py` (used by `nlb studio`, or headless):
+## Studio: tethered capture, review and color
 
-    uv run nlb develop <roll-dir>            # roll.json if present, else auto per frame
+`nlb studio` is a local web app for camera scanning (Sony A7 IV + macro lens + film
+holder): capture, review and render a roll, C-41 color or B&W, to 16-bit TIFF.
+
+    nix run . -- studio sony-capture/rolls/roll02    # opens http://127.0.0.1:8765/
+
+- **Capture**: inverted live view (2×/4× focus zoom), `Space` to shoot, `R` to reshoot
+  the last frame. The camera's own shutter button works too. Frames land in the roll
+  folder as `frame-001.ARW`, `frame-002.ARW`, … and numbering resumes across sessions.
+  On connect it sets `imagequality=RAW` and `pcsaveimgsize=Original`.
+- **Review**: per frame crop (drag; `C`), rotate (`[` `]`), straighten, exposure / contrast /
+  color sliders, reject (`X`); `←` `→` to move. Per roll: film type, mirror, film base
+  (*Pick from rebate* on the negative view) and *Lock levels to roll* for consistent color.
+- **Render roll**: full-res 16-bit TIFFs of the kept frames into `<roll>-positive/`.
+
+Edits live in `<roll>/roll.json`; originals are never modified (reshoots move the old
+raw to `<roll>/.nlb/trash/`). No camera handy? `--fake-camera <dir>` replays raw files
+from `<dir>` as captures. Camera setup and troubleshooting: [sony-capture/](sony-capture/README.md).
+The conversion engine is `src/nlb/develop.py`; see
+[its plan](docs/superpowers/plans/2026-10-10-develop-engine.md).
+
+Headless, the same engine renders a roll from its `roll.json` (or picks crop, deskew, film
+base and levels per frame without one):
+
+    uv run nlb develop <roll-dir>            # 16-bit TIFFs into <roll-dir>-positive/
     uv run nlb develop <roll-dir> --check    # capture exposure report, renders nothing
 
 Tests: `uv run pytest` (sample-based tests need `iphone-negatives/`).

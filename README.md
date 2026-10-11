@@ -11,3 +11,8 @@ In Claude Code: `/nlb-invert <dir>` runs preview → agent review → your confi
 Install the skill: `ln -s "$PWD/skills/nlb-invert" ~/.claude/skills/nlb-invert`
 
 Tests: `uv run pytest` (sample-based tests need `iphone-negatives/`).
+
+With Nix (no uv needed; dependencies come from nixpkgs):
+
+    nix run . -- preview <dir>                       # or `nix build` → ./result/bin/nlb
+    nix develop -c pytest                            # dev shell puts src/ on PYTHONPATH

@@ -29,7 +29,7 @@
         <div class="placeholder" id="live-placeholder">
           <p id="live-message">Camera not connected.</p>
           <button id="connect-btn" class="primary">Connect camera</button>
-          <p class="hint">A7 IV: USB Connection Mode → PC Remote, USB Streaming → Off.</p>
+          <p class="hint" id="connect-hint">A7 IV: USB Connection Mode → PC Remote, USB Streaming → Off.</p>
         </div>
         <div class="overlay-tools">
           <label><input type="checkbox" id="live-invert" checked> Invert</label>
@@ -78,7 +78,7 @@
           <h2>Shoot</h2>
           <button id="capture-btn" class="big primary">Capture <kbd>Space</kbd></button>
           <div class="kv"><span>Next frame</span><span id="next-name">—</span></div>
-          <p class="hint">The shutter button on the camera works too.</p>
+          <p class="hint" id="capture-why">The shutter button on the camera works too.</p>
         </section>
         <section id="last-section" hidden>
           <h2>Last capture <span class="muted" id="last-name"></span></h2>

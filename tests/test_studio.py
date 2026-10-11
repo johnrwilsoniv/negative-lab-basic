@@ -1,5 +1,6 @@
 import json
 import threading
+import time
 import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
@@ -8,6 +9,8 @@ import numpy as np
 import pytest
 from synth import make_negative, write_dng
 
+from nlb.studio import camera as camera_mod
+from nlb.studio.camera import CameraWorker, FakeBackend
 from nlb.studio.roll import Roll, clamp_crop
 from nlb.studio.server import Studio, make_handler
 
@@ -182,3 +185,76 @@ def test_errors(studio):
     with pytest.raises(urllib.error.HTTPError) as e:
         call(studio, "GET", "/../pyproject.toml")
     assert e.value.code == 404
+
+
+# --- camera worker: missing gphoto2, no camera, hotplug ---
+
+def wait_status(worker, status, timeout=10):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if worker.snapshot()["status"] == status:
+            return worker.snapshot()
+        time.sleep(0.02)
+    raise AssertionError(f"status {worker.snapshot()['status']!r}, wanted {status!r}")
+
+
+def test_camera_unavailable(tmp_path):
+    worker = CameraWorker(lambda: pytest.fail("must not open a camera"), tmp_path / "in",
+                          lambda files: None, unavailable="no gphoto2 here")
+    worker.start()
+    assert worker.snapshot()["status"] == "unavailable"
+    with pytest.raises(RuntimeError, match="no gphoto2 here"):
+        worker.submit("connect").result(timeout=5)
+    with pytest.raises(RuntimeError):
+        worker.submit("capture").result(timeout=5)
+    snap = worker.snapshot()
+    assert snap["status"] == "unavailable" and snap["message"] == "no gphoto2 here"
+
+
+def test_camera_backend_import_error_does_not_hang(tmp_path):
+    def make_backend():
+        raise ImportError("No module named 'gphoto2'")
+    worker = CameraWorker(make_backend, tmp_path / "in", lambda files: None)
+    worker.start()
+    with pytest.raises(RuntimeError):
+        worker.submit("connect").result(timeout=5)
+    assert worker.snapshot()["status"] == "error"  # not stuck on "connecting"
+
+
+def test_camera_hotplug(tmp_path, monkeypatch):
+    monkeypatch.setattr(camera_mod, "DETECT_EVERY", 0.05)
+    source = raw_folder(tmp_path / "source", n=1)
+    plugged = threading.Event()
+    got = []
+
+    def make_backend():
+        if not plugged.is_set():
+            raise RuntimeError("[-105] Unknown model")
+        return FakeBackend(source)
+
+    worker = CameraWorker(make_backend, tmp_path / "in", got.append, detect=plugged.is_set)
+    worker.start()
+    with pytest.raises(RuntimeError, match="No camera found"):
+        worker.submit("connect").result(timeout=5)
+    assert worker.snapshot()["status"] == "nocamera"
+
+    plugged.set()  # connects by itself
+    assert wait_status(worker, "ready")["model"].startswith("Fake camera")
+    assert worker.submit("capture").result(timeout=5)
+
+    worker.backend.preview = lambda: (_ for _ in ()).throw(OSError("unplugged"))
+    plugged.clear()
+    worker.add_viewer(1)  # live view notices the camera is gone
+    wait_status(worker, "nocamera")
+    worker.add_viewer(-1)
+    plugged.set()
+    wait_status(worker, "ready")
+
+    # after an explicit disconnect, a replug doesn't grab the camera
+    worker.submit("disconnect").result(timeout=5)
+    plugged.clear()
+    wait_status(worker, "nocamera")
+    plugged.set()
+    wait_status(worker, "disconnected")
+    worker.submit("connect").result(timeout=5)
+    assert worker.snapshot()["status"] == "ready"

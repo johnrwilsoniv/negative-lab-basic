@@ -59,6 +59,7 @@ header button { white-space: nowrap; }
 .tabs { display: flex; gap: 4px; }
 .tab { background: transparent; border-color: transparent; }
 .tab.on { background: var(--bg-3); border-color: var(--line); }
+.tab.unavailable { color: var(--muted); opacity: .55; }
 .roll-select { width: auto; max-width: 220px; font-weight: 600; }
 .roll-path { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .spacer { flex: 1; }
@@ -79,6 +80,8 @@ main { display: grid; grid-template-columns: minmax(0, 1fr) var(--panel-w); min-
 .kv > span:first-child { color: var(--muted); }
 .cam-msg { color: var(--danger); font-size: 12px; margin: 4px 0; white-space: pre-wrap; }
 .cam-msg:empty { display: none; }
+#capture-why.blocked { color: var(--accent); }
+.live.unavailable #live-message { max-width: 52ch; color: var(--muted); }
 .cfg { margin: 8px 0; }
 .cfg label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 3px; }
 .slider { margin: 10px 0; }

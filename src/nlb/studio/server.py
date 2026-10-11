@@ -13,7 +13,7 @@ from urllib.parse import parse_qs, urlparse
 from nlb import develop
 from nlb.heic import RAW_SUFFIXES
 from nlb.studio.cache import LRU, Previews, edit_hash, to_jpeg
-from nlb.studio.camera import CameraWorker, FakeBackend, GPhotoBackend
+from nlb.studio.camera import CameraWorker, FakeBackend, GPhotoBackend, gphoto_missing
 from nlb.studio.roll import Roll
 
 STATIC = Path(__file__).parent / "static"
@@ -99,9 +99,12 @@ class Studio:
         names = self.roll_names()
         self.open_roll(roll or (max(names, key=lambda n: (self.library / n).stat().st_mtime)
                                 if names else "roll01"), create=True)
-        make_backend = (lambda: FakeBackend(fake_camera)) if fake_camera else GPhotoBackend
-        self.camera = CameraWorker(make_backend, self.library / ".nlb" / "incoming",
-                                   lambda files: self.ingest(files))
+        incoming = self.library / ".nlb" / "incoming"
+        if fake_camera:
+            self.camera = CameraWorker(lambda: FakeBackend(fake_camera), incoming, self.ingest)
+        else:
+            self.camera = CameraWorker(GPhotoBackend, incoming, self.ingest,
+                                       detect=GPhotoBackend.detect, unavailable=gphoto_missing())
         self.camera.start()
 
     # --- rolls ---
@@ -453,7 +456,9 @@ def serve(folder: Path, host: str = "127.0.0.1", port: int = 8765, prefix: str =
         studio = Studio(folder.parent, roll=folder.name, prefix=prefix, fake_camera=fake_camera)
     else:
         studio = Studio(folder, prefix=prefix, fake_camera=fake_camera)
-    if connect:
+    if studio.camera.unavailable:
+        print(f"nlb studio: capture disabled. {studio.camera.unavailable}", flush=True)
+    elif connect:
         studio.camera.submit("connect")  # failure just shows up as camera status in the UI
     server = ThreadingHTTPServer((host, port), make_handler(studio))
     server.daemon_threads = True

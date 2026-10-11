@@ -28,7 +28,10 @@ holder): capture, review and render a roll, C-41 color or B&W, to 16-bit TIFF.
 
 Edits live in `<roll>/roll.json`; originals are never modified (reshoots move the old
 raw to `<roll>/.nlb/trash/`). No camera handy? `--fake-camera <dir>` replays raw files
-from `<dir>` as captures. Camera setup and troubleshooting: [sony-capture/](sony-capture/README.md).
+from `<dir>` as captures. Capture needs the gphoto2 Python module (`pip install 'nlb[camera]'`,
+or `nix develop`); without it the studio still runs with Capture grayed out. With no camera
+plugged in, it connects as soon as one is. Camera setup and troubleshooting:
+[sony-capture/](sony-capture/README.md).
 The conversion engine is `src/nlb/develop.py`; see
 [its plan](docs/superpowers/plans/2026-10-10-develop-engine.md).
 

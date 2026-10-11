@@ -171,12 +171,30 @@ function spotNewCaptures() {
   ui.knownFrames = new Set(names);
 }
 
+const CAMERA_LABELS = { unavailable: "no gphoto2", nocamera: "no camera" };
+
 function renderCameraPill() {
   const c = ui.state.camera;
   const pill = $("#cam-pill");
   const busy = c.busy || c.status === "capturing" || c.status === "connecting";
   pill.className = "cam-pill " + (c.status === "error" ? "error" : busy ? "busy" : c.status === "ready" ? "ready" : "");
-  $("#cam-pill-text").textContent = c.model ? `${c.model} · ${c.status}` : c.status;
+  const label = CAMERA_LABELS[c.status] || c.status;
+  $("#cam-pill-text").textContent = c.model ? `${c.model} · ${label}` : label;
+  pill.title = c.message || "camera status";
+  const tab = $('.tab[data-tab="capture"]');
+  tab.classList.toggle("unavailable", c.status === "unavailable");
+  tab.title = c.status === "unavailable" ? c.message : "";
+}
+
+const cameraConnected = () => ["ready", "capturing"].includes(ui.state?.camera.status);
+
+// why the shutter is grayed out, or "" when it isn't
+function captureBlocker(c) {
+  if (cameraConnected()) return "";
+  if (c.status === "unavailable") return "Capture unavailable: gphoto2 isn't installed.";
+  if (c.status === "nocamera") return "No camera found. Plug one in and it connects automatically.";
+  if (c.status === "connecting") return "Connecting to the camera…";
+  return "Camera not connected.";
 }
 
 function renderJob() {
@@ -223,15 +241,22 @@ function renderStrip() {
 
 function renderCapture() {
   const c = ui.state.camera;
-  const connected = c.status === "ready" || c.status === "capturing";
+  const connected = cameraConnected();
+  const unavailable = c.status === "unavailable";
   const live = $("#live");
   live.classList.toggle("connected", connected);
+  live.classList.toggle("unavailable", unavailable);
   $("#live-message").textContent = c.status === "connecting" ? "Connecting…" : c.message || "Camera not connected.";
-  $("#connect-btn").disabled = c.status === "connecting";
+  $("#connect-btn").disabled = c.status === "connecting" || unavailable;
+  $("#connect-btn").hidden = unavailable;
+  $("#connect-hint").hidden = unavailable || c.status === "nocamera";  // the message says it
   $("#cam-model").textContent = c.model || "—";
   $("#cam-msg").textContent = connected ? c.message : "";
   $("#capture-btn").disabled = !connected || ui.busy || c.busy;
   $("#disconnect-btn").disabled = !connected;
+  const why = captureBlocker(c);
+  $("#capture-why").textContent = why || "The shutter button on the camera works too.";
+  $("#capture-why").classList.toggle("blocked", !!why);
   $("#next-name").textContent = ui.state.next_name;
 
   // live view stream only while it is on screen (the server runs live view only for viewers)
@@ -640,8 +665,8 @@ function wire() {
     if (e.target.closest("input, select, textarea") && e.target.type !== "range" && e.target.type !== "checkbox") return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key;
-    if (ui.tab === "capture" && k === " ") { e.preventDefault(); capture(); return; }
-    if (ui.tab === "capture" && (k === "r" || k === "R") && ui.lastCaptured) { capture(ui.lastCaptured); return; }
+    if (ui.tab === "capture" && k === " ") { e.preventDefault(); if (cameraConnected()) capture(); return; }
+    if (ui.tab === "capture" && (k === "r" || k === "R") && ui.lastCaptured) { if (cameraConnected()) capture(ui.lastCaptured); return; }
     if (e.target.type === "range") return;
     if (k === "ArrowLeft") { e.preventDefault(); step(-1); }
     else if (k === "ArrowRight") { e.preventDefault(); step(1); }

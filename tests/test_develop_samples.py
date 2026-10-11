@@ -21,7 +21,8 @@ IPHONE = REPO / "nextcloud" / "italy-kodak-gold-200"
 FILES = {"DSC06699": ROLLS / "roll01" / "DSC06699.ARW", "DSC06700": ROLLS / "roll01" / "DSC06700.ARW",
          "frame-001": ROLLS / "test" / "frame-001.ARW",
          **{f"frame-00{i}": ROLLS / "test" / f"frame-00{i}.ARW" for i in range(2, 6)},
-         **{n: IPHONE / f"{n}.DNG" for n in ("IMG_4199", "IMG_4214", "IMG_4221", "IMG_4228")}}
+         **{n: IPHONE / f"{n}.DNG" for n in ("IMG_4199", "IMG_4214", "IMG_4221", "IMG_4228")},
+         **{f"bw-{i}": REPO / "nextcloud" / "claude-in-charge" / f"frame-{i}.ARW" for i in ("002", "003", "006", "007")}}
 C41 = {"film": "c41", "flip": False, "base": None, "levels": None}
 
 
@@ -138,7 +139,12 @@ def test_iphone_carrier_frame(name):
     assert 0.4 < geo["angle"] < 1.1  # the phone sat a little crooked on every frame
     np.testing.assert_allclose(geo["crop"], IPHONE_CROP[name], atol=0.008)
     thumb = cal.thumbnail(lin)
-    assert cal.window_rebate(thumb, cal.calibrate(thumb).hole) is not None
+    c = cal.calibrate(thumb)
+    if name == "IMG_4228":  # the film sat high: a row of holes shows along the window's top edge
+        assert cal.holes_on_film(thumb, c.hole)
+        np.testing.assert_allclose(c.base, [0.0169, 0.0123, 0.0103], rtol=0.03)  # what the rebate reads
+    else:
+        assert cal.window_rebate(thumb, c.hole) is not None
 
 
 # A7 IV, a Kodak GC 400 strip straight on a round lightbox: no holder, bare light past the end of
@@ -161,4 +167,28 @@ def test_strip_on_bare_lightbox(name):
     np.testing.assert_allclose(geo["crop"], LIGHTBOX_CROP[name], atol=0.008)
     x, y, w, h = geo["crop"]
     flipped = d.auto_frame(lin, {**C41, "flip": True})["crop"]
+    np.testing.assert_allclose(flipped, [1 - x - w, y, w, h], atol=0.003)
+
+
+# A7 IV, a B&W strip in a holder whose window is a little longer than a frame: the gap to the
+# next frame shows at one end (with a sliver of that frame on bw-006), the picture runs on under
+# the holder at the other, and the holder cuts the holes down to slivers along one edge. Inside
+# the pictures are vertical lines (a shop window on bw-003) as sharp as a frame's end, and dark
+# trees on bw-006 nearly as thin as the gap. bw-002 is underexposed. Crops checked by eye.
+BW = {"film": "bw", "flip": False, "base": None, "levels": None}
+HOLDER_CROP = {"bw-002": [0.1504, 0.1416, 0.6505, 0.6607], "bw-003": [0.1868, 0.1884, 0.664, 0.6625],
+               "bw-006": [0.1892, 0.1434, 0.6542, 0.6607], "bw-007": [0.138, 0.2128, 0.6627, 0.6625]}
+
+
+@pytest.mark.parametrize("name", sorted(HOLDER_CROP))
+def test_bw_strip_in_holder(name):
+    _need(name)
+    lin = _preview(name)
+    thumb = cal.thumbnail(lin)
+    c = cal.calibrate(thumb, "bw")
+    assert cal.sprocket_rows(c.hole) is not None and cal.holes_on_film(thumb, c.hole)
+    geo = d.auto_frame(lin, BW)
+    np.testing.assert_allclose(geo["crop"], HOLDER_CROP[name], atol=0.008)
+    x, y, w, h = geo["crop"]
+    flipped = d.auto_frame(lin, {**BW, "flip": True})["crop"]
     np.testing.assert_allclose(flipped, [1 - x - w, y, w, h], atol=0.003)

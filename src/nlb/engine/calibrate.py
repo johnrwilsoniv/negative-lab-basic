@@ -217,10 +217,8 @@ def sprocket_rows(hole: np.ndarray) -> tuple[bool, list[np.ndarray]] | None:
     whole = (x0 > 0) & (y0 > 0) & (x1 < w) & (y1 < h)
     area = stats[1:, cv2.CC_STAT_AREA].astype(float)[whole]
     cents = cents[1:][whole]
-    if area.size < HOLE_ROW_MIN:
-        return None
-    keep = (area > 0.3 * np.median(area)) & (area < 3.0 * np.median(area)) & (area >= 6)
-    pts = cents[keep]
+    keep = area >= 6
+    area, pts = area[keep], cents[keep]
     if len(pts) < HOLE_ROW_MIN:
         return None
     vertical = np.ptp(pts[:, 1]) > np.ptp(pts[:, 0])  # strip runs top to bottom
@@ -234,6 +232,12 @@ def sprocket_rows(hole: np.ndarray) -> tuple[bool, list[np.ndarray]] | None:
         groups = [order[:cut], order[cut:]]
     rows = []
     for idx in groups:
+        # similar size within a row: a holder's edge can cut one row's holes down to slivers
+        # while the other row shows them whole
+        a = area[idx]
+        idx = idx[(a > 0.3 * np.median(a)) & (a < 3.0 * np.median(a))]
+        if len(idx) < HOLE_ROW_MIN:
+            continue
         idx = idx[_row_inliers(along[idx], across[idx], HOLE_ROW_OFF * hole.shape[1])]
         if len(idx) < HOLE_ROW_MIN or np.ptp(along[idx]) == 0:
             continue
@@ -413,6 +417,9 @@ FRAME_TOL = (0.03, 0.04)   # strip_box: camera gates differ a little from 36 x 2
 EDGE_RISE = 0.02           # ... density step across 4 px at the picture's edge
 EDGE_MIN = 0.5             # ... fraction of the edge that must step for it to count
 ROWS_TOL = 0.1             # ... hole rows' spacing vs the pitch, relative to 135's
+GAP_BAND = 0.06            # ... film just beyond a frame's end that must be flat, in pitches
+GAP_SPREAD = (0.05, 0.25)  # ... density spread (10th-90th percentile down the band): flat, not flat
+HIDDEN_END = 0.6           # ... score of a holder's edge as the end of a frame running under it
 
 
 def _edge_steps(dens: np.ndarray, k: int = 2) -> tuple[np.ndarray, np.ndarray]:
@@ -420,6 +427,44 @@ def _edge_steps(dens: np.ndarray, k: int = 2) -> tuple[np.ndarray, np.ndarray]:
     step = np.zeros_like(dens)
     step[:, k:-k] = dens[:, 2 * k:] - dens[:, :-2 * k]
     return (step > EDGE_RISE).mean(axis=0), (step < -EDGE_RISE).mean(axis=0)
+
+
+def _frame_ends(dens: np.ndarray, holder: np.ndarray, bare: np.ndarray, rows: slice, flat: slice,
+                gap: int, k: int = 2) -> tuple[np.ndarray, np.ndarray]:
+    """Per column along the strip: how well each makes the start (lead) and end (trail) of a frame.
+
+    A density step over `rows` (see _edge_steps) counts as far as the film just beyond it is
+    flat down the `flat` rows: past a frame's end lies the clear gap to the next frame, past an
+    edge inside the picture (a wall, a window frame) more picture, and past the end of the strip
+    `bare` light, which is flat but no gap. Where a holder covers the film, its edge stands in for
+    the end of a frame that runs on under it.
+    """
+    lead, trail = _edge_steps(dens[rows], k)
+    w = dens.shape[1]
+
+    def band_mean(a):  # rows x columns: mean over columns j .. j + gap - 1
+        c = np.cumsum(np.pad(a.astype(np.float64), ((0, 0), (1, 0))), axis=1)
+        return (c[:, gap:] - c[:, :-gap]) / gap
+
+    lo, hi = np.percentile(band_mean(dens[flat]), (10, 90), axis=0)
+    flat_at, rough_at = GAP_SPREAD
+    flatness = np.clip((rough_at - (hi - lo)) / (rough_at - flat_at), 0, 1)
+    flatness *= band_mean(bare[flat]).mean(axis=0) < 0.1
+    i = np.arange(w)
+    before, after = np.zeros(w), np.zeros(w)
+    j = i - k - gap
+    before[j >= 0] = flatness[j[j >= 0]]
+    j = i + k + 1
+    after[j < flatness.size] = flatness[j[j < flatness.size]]
+    lead, trail = lead * before, trail * after
+    lit = (~holder[flat]).mean(axis=0) > 0.5
+    if lit.any() and not lit.all():
+        s, e = _run(lit)
+        if s > 0:
+            lead[s] = max(lead[s], HIDDEN_END)
+        if e < w:
+            trail[e - 1] = max(trail[e - 1], HIDDEN_END)
+    return lead, trail
 
 
 def _edge_pair(lead: np.ndarray, trail: np.ndarray, lo: int, hi: int, size: float, tol: float):
@@ -442,8 +487,11 @@ def strip_box(thumb: np.ndarray, c: Calibration) -> tuple[float, float, float, f
     the hole rows. Each axis takes the pair of edges that far apart where the most of the film
     steps up in density: a camera gate leaves a sharp edge even where the picture is nearly as
     thin as the gap beside it, and a gap or rebate a little denser than the base can't pass
-    for picture. An axis without two clear edges (a frame cut by the strip's end, a half-frame
-    camera) takes picture_box's extent instead. None if neither finds anything.
+    for picture. Along the strip an edge also needs flat film beyond it, the gap to the next
+    frame (see _frame_ends), and a holder's edge can end a frame that runs on under it; with one
+    clear end the other is a frame's length away. An axis without a clear edge (a frame cut by
+    the strip's end, a half-frame camera) takes picture_box's extent instead. None if neither
+    finds anything.
     """
     old = picture_box(thumb, c)
     found = sprocket_rows(c.hole)
@@ -466,15 +514,29 @@ def strip_box(thumb: np.ndarray, c: Calibration) -> tuple[float, float, float, f
     if yhi - ylo < 0.5 * FRAME_MM[1] * mm:
         return old
     fw, fh = FRAME_MM[0] * mm, FRAME_MM[1] * mm
+    # bare light past the end of the strip reaches the image's edge; a gap clear enough to read as
+    # bare light is ringed by film or holder
+    _, lab = cv2.connectedComponents(c.hole.astype(np.uint8), connectivity=8)
+    edge = np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))
+    bare = np.isin(lab, edge[edge > 0])
+    holder, bare = (c.holder.T, bare.T) if vertical else (c.holder, bare)
+    m, gap = round(0.15 * (yhi - ylo)), max(2, round(GAP_BAND * pitch))
+    flat = slice(ylo + m, yhi - m)  # clear of the rebate along the holes
     m = round(0.3 * (yhi - ylo))
-    x = _edge_pair(*_edge_steps(dens[ylo + m:yhi - m]), 0, w, fw, FRAME_TOL[0])
+    x = _edge_pair(*_frame_ends(dens, holder, bare, slice(ylo + m, yhi - m), flat, gap), 0, w, fw, FRAME_TOL[0])
     xs = (x[2], x[3]) if x[2] < x[3] else (0, w)
     m = round(0.1 * (xs[1] - xs[0]))
     y = _edge_pair(*_edge_steps(dens[:, xs[0] + m:xs[1] - m].T), ylo, yhi, fh, FRAME_TOL[1])
     if min(y[:2]) >= EDGE_MIN:  # the found rows sharpen the column scores
         m = round(0.1 * (y[3] - y[2]))
-        x = _edge_pair(*_edge_steps(dens[y[2] + m:y[3] - m]), 0, w, fw, FRAME_TOL[0])
+        x = _edge_pair(*_frame_ends(dens, holder, bare, slice(y[2] + m, y[3] - m), flat, gap), 0, w, fw, FRAME_TOL[0])
     fb = old and ((old[1], old[0], old[3], old[2]) if vertical else old)  # in the strip's own axes
+    if fb is not None and min(x[:2]) < EDGE_MIN <= max(x[:2]):
+        # one clear end (a gate edge, or a holder's edge the frame runs under): the other is a
+        # frame's length away, but no further than the picture reaches
+        lo, hi = fb[0] * w, (fb[0] + fb[2]) * w
+        s, e = (x[2], min(x[2] + fw, hi)) if x[0] >= x[1] else (max(x[3] - fw, lo), x[3])
+        x = (1.0, 1.0, int(round(s)), int(round(e)))
     sides = []
     for (lead, trail, s, e), n, o in ((x, w, fb and (fb[0], fb[2])), (y, h, fb and (fb[1], fb[3]))):
         if min(lead, trail) >= EDGE_MIN:

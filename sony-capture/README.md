@@ -107,7 +107,8 @@ tethering view.
 ## Inverting negatives
 
 - `nix run .. -- preview rolls/roll01`, then `render` (see the top-level README)
-- `darktable` → `negadoctor` module (orange-mask aware; the usual choice for C-41)
+- `darktable` → `negadoctor` module (orange-mask aware; the usual choice for C-41).
+  Styles calibrated for this rig: [darktable/](darktable/README.md)
 - `rawtherapee` → `Film Negative` module
 - Scripted: `python3` in this shell has `rawpy` + `numpy` + `pillow`
 

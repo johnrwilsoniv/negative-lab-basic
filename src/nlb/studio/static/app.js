@@ -284,9 +284,15 @@ function renderCapture() {
   // live view stream only while it is on screen (the server runs live view only for viewers)
   const img = $("#live-img");
   const want = ui.tab === "capture" && connected && !showTest;
-  if (want && !img.dataset.on) { img.src = "/api/camera/live?t=" + Date.now(); img.dataset.on = "1"; resetFocusPeak(); }
+  if (want && !img.dataset.on) {
+    img.src = "/api/camera/live?t=" + Date.now();
+    img.dataset.on = "1";
+    resetFocusPeak();
+    Object.assign(liveFrame, { seq: -1, found: null });
+  }
   if (!want && img.dataset.on) { img.src = "data:,"; delete img.dataset.on; }
-  if (want) pollFocus();
+  if (want) { pollFocus(); pollFrame(); }
+  renderLiveFrame();
   $("#live-frame").classList.toggle("invert", $("#live-invert").checked);
 
   renderCameraConfig(c.config || {});
@@ -520,6 +526,47 @@ async function pollFocus() {
     await new Promise((r) => setTimeout(r, 150));
   }
   focusMeter.polling = false;
+}
+
+// ---------- live view auto frame ----------
+// The box auto-frame would crop, found on each live-view frame, so the strip can be laid
+// and straightened before shooting.
+
+const liveFrame = { seq: -1, found: null, polling: false };
+
+async function pollFrame() {
+  if (liveFrame.polling) return;
+  liveFrame.polling = true;
+  while ($("#live-img").dataset.on && !document.hidden && $("#live-autoframe").checked) {
+    try {
+      const r = await api("GET", "/api/camera/frame");
+      if (r.seq !== liveFrame.seq) {
+        liveFrame.seq = r.seq;
+        liveFrame.found = r.outline ? r : null;
+      }
+    } catch { /* camera busy or gone: the status line says so */ }
+    renderLiveFrame();  // also follows the image's size, which the stream can change
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  liveFrame.polling = false;
+}
+
+function renderLiveFrame() {
+  const img = $("#live-img");
+  const svg = $("#live-outline");
+  const on = !!img.dataset.on && $("#live-autoframe").checked;
+  const r = on ? liveFrame.found : null;
+  $("#frame-hint").textContent = !on || liveFrame.seq < 0 ? "" : !r ? "no picture found"
+    : Math.abs(r.angle) > 0 ? `tilted ${Math.abs(r.angle).toFixed(1)}°` : "straight";
+  svg.style.display = r && img.offsetWidth ? "block" : "none";
+  if (svg.style.display === "none") return;
+  // the same box and zoom as the image (its layout box: offset* ignore the zoom transform)
+  Object.assign(svg.style, {
+    left: img.offsetLeft + "px", top: img.offsetTop + "px", width: img.offsetWidth + "px", height: img.offsetHeight + "px",
+    transform: img.style.transform, transformOrigin: img.style.transformOrigin,
+  });
+  const points = r.outline.map(([x, y]) => `${x},${y}`).join(" ");
+  $$("#live-outline polygon").forEach((p) => p.setAttribute("points", points));
 }
 
 async function capture(reshoot) {
@@ -786,6 +833,7 @@ function initCropEditor() {
   layer.addEventListener("pointercancel", end);
   window.addEventListener("resize", layoutCrop);
   window.addEventListener("resize", layoutTestBox);
+  window.addEventListener("resize", renderLiveFrame);
 
   $("#main-img").addEventListener("click", (e) => {
     if (!ui.picking) return;
@@ -858,10 +906,13 @@ function wire() {
   $("#reshoot-btn").addEventListener("click", () => ui.lastCaptured && capture(ui.lastCaptured));
   $("#last-review-btn").addEventListener("click", () => { ui.selected = ui.lastCaptured; setTab("review"); });
   $("#live-invert").addEventListener("change", renderCapture);
+  $("#live-autoframe").checked = load("liveFrame", "1") === "1";
+  $("#live-autoframe").addEventListener("change", (e) => { save("liveFrame", e.target.checked ? "1" : "0"); renderCapture(); });
   $$("#live-zoom button").forEach((b) => b.addEventListener("click", () => {
     ui.liveZoom = +b.dataset.zoom;
     $$("#live-zoom button").forEach((x) => x.classList.toggle("on", x === b));
     $("#live-img").style.transform = `scale(${ui.liveZoom})`;
+    renderLiveFrame();
     resetFocusPeak();  // a different region: the old peak is not comparable
   }));
   $("#focus-meter").addEventListener("click", resetFocusPeak);
@@ -872,6 +923,7 @@ function wire() {
     // r is the scaled box; convert the click into the unscaled image's percentage
     const ox = ((e.clientX - r.left) / r.width) * 100, oy = ((e.clientY - r.top) / r.height) * 100;
     img.style.transformOrigin = `${clamp(ox, 0, 100)}% ${clamp(oy, 0, 100)}%`;
+    renderLiveFrame();
     resetFocusPeak();
   });
 

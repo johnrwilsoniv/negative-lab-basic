@@ -25,7 +25,10 @@
     <section class="viewer" id="viewer">
       <!-- capture -->
       <div class="live" id="live">
-        <div class="live-frame" id="live-frame"><img id="live-img" alt=""></div>
+        <div class="live-frame" id="live-frame">
+          <img id="live-img" alt="">
+          <svg class="live-outline" id="live-outline" viewBox="0 0 1 1" preserveAspectRatio="none"><polygon class="under"/><polygon class="over"/></svg>
+        </div>
         <div class="test-view" id="test-view">
           <div class="img-wrap" id="test-wrap">
             <img id="test-img" alt="">
@@ -44,6 +47,8 @@
           </span>
           <span class="live-tools">
             <label><input type="checkbox" id="live-invert" checked> Invert</label>
+            <label title="Dashed box: the picture auto-frame finds, turned by the tilt it would straighten"><input type="checkbox" id="live-autoframe" checked> Frame</label>
+            <span class="muted" id="frame-hint"></span>
             <span class="seg" id="live-zoom">
               <button data-zoom="1" class="on">Fit</button><button data-zoom="2">2×</button><button data-zoom="4">4×</button>
             </span>

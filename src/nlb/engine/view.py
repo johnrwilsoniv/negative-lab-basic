@@ -33,6 +33,17 @@ def crop_px(shape: tuple, crop) -> Region:
     return x0, y0, max(min(x1, w), x0 + 1), max(min(y1, h), y0 + 1)
 
 
+def crop_outline(shape: tuple, flip: bool, angle: float, crop) -> np.ndarray:
+    """Corners of a full-view crop in the sensor image: 4 x 2 normalized (x, y), clockwise from top left."""
+    h, w = shape[:2]
+    x, y, cw, ch = (float(v) for v in crop)
+    # normalized edges sit half a pixel outside the pixel centers they bound
+    xs, ys = (x * w - 0.5, (x + cw) * w - 0.5), (y * h - 0.5, (y + ch) * h - 0.5)
+    corners = np.array([[xs[0], ys[0], 1], [xs[1], ys[0], 1], [xs[1], ys[1], 1], [xs[0], ys[1], 1]])
+    sensor = corners @ np.linalg.inv(full_matrix(shape, flip, angle)).T
+    return (sensor[:, :2] + 0.5) / (w, h)
+
+
 def warp(img: np.ndarray, flip: bool, angle: float, region: Region | None = None) -> np.ndarray:
     """The full view of `img`, or just `region` of it. Exact slicing when there's no deskew."""
     h, w = img.shape[:2]

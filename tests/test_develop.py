@@ -8,7 +8,7 @@ from synth import (BASE_T, FLARE, LIGHT, make_carrier_negative, make_raw_negativ
 
 from nlb import develop as d
 from nlb.engine import calibrate as cal
-from nlb.engine.view import crop_px, rotate90, warp, warp_grid
+from nlb.engine.view import crop_outline, crop_px, rotate90, warp, warp_grid
 
 C41 = {"film": "c41", "flip": False, "base": None, "levels": None}
 
@@ -168,6 +168,19 @@ def test_deskew_is_counter_clockwise_about_center():
     out = warp(img, False, 90.0)
     y, x = np.unravel_index(out[..., 0].argmax(), out.shape[:2])
     assert (y, x) == (20, 50)                            # counter-clockwise: now above center
+
+
+def test_crop_outline_maps_a_view_crop_back_to_the_sensor():
+    crop = [0.2, 0.15, 0.5, 0.6]
+    np.testing.assert_allclose(crop_outline((400, 600), False, 0.0, crop),
+                               [[0.2, 0.15], [0.7, 0.15], [0.7, 0.75], [0.2, 0.75]], atol=1e-9)
+    np.testing.assert_allclose(crop_outline((400, 600), True, 0.0, crop)[:, 0], [0.8, 0.3, 0.3, 0.8], atol=1e-9)
+    for flip in (False, True):  # the outline drawn on the sensor lands on the crop in the view
+        mask = np.zeros((400, 600), np.float32)
+        cv2.fillPoly(mask, [np.round(crop_outline(mask.shape, flip, 4.0, crop) * (600, 400) - 0.5).astype(np.int32)], 1.0)
+        ys, xs = np.nonzero(warp(mask, flip, 4.0) > 0.5)
+        np.testing.assert_allclose([xs.min() / 600, ys.min() / 400, (xs.max() + 1) / 600, (ys.max() + 1) / 400],
+                                   [0.2, 0.15, 0.7, 0.75], atol=0.006)
 
 
 def _pattern(h, w):

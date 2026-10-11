@@ -15,7 +15,7 @@ import numpy as np
 
 from nlb import darktable, develop
 from nlb.heic import RAW_SUFFIXES
-from nlb.studio import feedback, focus
+from nlb.studio import feedback, focus, liveframe
 from nlb.studio.cache import LRU, DarktablePreviews, Previews, edit_hash, to_jpeg
 from nlb.studio.camera import CameraWorker, FakeBackend, GPhotoBackend, gphoto_missing
 from nlb.studio.roll import Roll
@@ -119,6 +119,8 @@ class Studio:
         self.test_lock = threading.Lock()
         self.test_history: list[dict] = []  # {"id", "headroom", "edge_px"}, for focus comparisons
         self.focus_cache = None  # ((frame seq, region), score): several viewers poll the same frame
+        self.frame_cache = None  # ((frame seq, film), outline)
+        self.frame_lock = threading.Lock()  # one auto frame at a time: each takes a few hundred ms
         names = self.roll_names()
         self.open_roll(roll or (max(names, key=lambda n: (self.library / n).stat().st_mtime)
                                 if names else "roll01"), create=True)
@@ -414,6 +416,16 @@ class Studio:
             cached = self.focus_cache = (key, focus.sharpness(jpeg, region) if jpeg else None)
         return {"seq": seq, "score": cached[1]}
 
+    def live_frame(self) -> dict:
+        """Where auto-frame finds the picture in the latest live-view frame (see liveframe.outline)."""
+        with self.frame_lock:
+            seq, jpeg = self.camera.latest()
+            key = (seq, self.roll.snapshot()["settings"].get("film"))
+            if self.frame_cache is None or self.frame_cache[0] != key:
+                self.frame_cache = (key, liveframe.outline(jpeg, key[1]) if jpeg else None)
+            found = self.frame_cache[1]
+        return {"seq": seq, "outline": None, "angle": None, **(found or {})}
+
     # --- roll-level actions ---
 
     def set_settings(self, patch: dict) -> None:
@@ -631,6 +643,10 @@ def make_handler(studio: Studio):
         except ValueError:
             raise ApiError(400, "x, y, w, h must be numbers")
         return studio.live_focus(region)
+
+    @route("GET", r"/api/camera/frame")
+    def camera_frame(h, body, q):
+        return studio.live_frame()
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"

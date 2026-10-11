@@ -99,6 +99,10 @@ body.tab-capture #review-panel, body.tab-review #capture-panel { display: none; 
 .live-frame { position: absolute; inset: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: crosshair; }
 .live-frame img { max-width: 100%; max-height: 100%; transition: transform .15s; }
 .live-frame.invert img { filter: invert(1); }
+.live-outline { position: absolute; display: none; pointer-events: none; overflow: visible; transition: transform .15s; }
+.live-outline polygon { fill: none; vector-effect: non-scaling-stroke; }
+.live-outline .under { stroke: rgba(0,0,0,.7); stroke-width: 4; }
+.live-outline .over { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; }
 .placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 16px; }
 .live.connected .placeholder { display: none; }
 .live:not(.connected) .live-frame { display: none; }
@@ -122,6 +126,7 @@ body.tab-capture #review-panel, body.tab-review #capture-panel { display: none; 
 .focus-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--muted); transition: width .15s; }
 .focus-meter.near .focus-fill { background: var(--accent); }
 .focus-meter.peak .focus-fill { background: var(--ok); }
+#frame-hint { min-width: 11ch; }
 .focus-pct { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; }
 .test-layer { position: absolute; pointer-events: none; }
 .test-box { position: absolute; border: 2px dashed var(--accent); outline: 1px solid rgba(0,0,0,.7); }

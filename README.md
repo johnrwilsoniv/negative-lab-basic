@@ -17,7 +17,8 @@ holder): capture, review and render a roll, C-41 color or B&W, to 16-bit TIFF.
 
     nix run . -- studio sony-capture/rolls/roll02    # opens http://127.0.0.1:8765/
 
-- **Capture**: inverted live view (2×/4× focus zoom), `Space` to shoot, `R` to reshoot
+- **Capture**: inverted live view (2×/4× focus zoom, focus meter, and a dashed box where
+  auto-frame finds the picture, with the strip's tilt), `Space` to shoot, `R` to reshoot
   the last frame. The camera's own shutter button works too. Frames land in the roll
   folder as `frame-001.ARW`, `frame-002.ARW`, … and numbering resumes across sessions.
   On connect it sets `imagequality=RAW` and `pcsaveimgsize=Original`.

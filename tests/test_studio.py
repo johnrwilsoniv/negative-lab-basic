@@ -8,11 +8,12 @@ from http.server import ThreadingHTTPServer
 import cv2
 import numpy as np
 import pytest
-from synth import make_negative, write_dng
+from synth import make_negative, make_raw_negative, neutral_wedge_scene, write_dng
 
 from nlb import darktable
+from nlb.engine.view import warp
 from nlb.studio import camera as camera_mod
-from nlb.studio import focus
+from nlb.studio import focus, liveframe
 from nlb.studio.camera import CameraWorker, FakeBackend
 from nlb.studio.roll import Roll, clamp_crop
 from nlb.studio.server import Studio, make_handler
@@ -447,3 +448,36 @@ def test_focus_endpoint_scores_latest_live_frame(studio):
     with pytest.raises(urllib.error.HTTPError) as e:
         call(studio, "GET", "/api/camera/focus?x=left")
     assert e.value.code == 400
+
+
+# --- live view auto frame ---
+
+def _live_jpeg(lin, angle=0.0):
+    """What live view sends: a camera JPEG, here the capture under the curve liveframe undoes."""
+    if angle:
+        lin = warp(lin, False, angle)
+    return _jpeg((np.power(np.clip(lin, 0, 1), 1 / liveframe.JPEG_GAMMA) * 255 + 0.5).astype(np.uint8)[..., ::-1])
+
+
+def test_live_frame_outlines_the_picture():
+    lin, (x, y, w, h) = make_raw_negative(neutral_wedge_scene())
+    found = liveframe.outline(_live_jpeg(lin), "c41")
+    assert found["angle"] == 0.0
+    np.testing.assert_allclose(found["outline"], [[x, y], [x + w, y], [x + w, y + h], [x, y + h]] / np.array([600, 400]),
+                               atol=0.02)
+    tilted = liveframe.outline(_live_jpeg(lin, -3.0), "c41")  # strip turned clockwise
+    assert tilted["angle"] == pytest.approx(3.0, abs=0.3)
+    (x0, y0), (x1, y1) = tilted["outline"][:2]
+    assert np.degrees(np.arctan2(y1 - y0, (x1 - x0) * 600 / 400)) == pytest.approx(3.0, abs=0.3)  # top edge follows it
+    assert liveframe.outline(_jpeg(np.full((400, 600, 3), 30, np.uint8)), "c41") is None  # no film
+    assert liveframe.outline(b"not a jpeg", "c41") is None
+
+
+def test_frame_endpoint_outlines_latest_live_frame(studio):
+    assert call(studio, "GET", "/api/camera/frame") == {"seq": 0, "outline": None, "angle": None}
+    lin, _ = make_raw_negative(neutral_wedge_scene())
+    cam = studio.camera
+    with cam.frame_cond:
+        cam.frame, cam.frame_seq = _live_jpeg(lin), 1
+    r = call(studio, "GET", "/api/camera/frame")
+    assert r["seq"] == 1 and len(r["outline"]) == 4 and r["angle"] == 0.0

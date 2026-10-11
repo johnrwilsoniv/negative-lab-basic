@@ -67,6 +67,14 @@ class Previews:
             self.thumb.put(key, small)
             return small if thumb else big
 
+    def seed(self, path: Path, decoded: np.ndarray) -> np.ndarray:
+        """Cache a decode made elsewhere (e.g. a half-size one); returns the preview-width copy."""
+        key = (str(path), path.stat().st_mtime_ns)
+        big = _resize(decoded, PREVIEW_WIDTH)
+        self.full.put(key, big)
+        self.thumb.put(key, _resize(big, THUMB_WIDTH))
+        return big
+
     def _key_lock(self, key) -> threading.Lock:
         with self.lock:
             return self.key_locks.setdefault(key, threading.Lock())

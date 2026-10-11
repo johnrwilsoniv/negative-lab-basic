@@ -16,6 +16,9 @@ const ui = {
   rollName: null,
   liveZoom: 1,
   busy: false,
+  liveSrc: "live",       // capture viewer: live | test
+  testView: load("testView", "frame"),  // frame | result | sensor
+  testSeen: null,        // test shot id the viewer last switched to
 };
 
 function load(key, fallback) {
@@ -234,9 +237,28 @@ function renderCapture() {
   $("#disconnect-btn").disabled = !connected;
   $("#next-name").textContent = ui.state.next_name;
 
+  const testMode = ui.state.shoot_mode === "test";
+  $$("#shoot-mode button").forEach((b) => b.classList.toggle("on", b.dataset.mode === ui.state.shoot_mode));
+  $("#capture-label").textContent = testMode ? "Test shot" : "Capture";
+  $("#shoot-hint").textContent = testMode
+    ? "Each shot gets feedback first; keep the ones you like. The camera's shutter button works too."
+    : "Shots go straight into the roll. The camera's shutter button works too.";
+
+  const test = ui.state.test;
+  if (test && test.status !== "analyzing" && ui.testSeen !== test.id) {
+    ui.testSeen = test.id;  // a fresh result: show it
+    if (ui.tab === "capture") ui.liveSrc = "test";
+  }
+  if (!test) ui.liveSrc = "live";
+  const showTest = ui.liveSrc === "test";
+  live.classList.toggle("show-test", showTest);
+  $("#live-src").hidden = !test;
+  $$("#live-src button").forEach((b) => b.classList.toggle("on", b.dataset.src === ui.liveSrc));
+  renderTest(test, showTest);
+
   // live view stream only while it is on screen (the server runs live view only for viewers)
   const img = $("#live-img");
-  const want = ui.tab === "capture" && connected;
+  const want = ui.tab === "capture" && connected && !showTest;
   if (want && !img.dataset.on) { img.src = "/api/camera/live?t=" + Date.now(); img.dataset.on = "1"; }
   if (!want && img.dataset.on) { img.src = "data:,"; delete img.dataset.on; }
   $("#live-frame").classList.toggle("invert", $("#live-invert").checked);
@@ -281,6 +303,147 @@ function renderCameraConfig(config) {
     div.append(label, input);
     return div;
   }));
+}
+
+// ---------- test shots ----------
+
+const VERDICT = { good: "good", adjust: "adjust", bad: "fix first" };
+const TEST_HINT = { frame: "dashed box: picture found", result: "as it would join the roll", sensor: "red: clipped" };
+
+function renderTest(t, showing) {
+  $("#test-section").hidden = !t;
+  if (!t) return;
+  const r = t.report;
+  $("#test-name").textContent = "#" + t.id;
+  const verdict = $("#test-verdict");
+  verdict.className = "verdict " + (r ? r.verdict : "");
+  verdict.textContent = r ? VERDICT[r.verdict] : "";
+  $("#test-summary").textContent = t.status === "analyzing" ? "Analyzing…" : t.status === "error" ? t.error : r.summary;
+  const list = $("#test-checks");
+  const sig = JSON.stringify([t.id, t.status, r]);
+  if (list.dataset.sig !== sig) {
+    list.dataset.sig = sig;
+    list.replaceChildren(...(r ? r.checks : []).map((c) => {
+      const li = document.createElement("li");
+      li.className = c.status;
+      li.innerHTML = `<span class="dot"></span><div><span class="label"></span> <span class="value"></span></div>`;
+      li.querySelector(".label").textContent = c.label;
+      li.querySelector(".value").textContent = c.value;
+      if (c.advice) {
+        const a = document.createElement("div");
+        a.className = "advice";
+        a.textContent = c.advice;
+        li.append(a);
+      }
+      return li;
+    }));
+  }
+  $("#keep-btn").firstChild.textContent = `Keep as ${ui.state.next_name} `;
+  $("#keep-btn").disabled = ui.busy;
+  const replace = $("#replace-btn");
+  replace.hidden = !frameByName(ui.lastCaptured);
+  replace.textContent = `Replace ${ui.lastCaptured}`;
+  replace.disabled = ui.busy;
+
+  $$("#test-view-seg button").forEach((b) => b.classList.toggle("on", b.dataset.view === ui.testView));
+  $("#test-hint").textContent = TEST_HINT[ui.testView] || "";
+  const img = $("#test-img");
+  $("#test-pending").textContent = t.status === "analyzing" ? "Analyzing test shot…" : t.status === "error" ? t.error : "";
+  if (img.dataset.id !== String(t.id)) {  // never show the previous shot under a new one
+    img.removeAttribute("src");
+    delete img.dataset.want;
+    img.dataset.id = t.id;
+  }
+  if (showing && t.status === "ready") {
+    const url = `/api/test/image?id=${t.id}&view=${ui.testView}&s=${hashText(JSON.stringify(ui.state.settings))}`;
+    if (img.dataset.want !== url) {
+      img.dataset.want = url;
+      const pre = new Image();
+      pre.onload = () => {
+        if (img.dataset.want !== url) return;
+        img.src = url;
+        requestAnimationFrame(layoutTestBox);
+      };
+      pre.src = url;
+    }
+  }
+  layoutTestBox();
+}
+
+function hashText(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+function layoutTestBox() {
+  const t = ui.state && ui.state.test;
+  const framed = t && t.report && t.report.checks.some((c) => c.key === "framing");  // film was found
+  const pic = framed && t.metrics.picture;
+  const img = $("#test-img");
+  const layer = $("#test-layer");
+  // the box is in sensor space: the frame and exposure views, not the (mirrored, cropped) result
+  layer.hidden = !(pic && ui.testView !== "result" && img.getAttribute("src") && ui.liveSrc === "test");
+  if (layer.hidden) return;
+  const wrap = $("#test-wrap").getBoundingClientRect();
+  const r = img.getBoundingClientRect();
+  Object.assign(layer.style, { left: r.left - wrap.left + "px", top: r.top - wrap.top + "px", width: r.width + "px", height: r.height + "px" });
+  const [x, y, w, h] = pic;
+  Object.assign($("#test-box").style, { left: x * 100 + "%", top: y * 100 + "%", width: w * 100 + "%", height: h * 100 + "%" });
+}
+
+function shoot() {
+  return ui.state && ui.state.shoot_mode === "test" ? testShot() : capture();
+}
+
+async function testShot() {
+  if (ui.busy) return;
+  ui.busy = true;
+  renderCapture();
+  try {
+    const r = await api("POST", "/api/test/capture", {});
+    toast(`Test shot #${r.id}: analyzing…`);
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    ui.busy = false;
+    await refresh();
+  }
+}
+
+async function keepTest(replace) {
+  const t = ui.state && ui.state.test;
+  if (!t || ui.busy) return;
+  const reshoot = replace ? ui.lastCaptured : null;
+  if (replace && !frameByName(reshoot)) return;
+  ui.busy = true;
+  try {
+    const r = await api("POST", "/api/test/keep", reshoot ? { reshoot } : {});
+    ui.lastCaptured = r.name;
+    ui.liveSrc = "live";
+    toast(reshoot ? `Replaced ${r.name} (old raw in the roll's trash)` : `Kept as ${r.name}`);
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    ui.busy = false;
+    await refresh();
+  }
+}
+
+async function discardTest() {
+  if (!ui.state || !ui.state.test) return;
+  await act(async () => {
+    await api("POST", "/api/test/discard");
+    ui.liveSrc = "live";
+    await refresh();
+    toast("Test shot discarded");
+  });
+}
+
+function setLiveSrc(src) {
+  if (src === "test" && !(ui.state && ui.state.test)) return;
+  ui.liveSrc = src;
+  renderCapture();
 }
 
 async function capture(reshoot) {
@@ -522,6 +685,7 @@ function initCropEditor() {
   layer.addEventListener("pointerup", end);
   layer.addEventListener("pointercancel", end);
   window.addEventListener("resize", layoutCrop);
+  window.addEventListener("resize", layoutTestBox);
 
   $("#main-img").addEventListener("click", (e) => {
     if (!ui.picking) return;
@@ -572,7 +736,20 @@ function wire() {
     await refresh();
   }).then(refresh));
   $("#disconnect-btn").addEventListener("click", () => act(async () => { await api("POST", "/api/camera/disconnect"); await refresh(); }));
-  $("#capture-btn").addEventListener("click", () => capture());
+  $("#capture-btn").addEventListener("click", () => shoot());
+  $$("#shoot-mode button").forEach((b) => b.addEventListener("click", () => act(async () => {
+    ui.state = await api("POST", "/api/test/mode", { mode: b.dataset.mode });
+    render();
+  })));
+  $("#keep-btn").addEventListener("click", () => keepTest(false));
+  $("#replace-btn").addEventListener("click", () => keepTest(true));
+  $("#discard-btn").addEventListener("click", discardTest);
+  $$("#live-src button").forEach((b) => b.addEventListener("click", () => setLiveSrc(b.dataset.src)));
+  $$("#test-view-seg button").forEach((b) => b.addEventListener("click", () => {
+    ui.testView = b.dataset.view;
+    save("testView", ui.testView);
+    renderCapture();
+  }));
   $("#reshoot-btn").addEventListener("click", () => ui.lastCaptured && capture(ui.lastCaptured));
   $("#last-review-btn").addEventListener("click", () => { ui.selected = ui.lastCaptured; setTab("review"); });
   $("#live-invert").addEventListener("change", renderCapture);
@@ -640,8 +817,14 @@ function wire() {
     if (e.target.closest("input, select, textarea") && e.target.type !== "range" && e.target.type !== "checkbox") return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key;
-    if (ui.tab === "capture" && k === " ") { e.preventDefault(); capture(); return; }
-    if (ui.tab === "capture" && (k === "r" || k === "R") && ui.lastCaptured) { capture(ui.lastCaptured); return; }
+    if (ui.tab === "capture") {
+      const test = ui.state && ui.state.test;
+      if (k === " ") { e.preventDefault(); shoot(); return; }
+      if ((k === "r" || k === "R") && ui.lastCaptured) { capture(ui.lastCaptured); return; }
+      if (test && k === "Enter") { e.preventDefault(); keepTest(false); return; }
+      if (test && (k === "Delete" || k === "Backspace")) { e.preventDefault(); discardTest(); return; }
+      if (test && (k === "l" || k === "L")) { setLiveSrc(ui.liveSrc === "test" ? "live" : "test"); return; }
+    }
     if (e.target.type === "range") return;
     if (k === "ArrowLeft") { e.preventDefault(); step(-1); }
     else if (k === "ArrowRight") { e.preventDefault(); step(1); }

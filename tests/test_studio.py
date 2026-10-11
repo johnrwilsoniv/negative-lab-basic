@@ -182,3 +182,94 @@ def test_errors(studio):
     with pytest.raises(urllib.error.HTTPError) as e:
         call(studio, "GET", "/../pyproject.toml")
     assert e.value.code == 404
+
+
+# --- test shots ---
+
+def wait_for(fn, timeout=30.0):
+    import time
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        if v := fn():
+            return v
+        time.sleep(0.05)
+    raise AssertionError("timed out")
+
+
+def test_shot_feedback_then_keep(studio):
+    call(studio, "POST", "/api/camera/connect")
+    assert call(studio, "GET", "/api/state")["shoot_mode"] == "test"
+    tid = call(studio, "POST", "/api/test/capture", {})["id"]
+    test = wait_for(lambda: (t := call(studio, "GET", "/api/state")["test"]) and t["status"] != "analyzing" and t)
+    assert test["id"] == tid and test["status"] == "ready", test
+    assert test["report"]["verdict"] in ("good", "adjust", "bad")
+    assert {c["key"] for c in test["report"]["checks"]} >= {"settings"}
+    assert test["settings"].startswith("ISO 100")
+    assert call(studio, "GET", "/api/state")["frames"] == []  # nothing in the roll yet
+    for view in ("frame", "result", "sensor"):
+        assert call(studio, "GET", f"/api/test/image?id={tid}&view={view}")[:2] == b"\xff\xd8"
+
+    # a second test shot replaces the first
+    tid2 = call(studio, "POST", "/api/test/capture", {})["id"]
+    assert tid2 == tid + 1
+    with pytest.raises(urllib.error.HTTPError) as e:
+        call(studio, "GET", f"/api/test/image?id={tid}&view=frame")
+    assert e.value.code == 404
+    assert [p.name for p in studio.test_dir.iterdir()] == [f"{tid2:04d}"]
+
+    assert call(studio, "POST", "/api/test/keep", {})["name"] == "frame-001"
+    state = call(studio, "GET", "/api/state")
+    assert state["test"] is None and [f["name"] for f in state["frames"]] == ["frame-001"]
+    assert (studio.roll.folder / "frame-001.DNG").exists()
+    assert list(studio.test_dir.iterdir()) == []
+    with pytest.raises(urllib.error.HTTPError) as e:
+        call(studio, "POST", "/api/test/keep", {})
+    assert e.value.code == 404
+
+    # keep in place of the last frame
+    call(studio, "POST", "/api/test/capture", {})
+    assert call(studio, "POST", "/api/test/keep", {"reshoot": "frame-001"})["name"] == "frame-001"
+    assert len(list(studio.roll.trash.iterdir())) == 1
+
+    call(studio, "POST", "/api/test/capture", {})
+    call(studio, "POST", "/api/test/discard", {})
+    assert call(studio, "GET", "/api/state")["test"] is None
+    assert list(studio.test_dir.iterdir()) == []
+    assert [f["name"] for f in call(studio, "GET", "/api/state")["frames"]] == ["frame-001"]
+
+
+def test_shoot_mode_routes_shutter_button(studio, tmp_path):
+    def shot(name):
+        f = tmp_path / name
+        write_dng(f, make_negative())
+        return f
+
+    studio.camera_files([shot("a.DNG")])  # default: test first
+    assert studio.test is not None and studio.roll.frames == {}
+    with pytest.raises(urllib.error.HTTPError):
+        call(studio, "POST", "/api/test/mode", {"mode": "nope"})
+    assert call(studio, "POST", "/api/test/mode", {"mode": "direct"})["shoot_mode"] == "direct"
+    studio.camera_files([shot("b.DNG")])
+    assert list(studio.roll.frames) == ["frame-001"]
+
+
+def test_test_shot_without_raw_says_why(studio, tmp_path):
+    jpg = tmp_path / "x.JPG"
+    jpg.write_bytes(b"\xff\xd8not really")
+    studio.new_test([jpg])
+    test = wait_for(lambda: studio.test["status"] != "analyzing" and studio.test_state())
+    assert test["status"] == "error" and "Image Quality to RAW" in test["error"]
+    with pytest.raises(ValueError):
+        studio.keep_test()
+    assert studio.test is not None  # still there to look at or discard
+
+
+def test_leftover_test_shot_comes_back(tmp_path):
+    source = raw_folder(tmp_path / "source", n=1)
+    old = tmp_path / ".nlb" / "test"
+    for n in ("0003", "0007"):
+        (old / n).mkdir(parents=True)
+        write_dng(old / n / "x.DNG", make_negative())
+    st = Studio(tmp_path, roll="roll", fake_camera=source)
+    assert st.test is not None and st.test["id"] == 8
+    assert [p.name for p in old.iterdir()] == ["0008"]

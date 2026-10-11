@@ -11,7 +11,7 @@ import numpy as np
 import rawpy
 
 from nlb.engine import calibrate as cal
-from nlb.engine import tone
+from nlb.engine import check, tone
 from nlb.engine.view import crop_px, warp, warp_grid
 
 PARAMS = [
@@ -69,6 +69,14 @@ def _view(lin: np.ndarray, settings: dict, frame: dict, region=None) -> np.ndarr
     return img
 
 
+def _flat_thumb(lin: np.ndarray, settings: dict) -> np.ndarray:
+    thumb = cal.thumbnail(lin)
+    gain = _gain(settings)
+    if gain is not None:
+        thumb = thumb / np.maximum(warp_grid(gain, thumb.shape, False, 0.0), 0.05)
+    return thumb
+
+
 _CAL_CACHE: dict[tuple, cal.Calibration] = {}  # the studio re-develops one lin per slider move
 _CAL_CACHE_SIZE = 4
 
@@ -82,10 +90,7 @@ def _calibration(lin: np.ndarray, settings: dict) -> cal.Calibration:
     hit = _CAL_CACHE.get(key)
     if hit is not None:
         return hit
-    thumb = cal.thumbnail(lin)
-    if gain is not None:
-        thumb = thumb / np.maximum(warp_grid(gain, thumb.shape, False, 0.0), 0.05)
-    result = cal.calibrate(thumb, _film(settings))
+    result = cal.calibrate(_flat_thumb(lin, settings), _film(settings))
     if len(_CAL_CACHE) >= _CAL_CACHE_SIZE:
         _CAL_CACHE.pop(next(iter(_CAL_CACHE)))
     _CAL_CACHE[key] = result
@@ -274,6 +279,31 @@ def exposure_report(lin: np.ndarray, settings: dict) -> dict:
         "film_clipped": round(clipped, 4),
         "advice": advice,
     }
+
+
+def capture_metrics(lin: np.ndarray, settings: dict, detail: np.ndarray | None = None) -> dict:
+    """Everything a test shot is judged on, in sensor space (as live view shows it).
+
+    exposure_report() measured on the shot's own film base (settings["base"] is ignored:
+    a picked base belongs to the roll's exposure), plus: size: [w, h] of `lin`;
+    picture: [x, y, w, h] of the picture area or None; angle: strip tilt in degrees or None
+    (fewer than 4 holes); holes / holder / film: fractions of the frame; falloff: see
+    engine.check.falloff; edge_px: sprocket-hole edge width in pixels of `detail` (a
+    higher-resolution decode of the same capture), None without `detail` or holes.
+    """
+    own = {**settings, "base": None}
+    report = exposure_report(lin, own)
+    c = _calibration(lin, own)
+    thumb = _flat_thumb(lin, own)
+    report.update(check.layout(thumb, c))
+    report["size"] = [lin.shape[1], lin.shape[0]]
+    report["falloff"] = None if _gain(settings) is not None else check.falloff(thumb, c)
+    report["edge_px"] = check.edge_width(detail, c.light, _film(settings)) if detail is not None else None
+    if report["picture"] is not None:
+        report["picture"] = [round(float(v), 4) for v in report["picture"]]
+    if report["angle"] is not None:
+        report["angle"] = round(report["angle"], 2)
+    return report
 
 
 def make_flatfield(lin: np.ndarray) -> dict:

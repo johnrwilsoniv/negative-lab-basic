@@ -1,6 +1,7 @@
 """`nlb studio`: local web app for tethered capture, review and rendering of a roll."""
 import json
 import re
+import shutil
 import threading
 import traceback
 import webbrowser
@@ -10,8 +11,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import numpy as np
+
 from nlb import develop
 from nlb.heic import RAW_SUFFIXES
+from nlb.studio import feedback
 from nlb.studio.cache import LRU, Previews, edit_hash, to_jpeg
 from nlb.studio.camera import CameraWorker, FakeBackend, GPhotoBackend
 from nlb.studio.roll import Roll
@@ -20,6 +24,9 @@ STATIC = Path(__file__).parent / "static"
 CONTENT_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
                  ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml"}
 VIEWS = ("crop", "full", "negative")
+TEST_VIEWS = ("frame", "result", "sensor")
+SHOOT_MODES = ("test", "direct")
+TEMPLATE_KEYS = ("rotation", "angle", "params")
 
 
 class RenderJob:
@@ -96,13 +103,19 @@ class Studio:
         self.pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="prepare")
         self.job = RenderJob()
         self.ingest_lock = threading.Lock()
+        self.shoot_mode = "test"   # where captures go: the test-shot slot, or straight into the roll
+        self.test_dir = self.library / ".nlb" / "test"
+        self.test: dict | None = None
+        self.test_seq = 0
+        self.test_lock = threading.Lock()
+        self.test_history: list[dict] = []  # {"id", "headroom", "edge_px"}, for focus comparisons
         names = self.roll_names()
         self.open_roll(roll or (max(names, key=lambda n: (self.library / n).stat().st_mtime)
                                 if names else "roll01"), create=True)
         make_backend = (lambda: FakeBackend(fake_camera)) if fake_camera else GPhotoBackend
-        self.camera = CameraWorker(make_backend, self.library / ".nlb" / "incoming",
-                                   lambda files: self.ingest(files))
+        self.camera = CameraWorker(make_backend, self.library / ".nlb" / "incoming", self.camera_files)
         self.camera.start()
+        self.restore_test()
 
     # --- rolls ---
 
@@ -164,10 +177,181 @@ class Studio:
                 roll.add_capture(f, name)
             if name in roll.frames and template:
                 # same holder, same film: carry orientation and adjustments over
-                roll.update_frame(name, {k: template[k] for k in ("rotation", "angle", "params")
-                                         if k in template})
+                roll.update_frame(name, {k: template[k] for k in TEMPLATE_KEYS if k in template})
         self.pool.submit(self.prepare, roll, name)
         return name
+
+    def camera_files(self, files: list[Path]) -> None:
+        """Files from the camera's own shutter button follow the shoot mode, like Space does."""
+        if self.shoot_mode == "test":
+            self.new_test(files)
+        else:
+            self.ingest(files)
+
+    # --- test shots: shoot, get feedback, then keep into the roll or throw away ---
+
+    def new_test(self, files: list[Path], config: dict | None = None) -> int:
+        """`files` (one capture) become the test shot, replacing (deleting) the previous one."""
+        with self.test_lock:
+            self.test_seq += 1
+            tid = self.test_seq
+            dest = self.test_dir / f"{tid:04d}"
+            dest.mkdir(parents=True, exist_ok=True)
+            moved = []
+            for f in files:
+                shutil.move(f, dest / f.name)
+                moved.append(dest / f.name)
+            old, self.test = self.test, {
+                "id": tid, "dir": dest, "files": moved, "status": "analyzing", "error": None,
+                "config": config if config is not None else self.camera.snapshot()["config"],
+                "report": None, "metrics": None, "crop": None}
+        if old:
+            shutil.rmtree(old["dir"], ignore_errors=True)
+        self.pool.submit(self.analyze_test, tid)
+        return tid
+
+    def restore_test(self) -> None:
+        """A test shot left over from the last session comes back; older ones are deleted."""
+        if not self.test_dir.is_dir():
+            return
+        dirs = sorted(d for d in self.test_dir.iterdir() if d.is_dir())
+        for d in dirs[:-1]:
+            shutil.rmtree(d, ignore_errors=True)
+        if dirs and (files := sorted(p for p in dirs[-1].iterdir() if p.is_file())):
+            self.test_seq = int(dirs[-1].name) if dirs[-1].name.isdigit() else 0
+            tmp = self.test_dir / ".restore"
+            shutil.rmtree(tmp, ignore_errors=True)
+            dirs[-1].rename(tmp)
+            self.new_test(sorted(tmp.iterdir()), config={})
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def _test(self, tid: int | None = None) -> dict:
+        t = self.test
+        if t is None or (tid is not None and t["id"] != tid):
+            raise KeyError("no such test shot" if t else "no test shot")
+        return t
+
+    @staticmethod
+    def _raw(t: dict) -> Path:
+        raw = next((f for f in t["files"] if f.suffix.lower() in RAW_SUFFIXES), None)
+        if raw is None:
+            got = ", ".join(f.suffix.lstrip(".").upper() for f in t["files"]) or "nothing"
+            raise ValueError(f"the camera sent {got}, not a raw file: set Image Quality to RAW "
+                             "and PC Save Image Size to Original")
+        return raw
+
+    def analyze_test(self, tid: int) -> None:
+        t = self.test
+        if t is None or t["id"] != tid:
+            return  # replaced, kept or thrown away before we got to it
+        try:
+            raw = self._raw(t)
+            roll = self.roll
+            snap = roll.snapshot()
+            settings = snap["settings"]
+            half = develop.load_linear(raw, preview=True)
+            lin = self.previews.seed(raw, half)
+            metrics = develop.capture_metrics(lin, settings, detail=half)
+            del half
+            crop = develop.auto_crop(lin, settings)
+            best = self._sharpest(metrics)
+            report = feedback.assess(metrics, t["config"], self._reference(roll, snap), best, scale=2.0)
+            self.test_history.append({"id": tid, "headroom": metrics["base_headroom"],
+                                      "edge_px": metrics["edge_px"]})
+            update = {"status": "ready", "report": report, "metrics": metrics, "crop": crop}
+        except Exception as e:
+            traceback.print_exc()
+            update = {"status": "error", "error": str(e)}
+        with self.test_lock:
+            if self.test and self.test["id"] == tid:
+                self.test.update(update)
+
+    def _sharpest(self, metrics: dict) -> dict | None:
+        """The sharpest earlier test shot at about this exposure (clipped holes read sharper)."""
+        if metrics.get("edge_px") is None:
+            return None
+        h = max(metrics["base_headroom"], 1e-4)
+        same = [t for t in self.test_history if t["edge_px"] is not None
+                and abs(np.log2(max(t["headroom"], 1e-4) / h)) <= feedback.SAME_EXPOSURE]
+        return min(same, key=lambda t: t["edge_px"], default=None)
+
+    def _reference(self, roll: Roll, snap: dict) -> dict | None:
+        """What the shot should match: the roll's picked film base, else its last kept frame."""
+        if snap["settings"].get("base"):
+            return {"label": "the roll's film base", "base": snap["settings"]["base"]}
+        kept = [n for n, f in snap["frames"].items() if not f.get("rejected")]
+        if not kept:
+            return None
+        try:
+            lin = self.previews.linear(roll.path(kept[-1]))
+            base = develop.exposure_report(lin, {**snap["settings"], "base": None})["base"]
+        except Exception:
+            traceback.print_exc()
+            return None
+        return {"label": kept[-1], "base": base}
+
+    def _test_frame(self, t: dict, snap: dict) -> dict:
+        frames = snap["frames"]
+        template = frames[list(frames)[-1]] if frames else {}
+        return {**{k: template[k] for k in ("rotation", "params") if k in template},
+                "angle": 0.0, "crop": t["crop"] or develop.FALLBACK_CROP}
+
+    def test_image(self, tid: int, view: str) -> bytes:
+        t = self._test(tid)
+        raw = self._raw(t)
+        snap = self.roll.snapshot()
+        settings, frame = snap["settings"], self._test_frame(t, snap)
+        if view == "frame":
+            # sensor orientation, own film base: the frame as live view shows it
+            settings = {**settings, "flip": False, "base": None}
+            frame = {**frame, "rotation": 0, "crop": (t["metrics"] or {}).get("picture") or develop.FALLBACK_CROP}
+        key = ("test", tid, view, edit_hash(settings, frame))
+        jpeg = self.jpegs.get(key)
+        if jpeg is None:
+            lin = self.previews.linear(raw)
+            if view == "sensor":
+                img = sensor_map(lin)
+            else:
+                img = develop.develop(lin, settings, frame, view="full" if view == "frame" else "crop")
+            jpeg = to_jpeg(img, quality=88)
+            self.jpegs.put(key, jpeg)
+        return jpeg
+
+    def keep_test(self, reshoot: str | None = None) -> str:
+        """The test shot joins the current roll as its next frame (or replaces `reshoot`)."""
+        with self.test_lock:
+            t = self._test()
+            self._raw(t)
+            self.test = None
+        try:
+            name = self.ingest(t["files"], reshoot)
+        except Exception:
+            with self.test_lock:
+                self.test = self.test or t  # nothing lost: still the test shot
+            raise
+        shutil.rmtree(t["dir"], ignore_errors=True)
+        if t["crop"] and name in self.roll.frames and self.roll.frames[name].get("crop") is None:
+            self.roll.update_frame(name, {"crop": t["crop"]})
+        return name
+
+    def discard_test(self) -> None:
+        with self.test_lock:
+            t, self.test = self.test, None
+        if t:
+            shutil.rmtree(t["dir"], ignore_errors=True)
+
+    def set_shoot_mode(self, mode: str) -> None:
+        if mode not in SHOOT_MODES:
+            raise ValueError(f"mode must be one of {SHOOT_MODES}")
+        self.shoot_mode = mode
+
+    def test_state(self) -> dict | None:
+        t = self.test
+        if t is None:
+            return None
+        return {"id": t["id"], "status": t["status"], "error": t["error"], "report": t["report"],
+                "metrics": t["metrics"], "files": [f.name for f in t["files"]],
+                "settings": feedback.describe_settings(t["config"])}
 
     def image(self, roll: Roll, name: str, view: str, thumb: bool) -> tuple[bytes, str]:
         snap = roll.snapshot()
@@ -197,7 +381,7 @@ class Studio:
                 "rolls": self.roll_names(), "folder": str(roll.folder), "out": str(out_dir(roll)),
                 "settings": snap["settings"], "frames": frames, "params": develop.PARAMS,
                 "next_name": roll.next_name(), "camera": self.camera.snapshot(),
-                "job": self.job.snapshot()}
+                "job": self.job.snapshot(), "shoot_mode": self.shoot_mode, "test": self.test_state()}
 
     # --- roll-level actions ---
 
@@ -236,6 +420,15 @@ class Studio:
         frames = roll.snapshot()["frames"]
         names = [n for n in (names or frames) if n in frames and not frames[n].get("rejected")]
         return self.job.start(roll, names, out_dir(roll))
+
+
+def sensor_map(lin: np.ndarray) -> np.ndarray:
+    """What the sensor recorded: brightest channel in gray (display gamma), clipped pixels red."""
+    peak = lin.max(axis=2)
+    gray = np.power(np.clip(peak, 0.0, 1.0), 1 / 2.2)
+    img = np.repeat(gray[..., None], 3, axis=2)
+    img[peak >= 0.98] = (1.0, 0.15, 0.1)
+    return img
 
 
 class ApiError(Exception):
@@ -352,6 +545,47 @@ def make_handler(studio: Studio):
         if not files:
             raise ApiError(502, "camera returned no file")
         return {"name": studio.ingest(files, reshoot)}
+
+    @route("POST", r"/api/test/capture")
+    def test_capture(h, body, q):
+        try:
+            files = studio.camera.submit("capture").result(timeout=120)
+        except Exception as e:
+            raise ApiError(502, str(e))
+        if not files:
+            raise ApiError(502, "camera returned no file")
+        return {"id": studio.new_test(files)}
+
+    @route("POST", r"/api/test/keep")
+    def test_keep(h, body, q):
+        reshoot = body.get("reshoot")
+        if reshoot:
+            frame_name(reshoot)
+        try:
+            return {"name": studio.keep_test(reshoot)}
+        except KeyError as e:
+            raise ApiError(404, str(e))
+
+    @route("POST", r"/api/test/discard")
+    def test_discard(h, body, q):
+        studio.discard_test()
+        return {"ok": True}
+
+    @route("POST", r"/api/test/mode")
+    def test_mode(h, body, q):
+        studio.set_shoot_mode(str(body.get("mode")))
+        return studio.state()
+
+    @route("GET", r"/api/test/image")
+    def test_image(h, body, q):
+        view = q.get("view", "frame")
+        if view not in TEST_VIEWS:
+            raise ApiError(400, f"view must be one of {TEST_VIEWS}")
+        try:
+            jpeg = studio.test_image(int(q.get("id", 0)), view)
+        except KeyError as e:
+            raise ApiError(404, str(e))
+        h.send_bytes(jpeg, "image/jpeg", "no-cache")
 
     @route("GET", r"/api/camera/live")
     def camera_live(h, body, q):

@@ -26,17 +26,35 @@
       <!-- capture -->
       <div class="live" id="live">
         <div class="live-frame" id="live-frame"><img id="live-img" alt=""></div>
+        <div class="test-view" id="test-view">
+          <div class="img-wrap" id="test-wrap">
+            <img id="test-img" alt="">
+            <div class="test-layer" id="test-layer"><div class="test-box" id="test-box"></div></div>
+          </div>
+          <div class="test-pending" id="test-pending"></div>
+        </div>
         <div class="placeholder" id="live-placeholder">
           <p id="live-message">Camera not connected.</p>
           <button id="connect-btn" class="primary">Connect camera</button>
           <p class="hint">A7 IV: USB Connection Mode → PC Remote, USB Streaming → Off.</p>
         </div>
         <div class="overlay-tools">
-          <label><input type="checkbox" id="live-invert" checked> Invert</label>
-          <span class="seg" id="live-zoom">
-            <button data-zoom="1" class="on">Fit</button><button data-zoom="2">2×</button><button data-zoom="4">4×</button>
+          <span class="seg" id="live-src" hidden>
+            <button data-src="live" title="L">Live</button><button data-src="test" title="L">Test shot</button>
           </span>
-          <span class="muted">click to set zoom point</span>
+          <span class="live-tools">
+            <label><input type="checkbox" id="live-invert" checked> Invert</label>
+            <span class="seg" id="live-zoom">
+              <button data-zoom="1" class="on">Fit</button><button data-zoom="2">2×</button><button data-zoom="4">4×</button>
+            </span>
+            <span class="muted">click to set zoom point</span>
+          </span>
+          <span class="test-tools">
+            <span class="seg" id="test-view-seg">
+              <button data-view="frame" title="Whole frame, inverted, as live view shows it">Frame</button><button data-view="result" title="Cropped result, as it would join the roll">Result</button><button data-view="sensor" title="Raw brightness; clipped pixels in red">Exposure</button>
+            </span>
+            <span class="muted" id="test-hint"></span>
+          </span>
         </div>
       </div>
       <!-- review -->
@@ -66,6 +84,27 @@
       <!-- capture panel -->
       <div id="capture-panel">
         <section>
+          <h2>Shoot</h2>
+          <div class="kv"><span>Mode</span>
+            <span class="seg" id="shoot-mode">
+              <button data-mode="test" title="Captures become a test shot with feedback; keep the ones you like">Test first</button><button data-mode="direct" title="Captures go straight into the roll">Direct</button>
+            </span>
+          </div>
+          <button id="capture-btn" class="big primary"><span id="capture-label">Capture</span> <kbd>Space</kbd></button>
+          <div class="kv"><span>Next frame</span><span id="next-name">—</span></div>
+          <p class="hint" id="shoot-hint">The shutter button on the camera works too.</p>
+        </section>
+        <section id="test-section" hidden>
+          <h2>Test shot <span class="muted" id="test-name"></span> <span class="verdict" id="test-verdict"></span></h2>
+          <p class="test-summary" id="test-summary"></p>
+          <ul class="checks" id="test-checks"></ul>
+          <div class="row">
+            <button id="keep-btn" class="primary" title="Enter">Keep <kbd>⏎</kbd></button>
+            <button id="replace-btn" title="Keep it in place of the last frame">Replace</button>
+            <button id="discard-btn" title="Delete">Discard <kbd>Del</kbd></button>
+          </div>
+        </section>
+        <section>
           <h2>Camera</h2>
           <div class="kv"><span>Model</span><span id="cam-model">—</span></div>
           <div class="cam-msg" id="cam-msg"></div>
@@ -73,12 +112,6 @@
           <div class="row">
             <button id="disconnect-btn">Disconnect</button>
           </div>
-        </section>
-        <section>
-          <h2>Shoot</h2>
-          <button id="capture-btn" class="big primary">Capture <kbd>Space</kbd></button>
-          <div class="kv"><span>Next frame</span><span id="next-name">—</span></div>
-          <p class="hint">The shutter button on the camera works too.</p>
         </section>
         <section id="last-section" hidden>
           <h2>Last capture <span class="muted" id="last-name"></span></h2>

@@ -223,6 +223,7 @@ class CameraWorker(threading.Thread):
             else:
                 files = self.backend.poll(self.tmp, 200)
             if files:
+                self._refresh_config()  # the shot's settings, if changed on the camera body
                 self.on_files(files)
         except Exception as e:  # unplugged, camera asleep, ...
             traceback.print_exc()
@@ -259,10 +260,19 @@ class CameraWorker(threading.Thread):
         self._require()
         self._set(status="capturing")
         try:
-            return self.backend.capture(self.tmp)
+            files = self.backend.capture(self.tmp)
+            self._refresh_config()
+            return files
         finally:
             if self.backend is not None:
                 self._set(status="ready")
+
+    def _refresh_config(self) -> None:
+        """Re-read settings: dials on the camera body change them behind our back."""
+        try:
+            self._set(config=self.backend.get_config())
+        except Exception:
+            traceback.print_exc()
 
     def _require(self) -> None:
         if self.backend is None:

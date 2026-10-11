@@ -16,6 +16,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
 body {
   background: var(--bg);
@@ -106,6 +107,35 @@ body.tab-capture #review-panel, body.tab-review #capture-panel { display: none; 
 .seg button { border-radius: 0; margin-left: -1px; padding: 4px 9px; }
 .seg button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
 .seg button:last-child { border-radius: 0 6px 6px 0; }
+
+/* test shot */
+.test-view { position: absolute; inset: 0; display: none; }
+.live.show-test .test-view { display: block; }
+.live.show-test .live-frame, .live.show-test .placeholder { display: none; }
+.live:not(.show-test) .test-tools, .live.show-test .live-tools { display: none; }
+.live-tools, .test-tools { display: inline-flex; align-items: center; gap: 10px; }
+.test-layer { position: absolute; pointer-events: none; }
+.test-box { position: absolute; border: 2px dashed var(--accent); outline: 1px solid rgba(0,0,0,.7); }
+.test-pending { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); pointer-events: none; }
+.test-pending:empty { display: none; }
+.test-summary { margin: 0 0 8px; }
+.verdict { float: right; font-size: 11px; letter-spacing: .04em; padding: 1px 7px; border-radius: 9px; color: var(--accent-text); background: var(--muted); }
+.verdict:empty { display: none; }
+.verdict.good { background: var(--ok); }
+.verdict.adjust { background: var(--accent); }
+.verdict.bad { background: var(--danger); color: #fff; }
+.checks { list-style: none; margin: 0 0 4px; padding: 0; }
+.checks li { display: grid; grid-template-columns: 10px 1fr; column-gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); }
+.checks li:first-child { border-top: 0; }
+.checks .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; background: var(--muted); }
+.checks .ok .dot { background: var(--ok); }
+.checks .warn .dot { background: var(--accent); }
+.checks .bad .dot { background: var(--danger); }
+.checks .label { font-weight: 600; }
+.checks .value { color: var(--muted); }
+.checks .advice { grid-column: 2; font-size: 12px; margin-top: 2px; }
+.checks .bad .advice { color: #f3a79c; }
+.checks .warn .advice { color: #f0cd94; }
 
 /* review stage */
 .img-wrap { position: absolute; inset: 16px 16px 60px; display: flex; align-items: center; justify-content: center; }

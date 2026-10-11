@@ -21,6 +21,14 @@ holder): capture, review and render a roll, C-41 color or B&W, to 16-bit TIFF.
   the last frame. The camera's own shutter button works too. Frames land in the roll
   folder as `frame-001.ARW`, `frame-002.ARW`, … and numbering resumes across sessions.
   On connect it sets `imagequality=RAW` and `pcsaveimgsize=Original`.
+- **Test shots** (Shoot mode *Test first*, the default): a capture doesn't go into the roll.
+  It gets checked first: exposure (film base vs the 60–85% target, with the shutter speed
+  to set), clipping, framing and centering, strip tilt, even light, stray light, focus
+  (sprocket-hole edge sharpness vs your earlier test shots) and whether it matches the
+  roll's earlier frames. Look at it as *Frame*, *Result* or *Exposure* (clipped pixels in
+  red), then `Enter` keeps it as the next frame, *Replace* swaps it for the last frame, and
+  `Del` throws it away. A new test shot replaces (deletes) the previous one. `L` flips
+  between live view and the test shot. *Direct* mode sends captures straight to the roll.
 - **Review**: per frame crop (drag; `C`), rotate (`[` `]`), straighten, exposure / contrast /
   color sliders, reject (`X`); `←` `→` to move. Per roll: film type, mirror, film base
   (*Pick from rebate* on the negative view) and *Lock levels to roll* for consistent color.

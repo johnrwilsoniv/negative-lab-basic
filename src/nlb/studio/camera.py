@@ -56,8 +56,12 @@ class GPhotoBackend:
                 w = self.cam.get_single_config(name)
             except gp.GPhoto2Error:
                 continue
-            choices = ([w.get_choice(i) for i in range(w.count_choices())]
-                       if w.get_type() in (gp.GP_WIDGET_RADIO, gp.GP_WIDGET_MENU) else [])
+            is_choice = w.get_type() in (gp.GP_WIDGET_RADIO, gp.GP_WIDGET_MENU)
+            if is_choice and w.count_choices() == 0:
+                # e.g. f-number with a manual lens: the value is NULL and
+                # python-gphoto2 segfaults reading it
+                continue
+            choices = [w.get_choice(i) for i in range(w.count_choices())] if is_choice else []
             out[name] = {"label": w.get_label(), "value": w.get_value(), "choices": choices,
                          "readonly": bool(w.get_readonly())}
         return out

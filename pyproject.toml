@@ -8,6 +8,7 @@ dependencies = [
     "opencv-python-headless>=4.10",
     "pillow>=11",
     "pillow-heif>=0.21",
+    "rawpy>=0.27.1",
 ]
 
 [project.scripts]
@@ -18,7 +19,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = [
+    "pytest>=8",
+    "tifffile>=2026.9.20",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["tests"]

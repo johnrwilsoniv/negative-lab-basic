@@ -3,13 +3,14 @@ import argparse
 import json
 import os
 import sys
+from collections import Counter
 from pathlib import Path
 
 import cv2
 import numpy as np
 
 from nlb.geometry import ROTATIONS
-from nlb.heic import list_inputs, load_rgb, save_gray
+from nlb.heic import list_inputs, load_rgb, output_name, save_gray
 from nlb.pipeline import process
 from nlb.sheet import contact_sheet
 
@@ -104,7 +105,7 @@ def cmd_render(folder: Path, inputs: list[Path], args) -> int:
         try:
             rgb = load_rgb(path)
             result = process(rgb, rotation=rotations.get(path.stem, "none"), gamma=args.gamma)
-            save_gray(out / path.name, result.image)
+            save_gray(out / output_name(path), result.image)
         except Exception as e:  # corrupt file or processing failure: report and move on
             _error(f"{path.name}: {e}")
             failed += 1
@@ -140,6 +141,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     inputs = list_inputs(folder)
     if not inputs:
-        _error(f"no HEIC files in {folder}")
+        _error(f"no HEIC or DNG files in {folder}")
+        return 2
+    stems = Counter(p.stem for p in inputs)
+    clashes = sorted(stem for stem, n in stems.items() if n > 1)
+    if clashes:
+        _error(f"several files share a name (e.g. HEIC + DNG); keep one of each: {', '.join(clashes)}")
         return 2
     return (cmd_preview if args.cmd == "preview" else cmd_render)(folder, inputs, args)

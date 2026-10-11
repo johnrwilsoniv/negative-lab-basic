@@ -1,7 +1,7 @@
 import json
 
 import pytest
-from synth import make_negative
+from synth import make_negative, write_dng
 
 from nlb.cli import default_out, main, parse_rotations
 from nlb.heic import load_rgb, save_gray
@@ -14,6 +14,14 @@ def roll(tmp_path):
     folder.mkdir()
     save_gray(folder / "IMG_0001.HEIC", luma(make_negative()))
     save_gray(folder / "IMG_0002.HEIC", luma(make_negative(seed=5)))
+    return folder
+
+
+@pytest.fixture
+def dng_roll(tmp_path):
+    folder = tmp_path / "dng"
+    folder.mkdir()
+    write_dng(folder / "IMG_0003.DNG", make_negative())
     return folder
 
 
@@ -130,3 +138,25 @@ def test_preview_continues_past_processing_error(roll, monkeypatch):
     assert main(["preview", str(roll)]) == 1
     manifest = json.loads((default_out(roll) / ".nlb-work" / "manifest.json").read_text())
     assert [f["name"] for f in manifest["frames"]] == ["IMG_0002"]
+
+
+def test_preview_reads_dng(dng_roll):
+    assert main(["preview", str(dng_roll)]) == 0
+    manifest = json.loads((default_out(dng_roll) / ".nlb-work" / "manifest.json").read_text())
+    frame = manifest["frames"][0]
+    assert frame["file"] == "IMG_0003.DNG" and frame["flags"] == []
+
+
+def test_render_dng_writes_heic(dng_roll):
+    assert main(["render", str(dng_roll), "--rotate", "IMG_0003=180"]) == 0
+    out = default_out(dng_roll)
+    img = load_rgb(out / "IMG_0003.HEIC")
+    assert img.shape[1] * 2 == img.shape[0] * 3
+    assert not (out / "IMG_0003.DNG").exists()
+
+
+def test_refuses_heic_and_dng_with_same_name(roll):
+    write_dng(roll / "IMG_0001.DNG", make_negative())
+    assert main(["preview", str(roll)]) == 2
+    assert main(["render", str(roll)]) == 2
+    assert not default_out(roll).exists()

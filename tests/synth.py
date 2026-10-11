@@ -91,3 +91,36 @@ def make_raw_negative(scene, size=(600, 400), exposure=1.0, falloff=0.0, flare=F
     trans[py:py + ph, px:px + pw] = np.float32(BASE_T) * 10.0 ** -dens
     lin = trans * illum + np.float32(flare) * exposure
     return np.clip(lin, 0, 1).astype(np.float32), (px, py, pw, ph)
+
+
+def make_carrier_negative(scene, size=(800, 600), rebate=(14, 4, 4, 4), angle=0.0):
+    """Sensor-space capture of a C-41 negative of `scene` through a carrier (iPhone rig).
+
+    The carrier masks everything but a window a little larger than the picture, so a thin
+    rebate shows around it: `rebate` = (top, bottom, left, right) pixels. Sprocket holes show
+    dimly beyond the carrier's edge and its walls catch some light. Nothing is bare light, so
+    the thinnest film (rebate, deep shadows) clears the bare-light threshold. `angle` turns the whole
+    capture clockwise by that many degrees (deskew must turn it back by +angle).
+    Returns (lin, picture_box) with picture_box = (x, y, w, h) in pixels before the turn.
+    """
+    width, height = size
+    ph, pw = scene.shape[:2]
+    light = np.float32(LIGHT)
+    trans = np.full((height, width, 3), 0.0007, np.float32)          # carrier lip
+    px, py = (width - pw) // 2, (height - ph) // 2
+    t, b, l, r = rebate
+    trans[: py - t - 30] = trans[py + ph + b + 30:] = 0.003          # walls catch a little light
+    for hy in (py - t - 26, py + ph + b + 12):                       # holes beyond the carrier
+        for hx in range(px, px + pw - 20, 40):
+            trans[hy:hy + 14, hx:hx + 20] = 0.1
+    trans[py - t:py + ph + b, px - l:px + pw + r] = BASE_T           # rebate around the picture
+    dens = np.float32(LAYER_GAMMA) * np.maximum(np.log10(np.maximum(scene, 1e-6) / E_REF), 0.0)
+    trans[py:py + ph, px:px + pw] = np.float32(BASE_T) * 10.0 ** -dens
+    lin = np.clip(trans * light + np.float32(FLARE), 0, 1).astype(np.float32)
+    if angle:
+        import cv2
+
+        m = cv2.getRotationMatrix2D(((width - 1) / 2, (height - 1) / 2), -angle, 1.0)
+        lin = cv2.warpAffine(lin, m, (width, height), flags=cv2.INTER_LINEAR,
+                             borderMode=cv2.BORDER_REPLICATE)
+    return lin, (px, py, pw, ph)

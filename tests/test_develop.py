@@ -3,7 +3,8 @@ import json
 import cv2
 import numpy as np
 import pytest
-from synth import BASE_T, FLARE, LIGHT, make_raw_negative, neutral_wedge_scene, write_dng
+from synth import (BASE_T, FLARE, LIGHT, make_carrier_negative, make_raw_negative, neutral_wedge_scene,
+                   write_dng)
 
 from nlb import develop as d
 from nlb.engine import calibrate as cal
@@ -231,6 +232,34 @@ def test_auto_frame_measures_tilt():
     assert geo["crop"] == pytest.approx(straight, abs=0.02)
     inscribed = d.auto_crop(tilted, C41)  # angle-0 box must fit inside the tilted picture
     assert inscribed[2] < straight[2] and inscribed[3] < straight[3]
+
+
+def _carrier_scene(h=330, w=500):
+    """A scene with big deep shadows (film as thin as the rebate) and a bright sky band on top."""
+    rng = np.random.default_rng(1)
+    e = np.full((h, w, 3), 1 / 40, np.float32)          # shadows: barely above base
+    e[: h // 3] = (0.6, 0.7, 0.9)                        # sky
+    e[h // 3:] *= np.exp(rng.normal(0, 0.6, (h - h // 3, w, 1))).astype(np.float32)
+    return e
+
+
+def test_auto_frame_finds_carrier_window_and_skips_rebate():
+    lin, (x, y, w, h) = make_carrier_negative(_carrier_scene(), angle=1.2)
+    geo = d.auto_frame(lin, C41)
+    assert geo["angle"] == pytest.approx(1.2, abs=0.2)
+    cx, cy, cw, ch = geo["crop"]
+    W, H = 800, 600
+    assert x / W <= cx < (x + 0.04 * w) / W and y / H <= cy < (y + 0.04 * h) / H
+    assert (x + 0.96 * w) / W < cx + cw <= (x + w + 1) / W and (y + 0.96 * h) / H < cy + ch <= (y + h + 1) / H
+
+
+def test_scene_highlights_are_not_sprocket_holes():
+    lin, _ = make_carrier_negative(_carrier_scene())
+    c = cal.calibrate(cal.thumbnail(lin))
+    assert c.hole.mean() > 0.05                          # thin shadows clear the bare-light threshold
+    assert cal.film_angle(c.hole) is None or not cal.holes_on_film(c.hole, cal.lit_region(cal.thumbnail(lin)))
+    _, strip, _ = _negative()
+    assert cal.sprocket_rows(cal.calibrate(cal.thumbnail(strip)).hole) is not None
 
 
 def test_auto_crop_never_raises():

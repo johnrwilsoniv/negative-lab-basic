@@ -106,9 +106,12 @@ def _base_flare(lin: np.ndarray, settings: dict) -> tuple[np.ndarray, np.ndarray
 
 
 def auto_frame(lin: np.ndarray, settings: dict) -> dict:
-    """Initial geometry: {"angle": deskew from the sprocket holes, "crop": picture in that view}.
+    """Initial geometry: {"angle": deskew, "crop": picture in that view}.
 
-    Proposed contract addition; auto_crop() is the angle-0 version. Never raises.
+    Two kinds of capture. A whole strip on a lightbox shows sprocket holes on the film: the
+    hole rows give the angle and the picture is what isn't rebate. A carrier that masks
+    everything but the picture leaves a lit window: its edges give the angle and the picture
+    is the window, less any rebate showing at its edges. Proposed contract addition; auto_crop() is the angle-0 version. Never raises.
     """
     try:
         thumb = cal.thumbnail(lin)
@@ -116,13 +119,22 @@ def auto_frame(lin: np.ndarray, settings: dict) -> dict:
             thumb = np.ascontiguousarray(thumb[:, ::-1])
         film = _film(settings)
         c = cal.calibrate(thumb, film)
-        angle = cal.film_angle(c.hole) or 0.0
+        region = cal.lit_region(thumb)
+        strip = cal.holes_on_film(c.hole, region)
+        angle = (cal.film_angle(c.hole) if strip else cal.outline_angle(region)) or 0.0
         if abs(angle) >= MIN_ANGLE:
             thumb = warp(thumb, False, angle)
-            c = cal.calibrate(thumb, film)
+            if strip:
+                c = cal.calibrate(thumb, film)
+            else:
+                region = cal.lit_region(thumb)
         else:
             angle = 0.0
-        box = cal.picture_box(thumb, c)
+        if strip:
+            box = cal.picture_box(thumb, c)
+        else:
+            box = cal.window_box(region)
+            box = box and cal.trim_rebate(thumb, box)
         if box is None:
             return {"angle": round(angle, 2), "crop": list(FALLBACK_CROP)}
         x, y, w, h = box

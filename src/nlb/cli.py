@@ -130,7 +130,7 @@ def cmd_develop(args) -> int:
         roll = json.loads(roll_file.read_text())
         settings, frames = roll.get("settings", {}), roll.get("frames", {})
     else:
-        settings = {"film": args.film, "flip": False, "base": None, "levels": None}
+        settings = {"film": args.film, "flip": True, "base": None, "levels": None}
         frames = {p.stem: {"file": p.name} for p in sorted(folder.glob("*.[Aa][Rr][Ww]"))
                   if not p.name.startswith("._")}
     if args.film:

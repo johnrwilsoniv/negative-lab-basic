@@ -9,7 +9,7 @@ from pathlib import Path
 
 from nlb.heic import RAW_SUFFIXES
 
-DEFAULT_SETTINGS = {"film": "c41", "flip": False, "base": None, "levels": None}
+DEFAULT_SETTINGS = {"film": "c41", "flip": True, "base": None, "levels": None}
 FRAME_KEYS = {"crop", "rotation", "angle", "rejected", "params", "engine"}
 ROTATIONS = (0, 90, 180, 270)
 ENGINES = ("nlb", "darktable")  # how a frame is developed; a missing "engine" means nlb

@@ -25,6 +25,10 @@ def raw_folder(path, n=2):
 
 # --- Roll ---
 
+def test_new_roll_is_mirrored_by_default(tmp_path):
+    assert Roll(tmp_path / "roll").settings["flip"] is True  # film is scanned backwards
+
+
 def test_next_name_resumes_and_skips_trash(tmp_path):
     roll = Roll(tmp_path / "roll")
     assert roll.next_name() == "frame-001"

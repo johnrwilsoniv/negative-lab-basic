@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NLB Scan Rig</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: full-bleed 3D stage on the left, a spec-sheet rail on the right; stacks on phones */
+:root {
+  --bg: #e8ebe9;
+  --panel: #f5f7f6;
+  --stage: #dde2df;
+  --fg: #1a1f1d;
+  --muted: #5a6460;
+  --line: #cbd3cf;
+  --print: #d4891f;   /* safelight amber marks printed parts */
+  --ref: #3a403e;     /* bought hardware */
+  --known: #2c7a58;
+  --guess: #b0601a;
+  --pick: #4a5fa8;
+  --f-ui: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111413; --panel: #171b1a; --stage: #0d100f; --fg: #e3e8e5; --muted: #95a19c;
+    --line: #2a312e; --print: #e9a23b; --ref: #59615e; --known: #5cc497; --guess: #f0a259; --pick: #8fa3ec;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111413; --panel: #171b1a; --stage: #0d100f; --fg: #e3e8e5; --muted: #95a19c;
+  --line: #2a312e; --print: #e9a23b; --ref: #59615e; --known: #5cc497; --guess: #f0a259; --pick: #8fa3ec;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--f-ui); }
+.app { display: grid; grid-template-columns: minmax(0, 1fr) 380px; height: 100%; }
+.stage { position: relative; background: var(--stage); min-width: 0; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.tags { position: absolute; inset: 0; pointer-events: none; }
+/* Tags sit in a band along the top of the stage, each with a leader line down to its part */
+.tag {
+  position: absolute; left: 0; top: 0; white-space: nowrap;
+  font: 500 11.5px/13px var(--f-num); color: var(--fg); background: var(--panel);
+  border: 1px solid var(--line); padding: 4px 6px; border-radius: 3px;
+}
+.tag.p { border-color: var(--print); }
+.tag b { color: var(--print); font-weight: 500; }
+.leaders { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.leaders line { stroke: var(--muted); stroke-width: 1; }
+.leaders circle { fill: var(--muted); }
+.leaders .p line { stroke: var(--print); }
+.leaders .p circle { fill: var(--print); }
+.toolbar {
+  position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  right: 12px; display: flex; flex-wrap: wrap; gap: 6px;
+}
+.toolbar button {
+  font: 500 13px/1 var(--f-ui); color: var(--fg); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 4px; padding: 8px 11px; cursor: pointer;
+}
+.toolbar button[aria-pressed="true"] { border-color: var(--print); box-shadow: inset 0 -2px 0 var(--print); }
+.toolbar button:hover { border-color: var(--muted); }
+button:focus-visible, input:focus-visible, li[tabindex]:focus-visible { outline: 2px solid var(--print); outline-offset: 2px; }
+.hint { margin-left: auto; align-self: center; font: 12px var(--f-num); color: var(--muted); }
+
+.rail {
+  background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; min-width: 0;
+  padding-block: 22px 32px;
+  padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 26px;
+}
+h1 { font: 700 26px/1.1 var(--f-ui); letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 6px 0 0; font-size: 14px; }
+h2 {
+  font: 600 11.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--muted); margin: 0 0 10px;
+}
+section { min-width: 0; }
+.ctl { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: baseline; margin-bottom: 14px; }
+.ctl label { font-weight: 500; }
+.ctl output { font: 500 13px var(--f-num); font-variant-numeric: tabular-nums; }
+.ctl input { grid-column: 1 / -1; width: 100%; accent-color: var(--print); }
+.ctl small { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
+
+ul.parts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+ul.parts li {
+  display: grid; grid-template-columns: 22px 1fr; gap: 2px 8px; padding: 8px 8px; border-radius: 4px; cursor: pointer;
+}
+ul.parts li:hover { background: color-mix(in srgb, var(--print) 10%, transparent); }
+ul.parts .n { font: 500 13px var(--f-num); color: var(--print); padding-top: 1px; }
+ul.parts.ref .n { color: var(--muted); }
+ul.parts .t { font-weight: 600; }
+ul.parts .d { grid-column: 2; color: var(--muted); font-size: 13.5px; }
+ul.parts .s { grid-column: 2; font: 12.5px var(--f-num); font-variant-numeric: tabular-nums; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+td { padding: 6px 0; border-top: 1px solid var(--line); vertical-align: top; }
+td.v { font: 12.5px var(--f-num); font-variant-numeric: tabular-nums; text-align: right; padding: 7px 8px; white-space: nowrap; }
+td.c { text-align: right; width: 1%; }
+.chip { font: 600 10.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.07em; padding: 3px 6px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
+.chip.known { color: var(--known); }
+.chip.guess { color: var(--guess); }
+.chip.pick { color: var(--pick); }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; color: var(--muted); font-size: 13px; align-items: center; }
+.notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.notes code { font: 12.5px var(--f-num); }
+
+@media (max-width: 820px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 62vh auto; height: auto; }
+  html, body { height: auto; }
+  .rail { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+  .hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage" id="stage">
+    <div class="tags" id="tags"></div>
+    <div class="toolbar" id="toolbar">
+      <button id="bExplode" aria-pressed="true">Exploded</button>
+      <button id="bLock" aria-pressed="false">Lock film</button>
+      <button id="bCut" aria-pressed="false">Cutaway</button>
+      <button id="bRef" aria-pressed="true">Camera &amp; lens</button>
+      <button id="bThread">Zoom to threads</button>
+      <button id="bReset">Reset view</button>
+      <span class="hint">drag to orbit · scroll to zoom</span>
+    </div>
+  </div>
+
+  <aside class="rail">
+    <header>
+      <h1>NLB Scan Rig</h1>
+      <p class="sub">Mockup v2 · Sony A7 + Laowa 90mm 2X + CineStill CS-Lite · 35mm strips, lying flat</p>
+    </header>
+
+    <section>
+      <h2>Adjust</h2>
+      <div class="ctl">
+        <label for="wd">Lens front to film</label><output id="wdVal"></output>
+        <input id="wd" type="range" min="60" max="220" step="1" value="130">
+        <small>Sets the tube length. Guessed from your tape photo; the real number is where the frame fills the screen.</small>
+      </div>
+      <div class="ctl">
+        <label for="axis">Lens centre height</label><output id="axisVal"></output>
+        <input id="axis" type="range" min="30" max="60" step="0.5" value="42.5">
+        <small>Table to the middle of the lens, with the camera resting on its base. Sets how tall the gate box stands.</small>
+      </div>
+    </section>
+
+    <section>
+      <h2>Printed parts</h2>
+      <ul class="parts" id="partList">
+        <li tabindex="0" data-focus="adapter"><span class="n">1</span><span class="t">Lens adapter</span><span class="d">Screws into the 67mm filter thread. Modelled threads, M67 × 0.75.</span><span class="s" id="sAdapter"></span></li>
+        <li tabindex="0" data-focus="tube"><span class="n">2</span><span class="t">Tube</span><span class="d">Blocks room light between lens and film. Slides into the adapter and the gate.</span><span class="s" id="sTube"></span></li>
+        <li tabindex="0" data-focus="gate"><span class="n">3</span><span class="t">Film gate</span><span class="d">Fixed front plate sets the focus plane. A floating pressure plate sits 0.6mm behind it, so strips slide through the side slots with nothing pressing on them.</span><span class="s" id="sGate"></span></li>
+        <li tabindex="0" data-focus="dock"><span class="n">4</span><span class="t">Light dock</span><span class="d">Holds the CS-Lite on its edge behind the gate, with a short shroud between them.</span><span class="s" id="sDock"></span></li>
+        <li tabindex="0" data-focus="lock"><span class="n">5</span><span class="t">Lock switch</span><span class="d">Slides 10mm across the gate lid. Toward LOCK, ramps on a wedge plate push the pressure plate onto the film's edges and hold it flat. Toward SLIDE, two printed leaf springs pull the plate back and the film runs free.</span><span class="s" id="sLock"></span></li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Bought, not printed</h2>
+      <ul class="parts ref">
+        <li tabindex="0" data-focus="cam"><span class="n">·</span><span class="t">Sony A7 + Laowa 90mm f/2.8 2X</span><span class="d">Rests on the table. No cradle; the gate box carries the front end.</span></li>
+        <li tabindex="0" data-focus="dock"><span class="n">·</span><span class="t">CineStill CS-Lite</span><span class="d">Stands on its long edge, lit face toward the film.</span></li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Numbers</h2>
+      <table>
+        <tbody>
+          <tr><td>Filter thread</td><td class="v">M67 × 0.75</td><td class="c"><span class="chip known">known</span></td></tr>
+          <tr><td>CS-Lite body</td><td class="v">165 × 112 × 20</td><td class="c"><span class="chip known">known</span></td></tr>
+          <tr><td>CS-Lite lit area</td><td class="v">149 × 95</td><td class="c"><span class="chip known">known</span></td></tr>
+          <tr><td>35mm frame / strip</td><td class="v">36 × 24 / 35</td><td class="c"><span class="chip known">known</span></td></tr>
+          <tr><td>Gate window</td><td class="v">38 × 26</td><td class="c"><span class="chip pick">my pick</span></td></tr>
+          <tr><td>Film channel, slide mode</td><td class="v">0.6</td><td class="c"><span class="chip pick">my pick</span></td></tr>
+          <tr><td>Switch travel / ramp rise</td><td class="v">10 / 0.58</td><td class="c"><span class="chip pick">my pick</span></td></tr>
+          <tr><td>Film to light</td><td class="v">25</td><td class="c"><span class="chip pick">my pick</span></td></tr>
+          <tr><td>Lens front to film</td><td class="v" id="tWd"></td><td class="c"><span class="chip guess">guess</span></td></tr>
+          <tr><td>Lens centre height</td><td class="v" id="tAxis"></td><td class="c"><span class="chip guess">guess</span></td></tr>
+          <tr><td>Lens barrel</td><td class="v">Ø74 × 125</td><td class="c"><span class="chip guess">guess</span></td></tr>
+        </tbody>
+      </table>
+      <div class="legend">All sizes in mm.</div>
+    </section>
+
+    <section>
+      <h2>Notes for the printer</h2>
+      <ol class="notes">
+        <li>Real parts in matte black. The amber here only marks what gets printed.</li>
+        <li>The 0.75mm thread pitch is fine. Print the adapter flat, thread axis vertical, at 0.12–0.16mm layers.</li>
+        <li>Print the adapter first. It's small and fast, and it tells us if the thread fits before anything bigger is printed.</li>
+        <li>The lock clamps by about 0.1mm more than the film is thick, which is what grips it. The plates flex to take that up. If it locks too hard or too soft, change the ramp rise, not the channel.</li>
+        <li>Print the knob separately and snap it onto the tab after the wedge plate is in. Add a small detent bump at each end of the slot so the switch clicks into SLIDE and LOCK.</li>
+        <li>Largest part is the light dock, about <span id="dockW"></span> wide. That fits a 220mm bed.</li>
+      </ol>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(() => {
+  // ---- fixed dimensions (mm) ----
+  const LENS_LEN = 125, LENS_R = 37;
+  const THREAD_R = 33.5, PITCH = 0.75, THREAD_LEN = 4.5;
+  const FLANGE = 3, TUBE_RO = 36, TUBE_RI = 32;
+  const GW = 92, GATE_D = 30, GATE_FRONT = 14, WALL = 3;
+  const WIN_W = 38, WIN_H = 26, FILM_W = 35;
+  const GAP = 25;                       // film to CS-Lite face
+  const CSL = { l: 165, h: 112, t: 20, litW: 149, litH: 95 };
+  const DOCK_W = CSL.l + 16;
+  // lock switch: film channel in slide mode, switch travel, and the ramps that close the channel
+  const CHANNEL = 0.6, FILM_T = 0.13, SW_TRAVEL = 10;
+  const RAMP_LEN = 12, RAMP_MIN = 0.1, RAMP_RISE = 0.7;
+  const rampT = u => RAMP_MIN + RAMP_RISE * (RAMP_LEN / 2 - u) / RAMP_LEN;   // thickness at u along a ramp
+  const clampShift = s => Math.min(rampT(-s) - rampT(SW_TRAVEL / 2), CHANNEL - FILM_T);
+
+  const P = { wd: 130, axis: 42.5, exploded: true, cut: false, ref: true, lock: false };
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const $ = id => document.getElementById(id);
+
+  // ---- three setup ----
+  const stage = $('stage');
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  stage.prepend(renderer.domElement);
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(32, 1, 2, 6000);
+  const controls = new THREE.OrbitControls(cam, renderer.domElement);
+  controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI * 0.495;
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.75));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(-200, 400, 300); scene.add(sun);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.3); fill.position.set(300, 150, -250); scene.add(fill);
+
+  const M = {
+    print: new THREE.MeshStandardMaterial({ roughness: 0.75, metalness: 0 }),
+    ref: new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.15 }),
+    refHi: new THREE.MeshStandardMaterial({ roughness: 0.45, metalness: 0.2 }),
+    glass: new THREE.MeshStandardMaterial({ color: 0x0c1418, roughness: 0.08, metalness: 0.9 }),
+    blue: new THREE.MeshStandardMaterial({ color: 0x2747b0, roughness: 0.4 }),
+    lit: new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    edge: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.35 }),
+  };
+  M.film = new THREE.MeshStandardMaterial({ map: filmTexture(), transparent: true, alphaTest: 0.04, side: THREE.DoubleSide, roughness: 0.4 });
+  for (const txt of ['SLIDE', 'LOCK']) M[txt] = new THREE.MeshBasicMaterial({ map: textTexture(txt), transparent: true, depthWrite: false });
+  const grid = new THREE.GridHelper(1000, 50); grid.material.transparent = true; grid.material.opacity = 0.35;
+  scene.add(grid);
+
+  function applyTheme() {
+    scene.background = new THREE.Color(css('--stage'));
+    M.print.color.set(css('--print'));
+    M.ref.color.set(css('--ref'));
+    M.refHi.color.set(css('--ref')).offsetHSL(0, 0, 0.08);
+    M.edge.color.set(css('--fg'));
+    grid.material.color.set(css('--line'));
+  }
+  applyTheme();
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+  new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  // ---- groups ----
+  const G = {};
+  ['cam', 'adapter', 'tube', 'gate', 'film', 'dock'].forEach(k => { G[k] = new THREE.Group(); scene.add(G[k]); });
+  const EXPLODE = { cam: -70, adapter: -32, tube: 0, gate: 45, film: 45, dock: 95 };
+  let ex = P.exploded ? 1 : 0, lk = P.lock ? 1 : 0;
+  const anchors = {};   // part key -> local Vector3 on the part's surface, for leader lines and focus
+  const cutHide = [];   // meshes hidden in cutaway
+
+  // ---- geometry helpers ----
+  function add(g, geo, mat, edges) {
+    const m = new THREE.Mesh(geo, mat); g.add(m);
+    if (edges) { const l = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), M.edge); m.add(l); }
+    return m;
+  }
+  function box(g, x0, x1, y0, y1, z0, z1, mat, edges = true) {
+    const m = add(g, new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), mat, edges);
+    m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    return m;
+  }
+  function rectPath(p, w, h, cx, cy) {
+    p.moveTo(cx - w / 2, cy - h / 2); p.lineTo(cx + w / 2, cy - h / 2);
+    p.lineTo(cx + w / 2, cy + h / 2); p.lineTo(cx - w / 2, cy + h / 2); p.lineTo(cx - w / 2, cy - h / 2);
+    return p;
+  }
+  // Shape drawn in (z, y), extruded along +x from x=0 to depth.
+  function extX(shape, depth) {
+    const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 72 });
+    g.rotateY(Math.PI / 2);
+    return g;
+  }
+  function ring(g, x0, x1, rIn, rOut, cy, mat, edges = true) {
+    const s = new THREE.Shape().absarc(0, cy, rOut, 0, Math.PI * 2, false);
+    s.holes.push(new THREE.Path().absarc(0, cy, rIn, 0, Math.PI * 2, true));
+    const m = add(g, extX(s, x1 - x0), mat, edges); m.position.x = x0; return m;
+  }
+  function cyl(g, x0, x1, r, cy, mat) {
+    const geo = new THREE.CylinderGeometry(r, r, x1 - x0, 72); geo.rotateZ(Math.PI / 2);
+    const m = add(g, geo, mat, false); m.position.set((x0 + x1) / 2, cy, 0); return m;
+  }
+  function wall(g, x0, x1, w, y0, y1, holeFn, mat) {
+    const s = rectPath(new THREE.Shape(), w, y1 - y0, 0, (y0 + y1) / 2);
+    if (holeFn) s.holes.push(holeFn());
+    const m = add(g, extX(s, x1 - x0), mat, true); m.position.x = x0; return m;
+  }
+
+  function filmTexture() {
+    const pxmm = 10, L = 228, W = FILM_W;
+    const c = document.createElement('canvas'); c.width = L * pxmm; c.height = W * pxmm;
+    const x = c.getContext('2d');
+    x.fillStyle = 'rgba(168,160,146,0.55)'; x.fillRect(0, 0, c.width, c.height);
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let f = 0; f < 6; f++) {
+      const fx = (1 + f * 38) * pxmm, fy = 5.5 * pxmm, fw = 36 * pxmm, fh = 24 * pxmm;
+      const gr = x.createLinearGradient(fx, fy, fx + fw, fy + fh);
+      gr.addColorStop(0, 'rgba(40,36,32,0.92)'); gr.addColorStop(1, 'rgba(78,72,64,0.88)');
+      x.fillStyle = gr; x.fillRect(fx, fy, fw, fh);
+      for (let i = 0; i < 9; i++) {           // pale shapes = shadows in the scene
+        x.fillStyle = `rgba(190,182,168,${0.15 + rnd() * 0.35})`;
+        x.beginPath();
+        x.ellipse(fx + rnd() * fw, fy + rnd() * fh, 10 + rnd() * 70, 8 + rnd() * 50, rnd() * 3, 0, Math.PI * 2);
+        x.fill();
+      }
+      x.fillStyle = 'rgba(40,36,32,0.8)'; x.font = `${2.2 * pxmm}px monospace`;
+      x.fillText(`▸${12 + f}  ${12 + f}A`, fx + 4 * pxmm, 34.6 * pxmm);
+    }
+    for (let i = 0; i < 48; i++) {             // sprocket holes, 4.75mm pitch
+      const hx = (1.4 + i * 4.75) * pxmm;
+      x.clearRect(hx, 1.0 * pxmm, 2.8 * pxmm, 2.0 * pxmm);
+      x.clearRect(hx, (W - 3.0) * pxmm, 2.8 * pxmm, 2.0 * pxmm);
+    }
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+    return t;
+  }
+
+  // lettering moulded into the lid, 22 x 6 mm
+  function textTexture(txt) {
+    const c = document.createElement('canvas'); c.width = 440; c.height = 120;
+    const x = c.getContext('2d');
+    x.fillStyle = 'rgba(0,0,0,0.6)'; x.font = '600 84px "IBM Plex Mono", ui-monospace, monospace';
+    x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, 220, 64);
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+    return t;
+  }
+
+  function clear(g) {
+    g.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+    g.clear();
+  }
+
+  // ---- build ----
+  let D = {}, lockG = null;
+  function rebuild() {
+    Object.values(G).forEach(clear); cutHide.length = 0;
+    const A = P.axis;
+    const xFront = LENS_LEN;
+    const xFilm = LENS_LEN + P.wd;
+    const xGate = xFilm - GATE_FRONT;
+    const xLight = xFilm + GAP;
+    const GH = A + 36;
+    const tube0 = xFront + FLANGE, tube1 = xGate + 4;
+    D = { tubeLen: tube1 - tube0, GH, dockLen: (xLight + CSL.t + 6) - (xGate + GATE_D) };
+
+    // camera body (bought)
+    const c = G.cam;
+    box(c, -58, -12, 0, 82, -65.5, 65.5, M.ref, false);
+    box(c, -58, -22, 82, 96, -22, 22, M.ref, false);
+    box(c, -12, 20, 0, 78, 38, 64, M.ref, false);          // grip
+    box(c, -50, -30, 96, 99, -6, 6, M.refHi, false);
+    cyl(c, -12, 0, 30, A, M.refHi);
+    // Laowa 90mm 2X
+    cyl(c, 0, LENS_LEN - 1, LENS_R, A, M.ref);
+    cyl(c, 6, 18, LENS_R + 1.4, A, M.refHi);               // aperture ring
+    cyl(c, 42, 96, LENS_R + 1.4, A, M.refHi);              // focus ring
+    ring(c, LENS_LEN - 7, LENS_LEN - 5, LENS_R - 0.5, LENS_R + 0.3, A, M.blue, false);
+    ring(c, LENS_LEN - 1, LENS_LEN, THREAD_R, LENS_R, A, M.ref, false);
+    cyl(c, LENS_LEN - 12, LENS_LEN - 10, 30, A, M.glass);
+    anchors.cam = new THREE.Vector3(-36, 96, 0);
+    c.visible = P.ref;
+
+    // 1 · lens adapter with modelled M67 x 0.75 thread
+    const a = G.adapter;
+    ring(a, xFront - THREAD_LEN, xFront, 31, THREAD_R - 0.45, A, M.print, false);
+    const turns = THREAD_LEN / PITCH, seg = Math.round(turns * 90), pts = [];
+    for (let i = 0; i <= seg; i++) {
+      const t = i / seg, ang = t * turns * Math.PI * 2;
+      pts.push(new THREE.Vector3(xFront - THREAD_LEN + 0.3 + t * (THREAD_LEN - 0.6), A + (THREAD_R - 0.35) * Math.cos(ang), (THREAD_R - 0.35) * Math.sin(ang)));
+    }
+    add(a, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), seg, 0.3, 6, false), M.print, false);
+    ring(a, xFront, xFront + FLANGE, 31, 39, A, M.print);
+    ring(a, xFront + FLANGE, xFront + FLANGE + 9, TUBE_RO + 0.3, 39, A, M.print);
+    anchors.adapter = new THREE.Vector3(xFront + 7, A + 39, 0);
+    anchors.thread = new THREE.Vector3(xFront - 2, A, 0);
+
+    // 2 · tube
+    const t = G.tube;
+    ring(t, tube0, tube1, TUBE_RI, TUBE_RO, A, M.print);
+    anchors.tube = new THREE.Vector3((tube0 + tube1) / 2, A + TUBE_RO, 0);
+
+    // 3 · film gate box
+    const g = G.gate, zw = GW / 2, slot = FILM_W / 2 + 1;
+    wall(g, xGate, xGate + 4, GW, 0, GH, () => new THREE.Path().absarc(0, A, TUBE_RO + 0.3, 0, Math.PI * 2, true), M.print);
+    // fixed front plate (sets the focus plane) and floating pressure plate, both with the 38x26
+    // window; in slide mode the film runs free in the channel between them
+    const winHole = () => rectPath(new THREE.Path(), WIN_W, WIN_H, 0, A);
+    wall(g, xFilm - CHANNEL / 2 - 1.8, xFilm - CHANNEL / 2, GW - 2 * WALL, WALL, GH - WALL, winHole, M.print);
+    const pp = new THREE.Group(), sl = new THREE.Group(); g.add(pp, sl); lockG = { pp, sl };
+    const xPP = xFilm + CHANNEL / 2 + 1.8, xWedge = xPP + 0.9;
+    wall(pp, xFilm + CHANNEL / 2, xPP, GW - 2 * WALL, WALL, GH - WALL, winHole, M.print);
+    // lock switch: knob on the lid, a tab down through the slot, and a wedge plate behind the
+    // pressure plate. Sliding it toward LOCK runs its ramps under the plate's pads.
+    const padT = xWedge - rampT(SW_TRAVEL / 2) - xPP;
+    wall(sl, xWedge, xWedge + 2, 70, WALL + 0.5, GH - WALL - 0.5, () => rectPath(new THREE.Path(), 52, WIN_H, 0, A), M.print);
+    for (const zp of [-22, 22]) for (const dy of [-1, 1]) {
+      const y0 = A + dy * 15.5 - 2;
+      box(pp, xPP, xPP + padT, y0, y0 + 4, zp - 2, zp + 2, M.print, false);
+      const r = new THREE.Shape();      // ramp drawn in (x, -z), extruded up through y
+      r.moveTo(xWedge, -(zp - RAMP_LEN / 2)); r.lineTo(xWedge - rampT(-RAMP_LEN / 2), -(zp - RAMP_LEN / 2));
+      r.lineTo(xWedge - rampT(RAMP_LEN / 2), -(zp + RAMP_LEN / 2)); r.lineTo(xWedge, -(zp + RAMP_LEN / 2));
+      const rg = new THREE.ExtrudeGeometry(r, { depth: 4, bevelEnabled: false }); rg.rotateX(-Math.PI / 2);
+      add(sl, rg, M.print, false).position.y = y0;
+    }
+    const xKnob = xWedge + 1;
+    box(sl, xWedge, xWedge + 2, GH - WALL - 0.5, GH, -2, 2, M.print);                // tab
+    box(sl, xKnob - 5, xKnob + 5, GH, GH + 5, -6, 6, M.print);                        // knob
+    for (const i of [-1, 0, 1]) box(sl, xKnob + i * 3 - 0.6, xKnob + i * 3 + 0.6, GH + 5, GH + 5.8, -6, 6, M.print, false);
+    anchors.lock = new THREE.Vector3(xKnob, GH + 5.8, 0);
+    // rear wall, wider window toward the light
+    wall(g, xGate + GATE_D - WALL, xGate + GATE_D, GW, 0, GH, () => rectPath(new THREE.Path(), 46, 34, 0, A), M.print);
+    box(g, xGate, xGate + GATE_D, 0, WALL, -zw, zw, M.print);                     // floor
+    // lid, split around the switch slot, with SLIDE and LOCK marked at either end
+    const sx0 = xWedge - 0.5, sx1 = xWedge + 2.5, sz = SW_TRAVEL / 2 + 3;
+    cutHide.push(
+      box(g, xGate, sx0, GH - WALL, GH, -zw, zw, M.print), box(g, sx1, xGate + GATE_D, GH - WALL, GH, -zw, zw, M.print),
+      box(g, sx0, sx1, GH - WALL, GH, -zw, -sz, M.print), box(g, sx0, sx1, GH - WALL, GH, sz, zw, M.print));
+    for (const [txt, s] of [['SLIDE', -1], ['LOCK', 1]]) {
+      const m = add(g, new THREE.PlaneGeometry(16, 4.4), M[txt], false);
+      m.geometry.rotateX(-Math.PI / 2).rotateY(-Math.PI / 2);   // reads along +z, in front of the knob
+      m.position.set(xKnob - 11, GH + 0.05, s * 14);
+      cutHide.push(m);
+    }
+    for (const s of [-1, 1]) {                                                    // side walls with film slots
+      const z0 = s > 0 ? zw - WALL : -zw, z1 = z0 + WALL, parts = [];
+      parts.push(box(g, xGate + 4, xFilm - 2.5, WALL, GH - WALL, z0, z1, M.print));
+      parts.push(box(g, xFilm + 2.5, xGate + GATE_D - WALL, WALL, GH - WALL, z0, z1, M.print));
+      parts.push(box(g, xFilm - 2.5, xFilm + 2.5, WALL, A - slot, z0, z1, M.print));
+      parts.push(box(g, xFilm - 2.5, xFilm + 2.5, A + slot, GH - WALL, z0, z1, M.print));
+      if (s > 0) cutHide.push(...parts);
+    }
+    anchors.gate = new THREE.Vector3(xGate + 6, GH, -28);
+
+    // film strip, a frame centred in the window
+    const fm = add(G.film, new THREE.PlaneGeometry(228, FILM_W), M.film, false);
+    fm.geometry.rotateY(-Math.PI / 2);
+    fm.position.set(xFilm, A, 19);
+    anchors.film = new THREE.Vector3(xFilm, A + FILM_W / 2, 90);
+
+    // 4 · light dock + CS-Lite
+    const d = G.dock, x0 = xGate + GATE_D, x1 = xLight + CSL.t + 6, hw = DOCK_W / 2;
+    box(d, x0, x1, 0, 4, -hw, hw, M.print);
+    box(d, xLight - 4, xLight, 4, 16, -hw, hw, M.print);                          // front lip
+    box(d, xLight + CSL.t, xLight + CSL.t + 4, 4, 16, -hw, hw, M.print);          // back lip
+    for (const s of [-1, 1]) {
+      const z0 = s * (CSL.l / 2 + 0.5), z1 = s * hw;
+      box(d, xLight - 4, xLight + CSL.t + 4, 4, 62, Math.min(z0, z1), Math.max(z0, z1), M.print);
+    }
+    // shroud: a short tunnel from the gate's rear window to the light face
+    const sw = 60, sh = 46;
+    box(d, x0, xLight, A + sh / 2, A + sh / 2 + 2, -sw / 2, sw / 2, M.print);
+    box(d, x0, xLight, 4, A - sh / 2, -sw / 2, sw / 2, M.print);
+    box(d, x0, xLight, A - sh / 2, A + sh / 2, -sw / 2, -sw / 2 + 2, M.print);
+    cutHide.push(box(d, x0, xLight, A - sh / 2, A + sh / 2, sw / 2 - 2, sw / 2, M.print));
+    // CS-Lite (bought)
+    box(d, xLight, xLight + CSL.t, 4, 4 + CSL.h, -CSL.l / 2, CSL.l / 2, M.ref, false);
+    const lit = add(d, new THREE.PlaneGeometry(CSL.litW, CSL.litH), M.lit, false);
+    lit.geometry.rotateY(-Math.PI / 2);
+    lit.position.set(xLight - 0.05, 4 + CSL.h / 2, 0);
+    anchors.dock = new THREE.Vector3(xLight + CSL.t / 2, 62, (CSL.l / 2 + hw) / 2);
+    anchors.light = new THREE.Vector3(xLight + CSL.t / 2, 4 + CSL.h, 0);
+
+    cutHide.forEach(m => (m.visible = !P.cut));
+    updateText();
+  }
+
+  function updateText() {
+    $('wdVal').textContent = P.wd + ' mm';
+    $('axisVal').textContent = P.axis + ' mm';
+    $('tWd').textContent = '~' + P.wd;
+    $('tAxis').textContent = '~' + P.axis;
+    $('sAdapter').textContent = `Ø78 × ${FLANGE + 9 + THREAD_LEN} mm`;
+    $('sTube').textContent = `Ø${TUBE_RO * 2} × ${Math.round(D.tubeLen)} mm`;
+    $('sGate').textContent = `${GW} × ${Math.round(D.GH)} × ${GATE_D} mm`;
+    $('sLock').textContent = `knob 10 × 12 · wedge plate 70 × ${Math.round(D.GH - 7)} × 2 mm`;
+    $('sDock').textContent = `${DOCK_W} × ${Math.round(D.dockLen)} × 62 mm`;
+    $('dockW').textContent = DOCK_W + ' mm';
+  }
+
+  // ---- tags ----
+  const TAGS = [
+    ['adapter', '<b>1</b> adapter', true], ['tube', '<b>2</b> tube', true], ['gate', '<b>3</b> film gate', true],
+    ['dock', '<b>4</b> light dock', true], ['lock', '<b>5</b> lock switch', true], ['light', 'CS-Lite', false], ['film', 'strip', false], ['cam', 'A7 + Laowa 90', false],
+  ];
+  const SVG = 'http://www.w3.org/2000/svg';
+  const leaders = document.createElementNS(SVG, 'svg'); leaders.setAttribute('class', 'leaders');
+  $('tags').appendChild(leaders);   // first, so the tags paint over the lines
+  const tagEls = TAGS.map(([k, html, p]) => {
+    const el = document.createElement('div'); el.className = 'tag' + (p ? ' p' : ''); el.innerHTML = html;
+    $('tags').appendChild(el);
+    const lg = document.createElementNS(SVG, 'g'); if (p) lg.setAttribute('class', 'p');
+    const line = document.createElementNS(SVG, 'line'), dot = document.createElementNS(SVG, 'circle');
+    dot.setAttribute('r', 2.5); lg.append(line, dot); leaders.appendChild(lg);
+    return { k, el, lg, line, dot, w: el.offsetWidth };
+  });
+  const groupOf = k => ({ thread: 'adapter', light: 'dock', lock: 'gate' }[k] || k);
+  const v = new THREE.Vector3();
+  function worldAnchor(k) { return (k === 'lock' ? lockG.sl : G[groupOf(k)]).localToWorld(anchors[k].clone()); }
+
+  // Tags pack into one row along the top, or into staggered rows when one doesn't fit.
+  // Rows only ever get added until the next re-home, so the band can't flicker.
+  const PAD = 12, GAP_X = 6, ROW_H = 23, ROW_GAP = 6, MAX_ROWS = 3;
+  let tagRows = 0;
+  const tagShown = t => anchors[t.k] && G[groupOf(t.k)].visible;
+  function rowCount(items, w) {
+    const total = items.reduce((s, t) => s + t.w, 0) + GAP_X * (items.length - 1);
+    return Math.max(tagRows, total <= w - 2 * PAD ? 1 : 2);
+  }
+  function bandHeight(w) {
+    const rows = rowCount(tagEls.filter(tagShown), w);
+    return PAD + rows * ROW_H + (rows - 1) * ROW_GAP + 24;   // + room for the leaders to drop
+  }
+  // Greedy fill: each tag takes the row where it moves least off its part. False if any overlap.
+  function packRows(items, rows, w) {
+    const edges = Array(rows).fill(PAD - GAP_X);
+    items.forEach(t => {
+      const ideal = Math.min(Math.max(t.ax - t.w / 2, PAD), w - PAD - t.w);
+      let best = 0;
+      for (let r = 1; r < rows; r++) if (Math.max(ideal, edges[r] + GAP_X) < Math.max(ideal, edges[best] + GAP_X)) best = r;
+      t.row = best; t.x = Math.max(ideal, edges[best] + GAP_X); edges[best] = t.x + t.w;
+    });
+    let ok = true;
+    for (let r = 0; r < rows; r++) {
+      const row = items.filter(t => t.row === r);
+      let edge = w - PAD + GAP_X;                   // pull back inside the right edge
+      for (let i = row.length - 1; i >= 0; i--) {
+        const t = row[i]; t.x = Math.min(t.x, edge - GAP_X - t.w);
+        if (t.x < PAD) { t.x = PAD; ok = false; }
+        edge = t.x;
+      }
+    }
+    return ok;
+  }
+  function placeTags() {
+    const w = stage.clientWidth, h = stage.clientHeight, items = [];
+    tagEls.forEach(t => {
+      let show = tagShown(t);
+      if (show) {
+        v.copy(worldAnchor(t.k)).project(cam);
+        show = v.z < 1 && Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1;
+      }
+      t.el.hidden = !show; t.lg.style.display = show ? '' : 'none';
+      if (!show) return;
+      t.ax = ((v.x + 1) / 2) * w; t.ay = ((1 - v.y) / 2) * h;
+      t.w = t.el.offsetWidth || t.w;
+      items.push(t);
+    });
+    items.sort((a, b) => a.ax - b.ax);
+    let rows = rowCount(items, w);
+    while (!packRows(items, rows, w) && rows < MAX_ROWS) rows++;
+    if (rows > tagRows) { tagRows = rows; if (!userMoved) homeView(!fly); }   // band grew: re-fit below it
+    for (const t of items) {
+      const y = PAD + t.row * (ROW_H + ROW_GAP);
+      t.el.style.transform = `translate(${t.x}px, ${y}px)`;
+      const lx = Math.min(Math.max(t.ax, t.x + 6), t.x + t.w - 6);
+      t.line.setAttribute('x1', lx); t.line.setAttribute('y1', y + ROW_H);
+      t.line.setAttribute('x2', t.ax); t.line.setAttribute('y2', t.ay);
+      t.dot.setAttribute('cx', t.ax); t.dot.setAttribute('cy', t.ay);
+    }
+  }
+
+  // ---- camera moves ----
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let fly = null;
+  function flyTo(target, pos) {
+    if (reduce) { controls.target.copy(target); cam.position.copy(pos); return; }
+    fly = { t: 0, fromT: controls.target.clone(), fromP: cam.position.clone(), toT: target, toP: pos };
+  }
+  // Home view: fixed viewing direction, distance and target solved so the whole rig
+  // fits between the tag band and the toolbar at the current stage size.
+  const HOME_DIR = new THREE.Vector3(-260, 330, 560).normalize();
+  let userMoved = false;
+  function homePose() {
+    const goal = P.exploded ? 1 : 0, bb = new THREE.Box3(), saved = {};
+    for (const k in G) {
+      saved[k] = G[k].position.x; G[k].position.x = EXPLODE[k] * goal; G[k].updateMatrixWorld(true);
+      if (G[k].visible) bb.expandByObject(G[k]);
+    }
+    for (const k in G) { G[k].position.x = saved[k]; G[k].updateMatrixWorld(true); }
+    const corners = [];
+    for (let i = 0; i < 8; i++) corners.push(new THREE.Vector3(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z));
+
+    const w = stage.clientWidth, h = stage.clientHeight;
+    const top = bandHeight(w), bottom = Math.min(h, $('toolbar').offsetTop) - 10;
+    const win = { x0: -1 + 32 / w, x1: 1 - 32 / w, y0: 1 - 2 * bottom / h, y1: 1 - 2 * top / h };
+    const probe = cam.clone(), tanV = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), tanH = tanV * cam.aspect;
+    const right = new THREE.Vector3(), up = new THREE.Vector3();
+    const target = bb.getCenter(new THREE.Vector3());
+    let d = bb.getSize(new THREE.Vector3()).length() * 2;
+    for (let i = 0; i < 8; i++) {
+      probe.position.copy(target).addScaledVector(HOME_DIR, d); probe.lookAt(target); probe.updateMatrixWorld();
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const c of corners) {
+        v.copy(c).project(probe);
+        x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y);
+      }
+      right.setFromMatrixColumn(probe.matrixWorld, 0); up.setFromMatrixColumn(probe.matrixWorld, 1);
+      target.addScaledVector(right, ((x0 + x1) / 2 - (win.x0 + win.x1) / 2) * d * tanH)
+            .addScaledVector(up, ((y0 + y1) / 2 - (win.y0 + win.y1) / 2) * d * tanV);
+      d *= Math.max((x1 - x0) / (win.x1 - win.x0), (y1 - y0) / (win.y1 - win.y0));
+    }
+    return { target, pos: target.clone().addScaledVector(HOME_DIR, d) };
+  }
+  function homeView(instant) {
+    const { target, pos } = homePose();
+    if (instant) { fly = null; controls.target.copy(target); cam.position.copy(pos); }
+    else flyTo(target, pos);
+  }
+  controls.addEventListener('start', () => { userMoved = true; fly = null; });
+  function focus(k) {
+    const target = worldAnchor(k === 'adapter' ? 'thread' : k).clone();
+    if (k === 'gate' || k === 'dock' || k === 'tube') target.y = P.axis;
+    const off = k === 'cam' ? new THREE.Vector3(-150, 180, 360) : k === 'lock' ? new THREE.Vector3(-45, 70, 95) : new THREE.Vector3(-90, 110, 220);
+    userMoved = true;
+    flyTo(target, target.clone().add(off));
+  }
+
+  // ---- UI ----
+  // Until the user orbits or focuses a part, the view keeps re-fitting as the rig changes.
+  const refit = () => { if (!userMoved) homeView(); };
+  function setPressed(id, on) { $(id).setAttribute('aria-pressed', String(on)); }
+  $('bExplode').onclick = () => { P.exploded = !P.exploded; setPressed('bExplode', P.exploded); refit(); };
+  $('bLock').onclick = () => { P.lock = !P.lock; setPressed('bLock', P.lock); };
+  $('bCut').onclick = () => { P.cut = !P.cut; setPressed('bCut', P.cut); cutHide.forEach(m => (m.visible = !P.cut)); };
+  $('bRef').onclick = () => { P.ref = !P.ref; setPressed('bRef', P.ref); G.cam.visible = P.ref; tagRows = 0; refit(); };
+  $('bReset').onclick = () => { userMoved = false; tagRows = 0; homeView(); };
+  $('bThread').onclick = () => {
+    P.exploded = true; setPressed('bExplode', true); userMoved = true;
+    const t = new THREE.Vector3(LENS_LEN - 2 + EXPLODE.adapter, P.axis, 0);
+    flyTo(t, t.clone().add(new THREE.Vector3(-38, 22, 44)));
+  };
+  $('wd').oninput = e => { P.wd = +e.target.value; rebuild(); refit(); };
+  $('axis').oninput = e => { P.axis = +e.target.value; rebuild(); refit(); };
+  document.querySelectorAll('[data-focus]').forEach(li => {
+    const go = () => focus(li.dataset.focus);
+    li.addEventListener('click', go);
+    li.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
+  }
+  new ResizeObserver(() => { resize(); tagRows = 0; if (!userMoved) homeView(true); }).observe(stage);
+
+  // ---- loop ----
+  rebuild();
+  resize();
+  homeView(true);
+  function frame() {
+    const goal = P.exploded ? 1 : 0;
+    ex = reduce ? goal : ex + (goal - ex) * 0.12;
+    for (const k in G) G[k].position.x = EXPLODE[k] * ex;
+    lk = reduce ? +P.lock : lk + (+P.lock - lk) * 0.12;
+    const s = (lk - 0.5) * SW_TRAVEL;
+    lockG.sl.position.z = s;
+    lockG.pp.position.x = -clampShift(s);
+    if (fly) {
+      fly.t = Math.min(1, fly.t + 0.045);
+      const e = 1 - Math.pow(1 - fly.t, 3);
+      controls.target.lerpVectors(fly.fromT, fly.toT, e);
+      cam.position.lerpVectors(fly.fromP, fly.toP, e);
+      if (fly.t >= 1) fly = null;
+    }
+    controls.update();
+    renderer.render(scene, cam);
+    placeTags();
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+</body>
+</html>

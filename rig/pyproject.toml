@@ -1,0 +1,21 @@
+[project]
+name = "nlb-scan-rig"
+version = "0.1.0"
+description = "CadQuery model of the NLB 35mm film scanning rig (STEP for Onshape, STL for slicing)"
+requires-python = ">=3.12"
+dependencies = [
+    "cadquery",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+]
+
+# Scripts, not a package: nothing to build or install.
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

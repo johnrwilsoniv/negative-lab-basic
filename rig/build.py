@@ -48,7 +48,7 @@ class Row:
             return [self.error]
         found = []
         if not self.valid:
-            found.append("invalid solid")
+            found.append("invalid solid (OCC check, or an edge not between exactly two faces)")
         if self.volume <= 0:
             found.append("volume <= 0")
         if not self.fits_bed:

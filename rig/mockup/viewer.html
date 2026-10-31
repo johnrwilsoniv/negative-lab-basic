@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NLB Scan Rig CAD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">
+<style>
+/* Template for viewer.py, which fills in the CAD. Same layout as nlb-scan-rig.html: stage left, spec rail right */
+:root {
+  --bg: #e8ebe9;
+  --panel: #f5f7f6;
+  --stage: #dde2df;
+  --fg: #1a1f1d;
+  --muted: #5a6460;
+  --line: #cbd3cf;
+  --print: #d4891f;   /* safelight amber marks printed parts */
+  --cut: #8a5512;     /* section faces in cutaway */
+  --ref: #3a403e;     /* bought hardware */
+  --known: #2c7a58;
+  --guess: #b0601a;
+  --pick: #4a5fa8;
+  --bad: #b3261e;
+  --f-ui: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111413; --panel: #171b1a; --stage: #0d100f; --fg: #e3e8e5; --muted: #95a19c;
+    --line: #2a312e; --print: #e9a23b; --cut: #7a4a10; --ref: #59615e; --known: #5cc497; --guess: #f0a259; --pick: #8fa3ec; --bad: #f2867d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111413; --panel: #171b1a; --stage: #0d100f; --fg: #e3e8e5; --muted: #95a19c;
+  --line: #2a312e; --print: #e9a23b; --cut: #7a4a10; --ref: #59615e; --known: #5cc497; --guess: #f0a259; --pick: #8fa3ec; --bad: #f2867d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--f-ui); }
+.app { display: grid; grid-template-columns: minmax(0, 1fr) 380px; height: 100%; }
+.stage { position: relative; background: var(--stage); min-width: 0; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.tags { position: absolute; inset: 0; pointer-events: none; }
+.tag {
+  position: absolute; left: 0; top: 0; white-space: nowrap;
+  font: 500 11.5px/13px var(--f-num); color: var(--fg); background: var(--panel);
+  border: 1px solid var(--line); padding: 4px 6px; border-radius: 3px;
+}
+.tag.p { border-color: var(--print); }
+.tag b { color: var(--print); font-weight: 500; }
+.leaders { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.leaders line { stroke: var(--muted); stroke-width: 1; }
+.leaders circle { fill: var(--muted); }
+.leaders .p line { stroke: var(--print); }
+.leaders .p circle { fill: var(--print); }
+.toolbar {
+  position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  right: 12px; display: flex; flex-wrap: wrap; gap: 6px;
+}
+.toolbar button {
+  font: 500 13px/1 var(--f-ui); color: var(--fg); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 4px; padding: 8px 11px; cursor: pointer;
+}
+.toolbar button[aria-pressed="true"] { border-color: var(--print); box-shadow: inset 0 -2px 0 var(--print); }
+.toolbar button:hover { border-color: var(--muted); }
+button:focus-visible, li[tabindex]:focus-visible { outline: 2px solid var(--print); outline-offset: 2px; }
+.hint { margin-left: auto; align-self: center; font: 12px var(--f-num); color: var(--muted); }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; font: 13px var(--f-num); color: var(--muted); pointer-events: none; }
+
+.rail {
+  background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; min-width: 0;
+  padding-block: 22px 32px;
+  padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 26px;
+}
+h1 { font: 700 26px/1.1 var(--f-ui); letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 6px 0 0; font-size: 14px; }
+.sub code { font: 12.5px var(--f-num); }
+h2 {
+  font: 600 11.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--muted); margin: 0 0 10px;
+}
+section { min-width: 0; }
+.built { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: baseline; }
+.built span:nth-child(even) { font: 500 13px var(--f-num); font-variant-numeric: tabular-nums; }
+.cmd { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+.cmd code { font: 12px var(--f-num); color: var(--fg); background: var(--bg); padding: 1px 4px; border-radius: 3px; }
+
+ul.parts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+ul.parts li {
+  display: grid; grid-template-columns: 22px 1fr; gap: 2px 8px; padding: 8px 8px; border-radius: 4px; cursor: pointer;
+}
+ul.parts li:hover, ul.parts li.hot { background: color-mix(in srgb, var(--print) 10%, transparent); }
+ul.parts .n { font: 500 13px var(--f-num); color: var(--print); padding-top: 1px; }
+ul.parts.ref .n { color: var(--muted); }
+ul.parts .t { font-weight: 600; }
+ul.parts .t code { font: 500 12px var(--f-num); color: var(--muted); margin-left: 4px; }
+ul.parts .d { grid-column: 2; color: var(--muted); font-size: 13.5px; }
+ul.parts .s { grid-column: 2; font: 12.5px var(--f-num); font-variant-numeric: tabular-nums; }
+ul.parts .s.bad { color: var(--bad); }
+
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+td { padding: 6px 0; border-top: 1px solid var(--line); vertical-align: top; }
+td.v { font: 12.5px var(--f-num); font-variant-numeric: tabular-nums; text-align: right; padding: 7px 8px; white-space: nowrap; }
+td.c { text-align: right; width: 1%; }
+.chip { font: 600 10.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.07em; padding: 3px 6px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
+.chip.known { color: var(--known); }
+.chip.guess { color: var(--guess); }
+.chip.pick { color: var(--pick); }
+.chip.bad { color: var(--bad); }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; color: var(--muted); font-size: 13px; align-items: center; }
+.notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.notes code { font: 12.5px var(--f-num); }
+
+@media (max-width: 820px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 62vh auto; height: auto; }
+  html, body { height: auto; }
+  .rail { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+  .hint { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage" id="stage">
+    <div class="tags" id="tags"></div>
+    <div class="loading" id="loading">loading CAD…</div>
+    <div class="toolbar" id="toolbar">
+      <button id="bExplode" aria-pressed="true">Exploded</button>
+      <button id="bLock" aria-pressed="false">Lock film</button>
+      <button id="bCut" aria-pressed="false">Cutaway</button>
+      <button id="bRef" aria-pressed="true">Camera &amp; lens</button>
+      <button id="bThread">Zoom to threads</button>
+      <button id="bReset">Reset view</button>
+      <span class="hint">drag to orbit · scroll to zoom</span>
+    </div>
+  </div>
+
+  <aside class="rail">
+    <header>
+      <h1>NLB Scan Rig</h1>
+      <p class="sub">CadQuery model · every printed solid as built by <code>build.py</code>, in place at SLIDE or LOCK</p>
+    </header>
+
+    <section>
+      <h2>Built at</h2>
+      <div class="built">
+        <span>Lens front to film</span><span id="bWd"></span>
+        <span>Lens centre height</span><span id="bAxis"></span>
+      </div>
+      <p class="cmd">The CAD can't rebuild in the browser. For other values run <code>uv run python viewer.py --wd 150 --axis 45</code> in <code>rig/</code>.</p>
+    </section>
+
+    <section>
+      <h2>Printed parts</h2>
+      <ul class="parts" id="partList"></ul>
+    </section>
+
+    <section>
+      <h2>Bought, not printed</h2>
+      <ul class="parts ref">
+        <li tabindex="0" data-focus="cam"><span class="n">·</span><span class="t">Sony A7 + Laowa 90mm f/2.8 2X</span><span class="d">Drawn by the page, not CAD. Rests on the table; the gate box carries the front end.</span></li>
+        <li tabindex="0" data-focus="light"><span class="n">·</span><span class="t">CineStill CS-Lite</span><span class="d">The assembly's reference panel, stood on its long edge in the dock's slot.</span></li>
+        <li tabindex="0" data-focus="film"><span class="n">·</span><span class="t">Film strip</span><span class="d">The assembly's reference strip, against the front plate's rear face.</span></li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Fits, measured on the solids</h2>
+      <table><tbody id="fitRows"></tbody></table>
+      <div class="legend" id="interference"></div>
+    </section>
+
+    <section>
+      <h2>Notes for the printer</h2>
+      <ol class="notes">
+        <li>Real parts in matte black. The amber here only marks what gets printed.</li>
+        <li>Print <code>thread_coupon</code> first: the adapter's M67 × 0.75 thread on a 2mm grip ring. It tells us if the thread fits before anything bigger is printed.</li>
+        <li>Print the adapter flat, thread axis vertical, at 0.12–0.16mm layers.</li>
+        <li>The pressure plate and wedge plate print on their bottom edges, so the pad and ramp slopes are traced in each layer, not stepped.</li>
+        <li>Not in the CAD yet: leaf springs, plate guides, wedge plate grooves, detent bumps, the knob's snap, and how the lid and dock fasten.</li>
+        <li id="bedNote"></li>
+      </ol>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/STLLoader.js"></script>
+<script>
+const RIG = /*__RIG_DATA__*/null;
+</script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  if (!RIG) { $('loading').textContent = 'No CAD here: open exports/nlb-scan-rig.html, which viewer.py writes.'; return; }
+  const p = RIG.p;
+  const S = Object.fromEntries(RIG.solids.map(s => [s.name, s]));
+
+  // What each solid is, which mockup part it belongs to, and which explode group carries it
+  const INFO = {
+    adapter: ['1', 'Lens adapter', 'Screws into the 67mm filter thread. Modelled ISO thread, M67 × 0.75, 0.15 clearance.', 'adapter'],
+    tube: ['2', 'Tube', 'Blocks room light between lens and film. Sawtooth baffle ribs inside, 8mm apart.', 'tube'],
+    gate_box: ['3', 'Gate box', 'Open-topped box with the fixed front plate that sets the focus plane, and film slots in each side.', 'gate'],
+    gate_lid: ['3', 'Gate lid', 'Rests on the side walls. Slot for the switch tab; SLIDE and LOCK engraved 0.4 deep.', 'gate'],
+    pressure_plate: ['3', 'Pressure plate', 'Floats 0.25 inside the box, 0.6 channel behind the front plate. Four sloped pads on its back.', 'gate'],
+    light_dock: ['4', 'Light dock', 'Holds the CS-Lite on its edge, with a shroud from the gate\'s rear window to the lit face.', 'dock'],
+    wedge_plate: ['5', 'Wedge plate', 'Slides 10mm along z. Its four ramps push the pressure plate onto the film at LOCK.', 'gate'],
+    knob: ['5', 'Knob', 'Sits on the tab above the lid, three grip ridges. Printed separately.', 'gate'],
+  };
+  const ORDER = ['adapter', 'tube', 'gate_box', 'gate_lid', 'pressure_plate', 'light_dock', 'wedge_plate', 'knob'];
+  const CUT = new Set(['adapter', 'tube', 'gate_box', 'gate_lid', 'light_dock']);   // sectioned in cutaway
+
+  const P = { exploded: true, cut: false, ref: true, lock: false };
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  // ---- three setup ----
+  const stage = $('stage');
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.localClippingEnabled = true;
+  stage.prepend(renderer.domElement);
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(32, 1, 2, 6000);
+  const controls = new THREE.OrbitControls(cam, renderer.domElement);
+  controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI * 0.495;
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.75));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(-200, 400, 300); scene.add(sun);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.3); fill.position.set(300, 150, -250); scene.add(fill);
+
+  // cutaway: keep z <= 0, the half away from the default view, so the section faces the viewer
+  const clip = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+  const M = {
+    ref: new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.15 }),
+    refHi: new THREE.MeshStandardMaterial({ roughness: 0.45, metalness: 0.2 }),
+    glass: new THREE.MeshStandardMaterial({ color: 0x0c1418, roughness: 0.08, metalness: 0.9 }),
+    blue: new THREE.MeshStandardMaterial({ color: 0x2747b0, roughness: 0.4 }),
+    lit: new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    cut: new THREE.MeshBasicMaterial({ side: THREE.BackSide, clippingPlanes: [clip] }),
+  };
+  M.film = new THREE.MeshStandardMaterial({ map: filmTexture(), transparent: true, alphaTest: 0.04, side: THREE.DoubleSide, roughness: 0.4 });
+  const printMats = {}, edgeMats = {};
+  for (const name of ORDER) {
+    printMats[name] = new THREE.MeshStandardMaterial({ roughness: 0.75, metalness: 0, clippingPlanes: CUT.has(name) ? [clip] : [] });
+    edgeMats[name] = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.3, clippingPlanes: CUT.has(name) ? [clip] : [] });
+  }
+  const grid = new THREE.GridHelper(1000, 50); grid.material.transparent = true; grid.material.opacity = 0.35;
+  scene.add(grid);
+
+  let hot = null;
+  function applyTheme() {
+    scene.background = new THREE.Color(css('--stage'));
+    for (const name of ORDER) {
+      printMats[name].color.set(css('--print'));
+      printMats[name].emissive.set(name === hot ? css('--print') : '#000000');
+      printMats[name].emissiveIntensity = name === hot ? 0.35 : 0;
+      edgeMats[name].color.set(css('--fg'));
+    }
+    M.cut.color.set(css('--cut'));
+    M.ref.color.set(css('--ref'));
+    M.refHi.color.set(css('--ref')).offsetHSL(0, 0, 0.08);
+    grid.material.color.set(css('--line'));
+  }
+  applyTheme();
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+  new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  // ---- groups ----
+  const G = {};
+  ['cam', 'adapter', 'tube', 'gate', 'film', 'dock'].forEach(k => { G[k] = new THREE.Group(); scene.add(G[k]); });
+  const EXPLODE = { cam: -70, adapter: -32, tube: 0, gate: 45, film: 45, dock: 95 };
+  let ex = P.exploded ? 1 : 0, lk = P.lock ? 1 : 0;
+  const anchors = {};   // key -> [object, local Vector3] for leader lines and focus
+  const meshes = {};    // solid name -> mesh
+
+  // ---- the CAD solids ----
+  const loader = new THREE.STLLoader();
+  function stlGeometry(b64) {
+    const bin = atob(b64), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return loader.parse(bytes.buffer);
+  }
+  for (const name of ORDER) {
+    const s = S[name]; if (!s) continue;
+    const geo = stlGeometry(s.stl); geo.computeBoundingBox();
+    const m = new THREE.Mesh(geo, printMats[name]);
+    m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), edgeMats[name]));
+    if (CUT.has(name)) m.add(new THREE.Mesh(geo, M.cut));   // back faces show through the cut as section
+    m.userData.lock = new THREE.Vector3(...s.lock);
+    G[INFO[name][3]].add(m);
+    meshes[name] = m;
+  }
+  const bb = name => meshes[name].geometry.boundingBox;
+  const at = (name, x, y, z) => [meshes[name], new THREE.Vector3(x, y, z)];
+  {
+    const a = bb('adapter'), t = bb('tube'), lid = bb('gate_lid'), k = bb('knob'), d = bb('light_dock');
+    anchors.adapter = at('adapter', (a.min.x + a.max.x) / 2, a.max.y, 0);
+    anchors.thread = at('adapter', a.min.x + 2, p.axis, 0);
+    anchors.tube = at('tube', (t.min.x + t.max.x) / 2, t.max.y, 0);
+    anchors.gate = at('gate_lid', lid.min.x + 3, lid.max.y, -28);
+    anchors.lock = at('knob', (k.min.x + k.max.x) / 2, k.max.y, 0);
+    anchors.dock = at('light_dock', (d.min.x + d.max.x) / 2, 62, (p.csl_l / 2 + d.max.z) / 2);
+    for (const name of ORDER) { const b = bb(name); anchors[name] = at(name, (b.min.x + b.max.x) / 2, b.max.y, (b.min.z + b.max.z) / 2); }
+  }
+
+  // ---- bought parts, drawn as the mockup drew them ----
+  function add(g, geo, mat) { const m = new THREE.Mesh(geo, mat); g.add(m); return m; }
+  function box(g, x0, x1, y0, y1, z0, z1, mat) {
+    const m = add(g, new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), mat);
+    m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    return m;
+  }
+  function extX(shape, depth) {
+    const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 72 });
+    g.rotateY(Math.PI / 2);
+    return g;
+  }
+  function ring(g, x0, x1, rIn, rOut, cy, mat) {
+    const s = new THREE.Shape().absarc(0, cy, rOut, 0, Math.PI * 2, false);
+    s.holes.push(new THREE.Path().absarc(0, cy, rIn, 0, Math.PI * 2, true));
+    const m = add(g, extX(s, x1 - x0), mat); m.position.x = x0; return m;
+  }
+  function cyl(g, x0, x1, r, cy, mat) {
+    const geo = new THREE.CylinderGeometry(r, r, x1 - x0, 72); geo.rotateZ(Math.PI / 2);
+    const m = add(g, geo, mat); m.position.set((x0 + x1) / 2, cy, 0); return m;
+  }
+  {
+    const c = G.cam, A = p.axis, L = p.lens_len, R = p.lens_r, TR = p.thread_major / 2;
+    box(c, -58, -12, 0, 82, -65.5, 65.5, M.ref);
+    box(c, -58, -22, 82, 96, -22, 22, M.ref);
+    box(c, -12, 20, 0, 78, 38, 64, M.ref);
+    box(c, -50, -30, 96, 99, -6, 6, M.refHi);
+    cyl(c, -12, 0, 30, A, M.refHi);
+    cyl(c, 0, L - 1, R, A, M.ref);
+    cyl(c, 6, 18, R + 1.4, A, M.refHi);
+    cyl(c, 42, 96, R + 1.4, A, M.refHi);
+    ring(c, L - 7, L - 5, R - 0.5, R + 0.3, A, M.blue);
+    ring(c, L - 1, L, TR, R, A, M.ref);
+    cyl(c, L - 12, L - 10, 30, A, M.glass);
+    anchors.cam = [c, new THREE.Vector3(-36, 96, 0)];
+
+    // film strip: the assembly's reference, x_film - channel/2, centred at film_strip_z
+    const fm = add(G.film, new THREE.PlaneGeometry(p.film_strip_len, p.film_w), M.film);
+    fm.geometry.rotateY(-Math.PI / 2);
+    fm.position.set(p.x_film - p.channel / 2 + p.film_t / 2, A, p.film_strip_z);
+    anchors.film = [G.film, new THREE.Vector3(p.x_film, A + p.film_w / 2, 90)];
+
+    // CS-Lite: the assembly's reference panel, with its lit face toward the film
+    const xl = p.x_light, y0 = p.floor_t;
+    box(G.dock, xl, xl + p.csl_t, y0, y0 + p.csl_h, -p.csl_l / 2, p.csl_l / 2, M.ref);
+    const lit = add(G.dock, new THREE.PlaneGeometry(p.csl_lit_w, p.csl_lit_h), M.lit);
+    lit.geometry.rotateY(-Math.PI / 2);
+    lit.position.set(xl - 0.05, y0 + p.csl_h / 2, 0);
+    anchors.light = [G.dock, new THREE.Vector3(xl + p.csl_t / 2, y0 + p.csl_h, 0)];
+  }
+
+  function filmTexture() {
+    const pxmm = 10, L = 228, W = 35;
+    const c = document.createElement('canvas'); c.width = L * pxmm; c.height = W * pxmm;
+    const x = c.getContext('2d');
+    x.fillStyle = 'rgba(168,160,146,0.55)'; x.fillRect(0, 0, c.width, c.height);
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let f = 0; f < 6; f++) {
+      const fx = (1 + f * 38) * pxmm, fy = 5.5 * pxmm, fw = 36 * pxmm, fh = 24 * pxmm;
+      const gr = x.createLinearGradient(fx, fy, fx + fw, fy + fh);
+      gr.addColorStop(0, 'rgba(40,36,32,0.92)'); gr.addColorStop(1, 'rgba(78,72,64,0.88)');
+      x.fillStyle = gr; x.fillRect(fx, fy, fw, fh);
+      for (let i = 0; i < 9; i++) {
+        x.fillStyle = `rgba(190,182,168,${0.15 + rnd() * 0.35})`;
+        x.beginPath();
+        x.ellipse(fx + rnd() * fw, fy + rnd() * fh, 10 + rnd() * 70, 8 + rnd() * 50, rnd() * 3, 0, Math.PI * 2);
+        x.fill();
+      }
+      x.fillStyle = 'rgba(40,36,32,0.8)'; x.font = `${2.2 * pxmm}px monospace`;
+      x.fillText(`▸${12 + f}  ${12 + f}A`, fx + 4 * pxmm, 34.6 * pxmm);
+    }
+    for (let i = 0; i < 48; i++) {
+      const hx = (1.4 + i * 4.75) * pxmm;
+      x.clearRect(hx, 1.0 * pxmm, 2.8 * pxmm, 2.0 * pxmm);
+      x.clearRect(hx, (W - 3.0) * pxmm, 2.8 * pxmm, 2.0 * pxmm);
+    }
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+    return t;
+  }
+
+  // ---- rail ----
+  const f2 = v => (Math.round(v * 100) / 100).toString();
+  const dims = s => s.map(f2).join(' × ');
+  $('bWd').textContent = p.wd + ' mm';
+  $('bAxis').textContent = p.axis + ' mm';
+  $('partList').innerHTML = ORDER.filter(n => S[n]).map(n => {
+    const [num, title, desc] = INFO[n], s = S[n];
+    return `<li tabindex="0" data-focus="${n}" data-hot="${n}"><span class="n">${num}</span>` +
+      `<span class="t">${title}<code>${n}</code></span><span class="d">${desc}</span>` +
+      `<span class="s">${dims(s.size)} mm · ${Math.round(s.volume / 10) / 100} cm³</span>` +
+      `<span class="s${s.bed ? '' : ' bad'}">prints ${s.up} up, ${f2(s.print[0])} × ${f2(s.print[1])} on the bed${s.bed ? '' : ': too big'}</span></li>`;
+  }).join('');
+  $('fitRows').innerHTML = RIG.fits.map(f =>
+    `<tr><td>${f.label}</td><td class="v">${f.measured == null ? '–' : (Math.round(f.measured * 1e4) / 1e4 + 0).toFixed(4)}</td>` +
+    `<td class="c"><span class="chip ${f.ok ? 'known' : 'bad'}">${f.ok ? 'ok' : 'off'}</span></td></tr>`).join('');
+  const bad = [...RIG.interference.SLIDE, ...RIG.interference.LOCK];
+  $('interference').textContent = bad.length ? 'Interference: ' + bad.join('; ')
+    : `All in mm. No solids intersect at SLIDE. At LOCK only the pads press into the ramps, by the designed ${f2(p.preload)} preload.`;
+  const big = RIG.solids.reduce((a, b) => Math.max(...b.print.slice(0, 2)) > Math.max(...a.print.slice(0, 2)) ? b : a);
+  $('bedNote').textContent = `Largest footprint is the ${INFO[big.name][1].toLowerCase()}, ${f2(big.print[0])} × ${f2(big.print[1])}. ` +
+    `Every part ${RIG.solids.every(s => s.bed) ? 'fits' : 'does not fit'} a ${p.bed_x} × ${p.bed_y} bed.`;
+
+  // ---- tags ----
+  const TAGS = [
+    ['adapter', '<b>1</b> adapter', true], ['tube', '<b>2</b> tube', true], ['gate', '<b>3</b> film gate', true],
+    ['dock', '<b>4</b> light dock', true], ['lock', '<b>5</b> lock switch', true], ['light', 'CS-Lite', false], ['film', 'strip', false], ['cam', 'A7 + Laowa 90', false],
+  ];
+  const SVG = 'http://www.w3.org/2000/svg';
+  const leaders = document.createElementNS(SVG, 'svg'); leaders.setAttribute('class', 'leaders');
+  $('tags').appendChild(leaders);
+  const tagEls = TAGS.filter(([k]) => anchors[k]).map(([k, html, pr]) => {
+    const el = document.createElement('div'); el.className = 'tag' + (pr ? ' p' : ''); el.innerHTML = html;
+    $('tags').appendChild(el);
+    const lg = document.createElementNS(SVG, 'g'); if (pr) lg.setAttribute('class', 'p');
+    const line = document.createElementNS(SVG, 'line'), dot = document.createElementNS(SVG, 'circle');
+    dot.setAttribute('r', 2.5); lg.append(line, dot); leaders.appendChild(lg);
+    return { k, el, lg, line, dot, w: el.offsetWidth };
+  });
+  const v = new THREE.Vector3();
+  function worldAnchor(k) { const [o, pt] = anchors[k]; return o.localToWorld(pt.clone()); }
+  function anchorVisible(k) { for (let o = anchors[k][0]; o; o = o.parent) if (!o.visible) return false; return true; }
+
+  const PAD = 12, GAP_X = 6, ROW_H = 23, ROW_GAP = 6, MAX_ROWS = 3;
+  let tagRows = 0;
+  const tagShown = t => anchorVisible(t.k);
+  function rowCount(items, w) {
+    const total = items.reduce((s, t) => s + t.w, 0) + GAP_X * (items.length - 1);
+    return Math.max(tagRows, total <= w - 2 * PAD ? 1 : 2);
+  }
+  function bandHeight(w) {
+    const rows = rowCount(tagEls.filter(tagShown), w);
+    return PAD + rows * ROW_H + (rows - 1) * ROW_GAP + 24;
+  }
+  function packRows(items, rows, w) {
+    const edges = Array(rows).fill(PAD - GAP_X);
+    items.forEach(t => {
+      const ideal = Math.min(Math.max(t.ax - t.w / 2, PAD), w - PAD - t.w);
+      let best = 0;
+      for (let r = 1; r < rows; r++) if (Math.max(ideal, edges[r] + GAP_X) < Math.max(ideal, edges[best] + GAP_X)) best = r;
+      t.row = best; t.x = Math.max(ideal, edges[best] + GAP_X); edges[best] = t.x + t.w;
+    });
+    let ok = true;
+    for (let r = 0; r < rows; r++) {
+      const row = items.filter(t => t.row === r);
+      let edge = w - PAD + GAP_X;
+      for (let i = row.length - 1; i >= 0; i--) {
+        const t = row[i]; t.x = Math.min(t.x, edge - GAP_X - t.w);
+        if (t.x < PAD) { t.x = PAD; ok = false; }
+        edge = t.x;
+      }
+    }
+    return ok;
+  }
+  function placeTags() {
+    const w = stage.clientWidth, h = stage.clientHeight, items = [];
+    tagEls.forEach(t => {
+      let show = tagShown(t);
+      if (show) {
+        v.copy(worldAnchor(t.k)).project(cam);
+        show = v.z < 1 && Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1;
+      }
+      t.el.hidden = !show; t.lg.style.display = show ? '' : 'none';
+      if (!show) return;
+      t.ax = ((v.x + 1) / 2) * w; t.ay = ((1 - v.y) / 2) * h;
+      t.w = t.el.offsetWidth || t.w;
+      items.push(t);
+    });
+    items.sort((a, b) => a.ax - b.ax);
+    let rows = rowCount(items, w);
+    while (!packRows(items, rows, w) && rows < MAX_ROWS) rows++;
+    if (rows > tagRows) { tagRows = rows; if (!userMoved) homeView(!fly); }
+    for (const t of items) {
+      const y = PAD + t.row * (ROW_H + ROW_GAP);
+      t.el.style.transform = `translate(${t.x}px, ${y}px)`;
+      const lx = Math.min(Math.max(t.ax, t.x + 6), t.x + t.w - 6);
+      t.line.setAttribute('x1', lx); t.line.setAttribute('y1', y + ROW_H);
+      t.line.setAttribute('x2', t.ax); t.line.setAttribute('y2', t.ay);
+      t.dot.setAttribute('cx', t.ax); t.dot.setAttribute('cy', t.ay);
+    }
+  }
+
+  // ---- camera moves ----
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let fly = null;
+  function flyTo(target, pos) {
+    if (reduce) { controls.target.copy(target); cam.position.copy(pos); return; }
+    fly = { t: 0, fromT: controls.target.clone(), fromP: cam.position.clone(), toT: target, toP: pos };
+  }
+  const HOME_DIR = new THREE.Vector3(-260, 330, 560).normalize();
+  let userMoved = false;
+  function homePose() {
+    const goal = P.exploded ? 1 : 0, box3 = new THREE.Box3(), saved = {};
+    for (const k in G) {
+      saved[k] = G[k].position.x; G[k].position.x = EXPLODE[k] * goal; G[k].updateMatrixWorld(true);
+      if (G[k].visible) box3.expandByObject(G[k]);
+    }
+    for (const k in G) { G[k].position.x = saved[k]; G[k].updateMatrixWorld(true); }
+    const corners = [];
+    for (let i = 0; i < 8; i++) corners.push(new THREE.Vector3(i & 1 ? box3.max.x : box3.min.x, i & 2 ? box3.max.y : box3.min.y, i & 4 ? box3.max.z : box3.min.z));
+
+    const w = stage.clientWidth, h = stage.clientHeight;
+    const top = bandHeight(w), bottom = Math.min(h, $('toolbar').offsetTop) - 10;
+    const win = { x0: -1 + 32 / w, x1: 1 - 32 / w, y0: 1 - 2 * bottom / h, y1: 1 - 2 * top / h };
+    const probe = cam.clone(), tanV = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), tanH = tanV * cam.aspect;
+    const right = new THREE.Vector3(), up = new THREE.Vector3();
+    const target = box3.getCenter(new THREE.Vector3());
+    let d = box3.getSize(new THREE.Vector3()).length() * 2;
+    for (let i = 0; i < 8; i++) {
+      probe.position.copy(target).addScaledVector(HOME_DIR, d); probe.lookAt(target); probe.updateMatrixWorld();
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const c of corners) {
+        v.copy(c).project(probe);
+        x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y);
+      }
+      right.setFromMatrixColumn(probe.matrixWorld, 0); up.setFromMatrixColumn(probe.matrixWorld, 1);
+      target.addScaledVector(right, ((x0 + x1) / 2 - (win.x0 + win.x1) / 2) * d * tanH)
+            .addScaledVector(up, ((y0 + y1) / 2 - (win.y0 + win.y1) / 2) * d * tanV);
+      d *= Math.max((x1 - x0) / (win.x1 - win.x0), (y1 - y0) / (win.y1 - win.y0));
+    }
+    return { target, pos: target.clone().addScaledVector(HOME_DIR, d) };
+  }
+  function homeView(instant) {
+    const { target, pos } = homePose();
+    if (instant) { fly = null; controls.target.copy(target); cam.position.copy(pos); }
+    else flyTo(target, pos);
+  }
+  controls.addEventListener('start', () => { userMoved = true; fly = null; });
+  const SMALL = new Set(['knob', 'lock', 'pressure_plate', 'wedge_plate', 'gate_lid']);
+  function focus(k) {
+    const target = worldAnchor(k === 'adapter' ? 'thread' : k).clone();
+    if (['gate', 'dock', 'tube', 'gate_box', 'light_dock', 'pressure_plate', 'wedge_plate'].includes(k)) target.y = p.axis;
+    const off = k === 'cam' ? new THREE.Vector3(-150, 180, 360) : SMALL.has(k) ? new THREE.Vector3(-45, 70, 95) : new THREE.Vector3(-90, 110, 220);
+    userMoved = true;
+    flyTo(target, target.clone().add(off));
+  }
+
+  // ---- UI ----
+  const refit = () => { if (!userMoved) homeView(); };
+  function setPressed(id, on) { $(id).setAttribute('aria-pressed', String(on)); }
+  $('bExplode').onclick = () => { P.exploded = !P.exploded; setPressed('bExplode', P.exploded); refit(); };
+  $('bLock').onclick = () => { P.lock = !P.lock; setPressed('bLock', P.lock); };
+  $('bCut').onclick = () => {
+    P.cut = !P.cut; setPressed('bCut', P.cut);
+    clip.constant = P.cut ? 0 : 1e4;
+  };
+  clip.constant = 1e4;   // off: the plane sits far beyond the rig
+  $('bRef').onclick = () => { P.ref = !P.ref; setPressed('bRef', P.ref); G.cam.visible = P.ref; tagRows = 0; refit(); };
+  $('bReset').onclick = () => { userMoved = false; tagRows = 0; homeView(); };
+  $('bThread').onclick = () => {
+    P.exploded = true; setPressed('bExplode', true); userMoved = true;
+    // the thread's near flank, seen from the camera side
+    const t = new THREE.Vector3(bb('adapter').min.x + 2.5 + EXPLODE.adapter, p.axis, p.thread_major / 2);
+    flyTo(t, t.clone().add(new THREE.Vector3(-30, 16, 40)));
+  };
+  document.querySelectorAll('[data-focus]').forEach(li => {
+    const go = () => focus(li.dataset.focus);
+    li.addEventListener('click', go);
+    li.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    if (li.dataset.hot) {
+      const on = () => { hot = li.dataset.hot; applyTheme(); }, off = () => { if (hot === li.dataset.hot) { hot = null; applyTheme(); } };
+      li.addEventListener('mouseenter', on); li.addEventListener('focus', on);
+      li.addEventListener('mouseleave', off); li.addEventListener('blur', off);
+    }
+  });
+
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
+  }
+  new ResizeObserver(() => { resize(); tagRows = 0; if (!userMoved) homeView(true); }).observe(stage);
+
+  // ---- loop ----
+  $('loading').remove();
+  resize();
+  homeView(true);
+  function frame() {
+    const goal = P.exploded ? 1 : 0;
+    ex = reduce ? goal : ex + (goal - ex) * 0.12;
+    for (const k in G) G[k].position.x = EXPLODE[k] * ex;
+    lk = reduce ? +P.lock : lk + (+P.lock - lk) * 0.12;
+    for (const m of Object.values(meshes)) m.position.copy(m.userData.lock).multiplyScalar(lk);
+    if (fly) {
+      fly.t = Math.min(1, fly.t + 0.045);
+      const e = 1 - Math.pow(1 - fly.t, 3);
+      controls.target.lerpVectors(fly.fromT, fly.toT, e);
+      cam.position.lerpVectors(fly.fromP, fly.toP, e);
+      if (fly.t >= 1) fly = null;
+    }
+    controls.update();
+    renderer.render(scene, cam);
+    placeTags();
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>
+</body>
+</html>

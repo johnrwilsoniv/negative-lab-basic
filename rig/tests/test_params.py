@@ -146,7 +146,10 @@ def test_a_bigger_adapter_raises_the_minimum():
         Params(adapter_r=45)                          # the default axis 42.5 is now too low
 
 
-def test_the_film_slot_starts_at_the_front_plates_front_face():
+def test_the_film_slot_starts_at_the_front_plates_rear_face():
+    # Flush with the front face, the side wall and the plate met only along an edge: a non-manifold solid
+    # Onshape rejects. From the rear face, the side wall covers the plate's end.
     p = DEFAULT
     assert p.x_front_plate == pytest.approx(p.x_film - p.channel / 2 - p.plate_t) == pytest.approx(252.9)
-    assert p.film_slot_x0 == p.x_front_plate
+    assert p.film_slot_x0 == pytest.approx(p.x_front_plate + p.plate_t) == pytest.approx(254.7)
+    assert p.film_slot_x0 + p.film_slot_w == pytest.approx(257.9)     # the slot's far edge has not moved

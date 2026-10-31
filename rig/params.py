@@ -75,7 +75,7 @@ class Params:
     baffle_margin: float = 2      # no rib this close to either tube end
     plate_t: float = 1.8          # front plate and pressure plate thickness
     wedge_gap: float = 0.9        # pressure plate back face to wedge plate
-    film_slot_w: float = 5        # side walls' film slot, along x
+    film_slot_w: float = 3.2      # side walls' film slot, along x
     film_slot_clear: float = 1    # ... and the film's width plus this much each side, along y
     rear_win_w: float = 46        # rear wall window, toward the light
     rear_win_h: float = 34
@@ -236,8 +236,10 @@ class Params:
         return self.film_w + 2 * self.film_slot_clear
 
     @property
-    def film_slot_x0(self) -> float:    # ... and its lens-side edge: flush with the front plate's front face, so the
-        return self.x_front_plate       # slot opens only behind the front plate, none of it into the lens-side chamber
+    def film_slot_x0(self) -> float:    # ... and its lens-side edge: flush with the front plate's rear face, so the
+        return self.x_front_plate + self.plate_t    # side wall covers the plate's end (flush with its front face
+                                        # the two met only along an edge, which Onshape rejects) and the slot opens only
+                                        # behind the front plate, none of it into the lens-side chamber
 
     def ramp_t(self, u: float) -> float:        # [rampT] ramp thickness at u along the ramp
         return self.ramp_min + self.ramp_rise * (self.ramp_len / 2 - u) / self.ramp_len

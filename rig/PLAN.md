@@ -14,7 +14,7 @@ Run it from `rig/`:
 
 `exports/step/` and `exports/stl/` hold one STEP and one STL per printed solid, plus the thread
 coupon, in print pose. `exports/step/nlb-scan-rig-assembly.step` has every part in place at
-SLIDE, in mockup coordinates, with the film and the CS-Lite as grey reference solids.
+SLIDE, in the Onshape frame (R10), with the film and the CS-Lite as grey reference solids.
 
 ## What the rig is
 
@@ -156,8 +156,8 @@ Several printed pieces. Model each as its own solid.
 **Box:**
 - Front wall: 4 thick, with a Ø72.6 hole on the lens axis.
 - Floor and lid: 3 thick.
-- Side walls: 3 thick, each with a film slot 5 (along x) × 37 (along y) centred on `axis`,
-  running from the front plate's front face toward the light (F3).
+- Side walls: 3 thick, each with a film slot 3.2 (along x) × 37 (along y) centred on `axis`,
+  running from the front plate's rear face toward the light (F3).
 - Rear wall: 3 thick, with a 46 × 34 window toward the light.
 - Outside: 92 wide × 78.5 tall × 30 deep.
 - Lid slot: 3 × 16 for the lock switch's tab.
@@ -316,6 +316,8 @@ Write these as pytest checks against the built solids:
   - except at LOCK, where the plate clamps the film; the film isn't a printed part
 - Every printed part fits the bed. 220 × 220 is assumed until the user confirms.
 - STEP round-trip: re-import each exported STEP and check its volume matches.
+- Every solid manifold: each edge between exactly two faces. OCC's `isValid()` misses a solid
+  whose pieces meet only along an edge; Onshape marks it faulty (`cadutil.is_valid` checks both).
 - Report the numbers (sizes, clearances, volumes) to the user. They check the look in
   Onshape.
 
@@ -338,7 +340,11 @@ number.
   edge of the front wall. `gate_above_axis` ≥ 39.3 closes it with 3 of wall over the hole.
 - **Dock 67.5 tall (R9).** The shroud top (axis + 25) stands above the 62 cheeks.
 - **Exports (R10).** Per-part STEP and STL are in print pose: `PRINT_UP` side up, on the bed,
-  centred. The assembly STEP is in mockup coordinates.
+  centred. The assembly STEP is in the Onshape frame (`assembly.to_onshape`): Z up, so the
+  Top plane is the table; Y = mockup x − `x_film` (the camera end toward −Y), so the Front
+  plane is the film plane and the Front view and the default isometric look into the adapter;
+  X = mockup z, so the Right plane is the vertical plane through the optical axis and the
+  Right view is the side profile. The origin is on the table under the film's centre.
 - **Tube baffles (R12).** Sawtooth ribs inside the tube, 1 tall every 8, down to r 31 (the
   adapter bore, so they can't vignette). 45° lower flanks, so the tube prints upright without
   supports. `baffle_h = 0` removes them.
@@ -353,9 +359,12 @@ number.
 - **Lowest axis 39 (F2).** `Params` refuses an `axis` below `adapter_r`: the Ø78 adapter would
   hit the table, and the dock's front lip would reach into the shroud opening. Lower still,
   the tube (36) and the gate hole (36.3) reach the table too.
-- **Film slots start at the front plate (F3).** Each side-wall slot runs 5 along x from the
-  front plate's front face (`film_slot_x0`), 0.4 toward the light from the mockup's. Centred
-  on the film, it opened a 0.4 × 37 slit into the lens-side chamber.
+- **Film slots start at the front plate (F3).** Each side-wall slot runs from the front
+  plate's rear face (`film_slot_x0`) to x 257.9, 3.2 along x. Centred on the film, as in the
+  mockup, it opened a 0.4 × 37 slit into the lens-side chamber. Started at the plate's front
+  face (5 along x), the side wall and the plate met only along an edge: a non-manifold solid
+  that Onshape marked faulty. From the rear face the side wall covers the plate's end, and the
+  film lies against the plane the slot starts from.
 - **Clamp plates print on edge (F4).** The pressure plate and the wedge plate stand on their
   bottom edge (`PRINT_UP` +y). Printed flat, the ramp and pad slopes would be stepped by
   0.12–0.16 layers, about the size of the 0.113 preload.

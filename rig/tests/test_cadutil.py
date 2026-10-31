@@ -42,6 +42,28 @@ def test_solid_rejects_nothing():
         cadutil.solid(cq.Workplane("XY"))
 
 
+def two_cubes_touching_on_an_edge():
+    """One solid (a base joins them) whose two cubes meet only along the edge x = y = 10: that edge has 4 faces."""
+    return box(20, 20, 2).union(box(10, 10, 10, at=(0, 0, 2))).union(box(10, 10, 10, at=(10, 10, 2)))
+
+
+def test_non_manifold_edges_finds_an_edge_with_four_faces():
+    wp = two_cubes_touching_on_an_edge()
+    assert cadutil.solid(wp).isValid()                # OCC's own check lets it through; Onshape's does not
+    (edge,) = cadutil.non_manifold_edges(wp)
+    ends = sorted(tuple(v.toTuple()) for v in (edge.startPoint(), edge.endPoint()))
+    assert ends == [pytest.approx((10, 10, 2)), pytest.approx((10, 10, 12))]
+
+
+def test_non_manifold_edges_is_empty_on_a_plain_solid():
+    assert cadutil.non_manifold_edges(box(10, 20, 30)) == []
+    assert cadutil.non_manifold_edges(cylinder(5, 10)) == []        # the seam edge is one face's, twice
+
+
+def test_is_valid_rejects_a_non_manifold_solid():
+    assert not cadutil.is_valid(two_cubes_touching_on_an_edge())
+
+
 def test_is_valid_and_volume():
     assert cadutil.is_valid(box(10, 20, 30))
     assert cadutil.volume(box(10, 20, 30)) == pytest.approx(6000)

@@ -1,6 +1,7 @@
 """7 · Assembly: every printed part in place at SLIDE or LOCK, the proof they do not intersect, the STEP.
 
-Parts return their solids in mockup coordinates already, so assembling is collecting them. Two
+Parts return their solids in mockup coordinates already, so assembling is collecting them. Only the STEP
+file is turned into Onshape's frame (`to_onshape`): Z up, the origin on the table under the film. Two
 reference solids stand in for what is bought (ruling R14): the film strip, lying against the front
 plate's rear face, and the CS-Lite panel in the dock. There is no camera or lens.
 
@@ -145,6 +146,18 @@ def problems(p: Params, lock: bool, found: list[Found]) -> list[str]:
     return messages
 
 
+def to_onshape(p: Params, wp: cq.Workplane) -> cq.Workplane:
+    """`wp` in the assembly STEP's frame, which fits Onshape's default planes.
+
+    Z is up (mockup y), so the Top plane is the table. Y runs along the optical axis from the camera to the light
+    (mockup x - x_film), so the Front plane is the film plane, the Front view looks into the adapter, and so does
+    the default isometric (from +X, -Y, +Z). X = mockup z, so the Right plane is the vertical plane through the
+    axis and the Right view shows the rig's side. The origin is on the table under the film's centre.
+    """
+    z_up = wp.translate((-p.x_film, 0, 0)).rotate((0, 0, 0), (1, 0, 0), 90)
+    return z_up.rotate((0, 0, 0), (0, 0, 1), 90)
+
+
 def _step_name(name: str) -> str:
     return f"ref_{name}" if name in REFERENCE_NAMES else name
 
@@ -152,13 +165,14 @@ def _step_name(name: str) -> str:
 def write_step(
     p: Params = DEFAULT, path: Path | str = STEP_PATH, solids: Mapping[str, cq.Workplane] | None = None
 ) -> None:
-    """The assembly at SLIDE, in mockup coordinates, one named and coloured solid per part.
+    """The assembly at SLIDE, in the Onshape frame (`to_onshape`), one named and coloured solid per part.
 
     The references are named ref_film and ref_cs_lite, grey and translucent.
     """
     solids = placed(p, False) if solids is None else solids
     asm = cq.Assembly(name="nlb-scan-rig")
     for name, wp in solids.items():
+        wp = to_onshape(p, wp)
         if name in REFERENCE_NAMES:
             asm.add(wp, name=_step_name(name), color=cq.Color(*REFERENCE_COLORS[name]))
         else:

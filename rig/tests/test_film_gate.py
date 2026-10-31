@@ -146,10 +146,11 @@ def test_each_solid_is_one_valid_closed_solid(name, lock):
     assert solid.isValid()
     assert all(shell.Closed() for shell in solid.Shells())
     assert solid.Volume() > 0
+    assert cadutil.non_manifold_edges(model.build(p, lock)[name]) == []     # Onshape rejects any
 
 
 def test_new_params_defaults():
-    assert (p.film_slot_w, p.film_slot_h) == (5, 37)
+    assert (p.film_slot_w, p.film_slot_h) == (3.2, 37)
     assert (p.rear_win_w, p.rear_win_h) == (46, 34)
     assert (p.tab_t, p.tab_clear, p.slot_end) == (2, 0.5, 3)
     assert (p.pad, p.pad_z, p.pad_dy) == (4, 22, 15.5)
@@ -397,20 +398,20 @@ def test_rear_window_is_46_by_34_toward_the_light(box):
 
 
 @pytest.mark.parametrize("sign", [-1, 1])
-def test_side_wall_film_slots_are_5_by_37_from_the_front_plates_front_face(box, sign):
+def test_side_wall_film_slots_are_3_2_by_37_from_the_front_plates_rear_face(box, sign):
     z = sorted((sign * 43, sign * 46))
-    plate_front = face_x(box, 0)                                   # 252.9
-    assert_opening(box, across_z(*z), 5, 37, ca=plate_front + 2.5, cb=p.axis)
-    assert plate_front + 2.5 == pytest.approx(255.4, abs=EPS)       # the film (x 254.7 .. 254.83) is inside it
+    plate_rear = face_x(box, 0) + p.plate_t                        # 254.7
+    assert_opening(box, across_z(*z), 3.2, 37, ca=plate_rear + 1.6, cb=p.axis)
+    assert plate_rear == pytest.approx(254.7, abs=EPS)              # the film (x 254.7 .. 254.83) lies against it
 
 
 @pytest.mark.parametrize("sign", [-1, 1])
 def test_side_walls_are_3_thick_and_solid_elsewhere(box, sign):
     z = sorted((sign * 43, sign * 46))
-    assert_full(box, 245, 252.9, 3, 75.5, *z)
+    assert_full(box, 245, 254.7, 3, 75.5, *z)                       # covers the front plate's end
     assert_full(box, 257.9, 268, 3, 75.5, *z)
-    assert_full(box, 252.9, 257.9, 3, 23.9, *z)
-    assert_full(box, 252.9, 257.9, 61.1, 75.5, *z)
+    assert_full(box, 254.7, 257.9, 3, 23.9, *z)
+    assert_full(box, 254.7, 257.9, 61.1, 75.5, *z)
 
 
 @pytest.mark.parametrize("sign", [-1, 1])
@@ -426,7 +427,7 @@ def test_no_open_path_from_a_film_slot_into_the_lens_side_chamber(box, sign):
     assert_full(box, wall_rear, plate_front, 3, 75.5, *side_wall)
     # ... so the slot's air and the chamber's air share no face: pushed 0.01 toward each other they do not meet
     slot = probe(wall_rear, 268, 3, 75.5, *side_wall).cut(box)
-    assert cadutil.volume(slot) == pytest.approx(5 * 37 * 3, rel=1e-9)
+    assert cadutil.volume(slot) == pytest.approx(3.2 * 37 * 3, rel=1e-9)
     assert cadutil.common_volume(chamber, slot.translate((0, 0, -sign * 0.01))) < 1e-9
 
 
@@ -568,7 +569,7 @@ def test_box_volume_is_the_sum_of_its_walls(box):
     t = 3
     front = 4 * 78.5 * 92 - 4 * (math.pi * 36.3**2 - segment_area(36.3, 36.0))       # hole breaks 0.3 through the top
     floor = 23 * 3 * 92
-    sides = 2 * (23 * 72.5 * t - 5 * 37 * t)
+    sides = 2 * (23 * 72.5 * t - 3.2 * 37 * t)
     rear = 3 * 78.5 * 92 - 3 * 46 * 34
     front_plate = 86 * 72.5 * 1.8 - 1.8 * 38 * 26
     assert cadutil.volume(box) == pytest.approx(front + floor + sides + rear + front_plate, rel=1e-9)
@@ -597,7 +598,7 @@ def test_gate_follows_wd_and_axis(q):
     assert cadutil.common_bounds(solids["pressure_plate"], probe(q.x_film - 6, q.x_film + 6, 10, 20, -10, 10))[0] == pytest.approx(
         q.x_film + 0.3, abs=EPS
     )
-    # the film slots start at the front plate's front face, wherever that is
-    plate_front = cadutil.common_bounds(solids["gate_box"], probe(q.x_film - 6, q.x_film + 6, 10, 20, -10, 10))[0]
-    assert_opening(solids["gate_box"], across_z(43, 46), 5, 37, ca=plate_front + 2.5, cb=q.axis)
+    # the film slots start at the front plate's rear face, wherever that is
+    plate_rear = cadutil.common_bounds(solids["gate_box"], probe(q.x_film - 6, q.x_film + 6, 10, 20, -10, 10))[1]
+    assert_opening(solids["gate_box"], across_z(43, 46), 3.2, 37, ca=plate_rear + 1.6, cb=q.axis)
     assert cadutil.common_volume(solids["pressure_plate"], solids["gate_box"]) < 1e-3

@@ -359,7 +359,14 @@ def test_the_default_assembly_step_path_is_in_exports_step():
     assert assembly.STEP_PATH.parent.name == "step" and assembly.STEP_PATH.parent.parent.name == "exports"
 
 
-def test_assembly_step_holds_every_solid_by_name_in_mockup_coordinates(slide, step):
+def test_onshape_frame_is_z_up_from_the_table_under_the_film():
+    # mockup (x along the axis, y up, z across) -> Onshape X = z, Y = x - x_film, Z = y: the camera end toward -Y, so
+    # Onshape's default isometric (from +X, -Y, +Z) looks into the adapter
+    corner = cadutil.probe(p.x_film + 1, p.x_film + 2, 3, 5, 10, 13)
+    assert cadutil.bounds(assembly.to_onshape(p, corner)) == pytest.approx((10, 13, 1, 2, 3, 5), abs=1e-9)
+
+
+def test_assembly_step_holds_every_solid_by_name_in_the_onshape_frame(slide, step):
     read = cadutil.step_assembly(step)
     assert sorted(read) == sorted(["adapter", "tube", "gate_box", "gate_lid", "pressure_plate", "wedge_plate",
                                    "knob", "light_dock", "ref_film", "ref_cs_lite"])
@@ -367,7 +374,7 @@ def test_assembly_step_holds_every_solid_by_name_in_mockup_coordinates(slide, st
     for name, wp in slide.items():
         got = read[name if name in PRINTED else f"ref_{name}"].solid
         assert cadutil.volume(got) == pytest.approx(cadutil.volume(wp), rel=cadutil.STEP_VOLUME_RTOL), name
-        assert cadutil.bounds(got) == pytest.approx(cadutil.bounds(wp), abs=1e-6), name
+        assert cadutil.bounds(got) == pytest.approx(cadutil.bounds(assembly.to_onshape(p, wp)), abs=1e-6), name
         total += cadutil.volume(got)
     assert total == pytest.approx(sum(cadutil.volume(wp) for wp in slide.values()), rel=cadutil.STEP_VOLUME_RTOL)
 
@@ -389,8 +396,18 @@ def test_assembly_step_colours_are_distinct_and_the_references_translucent(step)
 
 def test_assembly_step_is_the_slide_position(slide, step):
     read = cadutil.step_assembly(step)
-    assert cadutil.bounds(read["wedge_plate"].solid)[4] == pytest.approx(-p.sw_travel / 2 - p.wedge_w / 2)
-    assert cadutil.bounds(read["pressure_plate"].solid)[0] == pytest.approx(p.x_film + p.channel / 2)
+    assert cadutil.bounds(read["wedge_plate"].solid)[0] == pytest.approx(-p.sw_travel / 2 - p.wedge_w / 2)  # X = z
+    assert cadutil.bounds(read["pressure_plate"].solid)[2] == pytest.approx(p.channel / 2)                 # Y = x - x_film
+
+
+def test_assembly_step_sits_on_the_top_plane_with_the_film_on_the_front_plane(step):
+    read = cadutil.step_assembly(step)
+    assert min(cadutil.bounds(part.solid)[4] for part in read.values()) == pytest.approx(0, abs=1e-6)  # table: Z = 0
+    xmin, xmax, ymin, ymax, zmin, zmax = cadutil.bounds(read["ref_film"].solid)
+    assert (ymin, ymax) == pytest.approx((-p.channel / 2, -p.channel / 2 + p.film_t))   # film plane at Y = 0
+    assert (zmin + zmax) / 2 == pytest.approx(p.axis)                                   # optical axis at Z = axis
+    assert (xmin + xmax) / 2 == pytest.approx(p.film_strip_z)                           # X = z
+    assert cadutil.bounds(read["adapter"].solid)[3] < 0 < cadutil.bounds(read["light_dock"].solid)[2]  # camera at -Y
 
 
 def test_assembly_step_has_no_overlaps_when_read_back(step):

@@ -10,6 +10,9 @@ import cadquery as cq
 from OCP.Bnd import Bnd_Box
 from OCP.BRepBndLib import BRepBndLib
 from OCP.IFSelect import IFSelect_ReturnStatus
+from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE
+from OCP.TopExp import TopExp_Explorer
+from OCP.TopTools import TopTools_IndexedMapOfShape
 
 from params import Params
 
@@ -44,8 +47,28 @@ def solid(wp: cq.Workplane) -> cq.Solid:
     return solids[0]
 
 
+def non_manifold_edges(wp: cq.Workplane) -> list[cq.Edge]:
+    """The edges not used exactly twice by the solid's faces (a seam is used twice by its one face).
+
+    OCC's isValid() passes a solid whose parts meet only along an edge (4 faces on it); Onshape's Parasolid
+    marks it faulty, so a solid with any of these will not import cleanly.
+    """
+    edges = TopTools_IndexedMapOfShape()
+    uses: dict[int, int] = {}
+    faces = TopExp_Explorer(solid(wp).wrapped, TopAbs_FACE)
+    while faces.More():
+        found = TopExp_Explorer(faces.Current(), TopAbs_EDGE)
+        while found.More():
+            i = edges.Add(found.Current())          # same index for the same edge, whatever its orientation
+            uses[i] = uses.get(i, 0) + 1
+            found.Next()
+        faces.Next()
+    return [cq.Edge(edges.FindKey(i)) for i, n in sorted(uses.items()) if n != 2]
+
+
 def is_valid(wp: cq.Workplane) -> bool:
-    return solid(wp).isValid()
+    """OCC's check, and every edge between exactly two faces (see non_manifold_edges)."""
+    return solid(wp).isValid() and not non_manifold_edges(wp)
 
 
 def volume(wp: cq.Workplane) -> float:

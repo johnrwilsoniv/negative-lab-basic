@@ -5,7 +5,8 @@ the full height, the side walls stop `wall` short of the top, and the lid is its
 on them, `lid_clear` short of the front and rear walls at each end. The front plate is part of the
 box, standing between the side walls. The pressure plate is `plate_clear` inside the floor, the lid
 and the side walls all round, so it drops in and floats. Each side wall's film slot starts at the
-front plate's front face, so none of it opens into the chamber on the lens side of the front plate.
+front plate's rear face: the side wall covers the plate's end, and none of the slot opens into the
+chamber on the lens side of the front plate.
 
 The walls are slabs with rectangular windows extruded in one go, so the only booleans are the
 tube hole (it breaks through the top edge of the front wall, ruling R8), the pads joined to the
@@ -83,7 +84,7 @@ def _floor(p: Params) -> cq.Workplane:
 
 def _side_wall(p: Params, sign: int) -> cq.Workplane:
     """Between the front and rear walls, from the floor up to the lid, with the film slot: film_slot_w along x from
-    film_slot_x0 (the front plate's front face), film_slot_h along y centred on the axis."""
+    film_slot_x0 (the front plate's rear face), film_slot_h along y centred on the axis."""
     z0 = p.gw / 2 - p.wall if sign > 0 else -p.gw / 2
     slot = _centred((p.film_slot_x0 + p.film_slot_w / 2, p.axis), p.film_slot_w, p.film_slot_h)
     return _slab(

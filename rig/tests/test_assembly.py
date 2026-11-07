@@ -17,7 +17,8 @@ from params import DEFAULT, Params
 
 p = DEFAULT
 Q = Params(wd=150, axis=50)        # not the defaults, so nothing is right by coincidence
-PRINTED = ["adapter", "tube", "gate_box", "gate_lid", "pressure_plate", "wedge_plate", "knob", "light_dock"]
+PRINTED = ["adapter", "tube", "gate_front", "gate_body", "gate_lid", "pressure_plate", "wedge_plate", "knob",
+           "light_dock", "shroud"]
 REFERENCES = ["film", "cs_lite"]
 EPS = 1e-6
 
@@ -120,9 +121,9 @@ def test_film_strip_is_228_along_z_centred_at_z19_on_the_axis(slide):
     assert (z0, z1) == pytest.approx((19 - 114, 19 + 114), abs=EPS)
 
 
-def test_film_lies_against_the_front_plates_rear_face(slide):
+def test_film_lies_against_the_gate_fronts_rear_face(slide):
     plate = cadutil.common_bounds(
-        slide["gate_box"], cadutil.probe(p.x_film - 6, p.x_film + 6, 4, 8, -10, 10)
+        slide["gate_front"], cadutil.probe(p.x_film - 6, p.x_film + 6, 4, 8, -10, 10)
     )
     assert cadutil.bounds(slide["film"])[0] == pytest.approx(plate[1], abs=EPS)
 
@@ -149,14 +150,14 @@ def test_tube_starts_on_the_adapters_socket_floor(slide):
     assert cadutil.bounds(slide["tube"])[0] == pytest.approx(floor, abs=EPS)
 
 
-def test_tube_ends_on_the_gate_front_walls_back_face(slide):
-    # below the hole (which starts at axis - 36.3 = 6.2) and above the floor, the only box material
-    # in this slice of z is the front wall
-    wall = cadutil.common_bounds(
-        slide["gate_box"], cadutil.probe(p.x_gate, p.x_gate + 10, 3.5, 5.5, -10, 10)
-    )
-    assert wall[0] == pytest.approx(p.x_gate, abs=EPS)
-    assert cadutil.bounds(slide["tube"])[1] == pytest.approx(wall[1], abs=EPS)
+def test_tube_ends_on_the_gate_fronts_socket_floor(slide):
+    # the socket is radius 36.3, so material of the gate front at radius 33..35 (inside it, beyond the light
+    # passage's corners at 32) starts at the socket's floor
+    floor = cadutil.common_bounds(
+        slide["gate_front"], cadutil.probe(p.x_gate, p.x_gate + 10, p.axis - 35, p.axis - 33, -0.1, 0.1)
+    )[0]
+    assert cadutil.bounds(slide["gate_front"])[0] == pytest.approx(p.x_gate, abs=EPS)
+    assert cadutil.bounds(slide["tube"])[1] == pytest.approx(floor, abs=EPS)
 
 
 # ---- interference -----------------------------------------------------------------------
@@ -168,7 +169,7 @@ def test_slide_nothing_intersects(found_slide):
 
 def test_every_printed_pair_and_every_printed_against_a_reference_is_checked(slide):
     pairs = assembly.pairs(slide)
-    assert len(pairs) == 28 + 16                     # 8 printed: 28 pairs; each against the 2 references: 16
+    assert len(pairs) == 45 + 20                     # 10 printed: 45 pairs; each against the 2 references: 20
     assert len({frozenset(pair) for pair in pairs}) == len(pairs)
     assert not any(a in REFERENCES and b in REFERENCES for a, b in pairs)
 
@@ -188,14 +189,15 @@ def test_lock_overlap_is_a_real_overlap_not_a_sliver(found_lock):
 def test_lock_film_is_touched_by_both_plates_and_overlapped_by_neither(lock):
     film = lock["film"]
     assert cadutil.common_volume(film, lock["pressure_plate"]) < 1e-3
-    assert cadutil.common_volume(film, lock["gate_box"]) < 1e-3
-    # touched: the pressure plate's front face is the film's rear face; the box's plate is its front face
+    assert cadutil.common_volume(film, lock["gate_front"]) < 1e-3
+    assert cadutil.common_volume(film, lock["gate_body"]) < 1e-3
+    # touched: the pressure plate's front face is the film's rear face; the gate front's rear face is its front face
     plate_front = cadutil.common_bounds(
         lock["pressure_plate"], cadutil.probe(p.x_film - 6, p.x_film + 6, 4, 8, -10, 10)
     )[0]
     assert plate_front == pytest.approx(cadutil.bounds(film)[1], abs=EPS)
     front_plate_rear = cadutil.common_bounds(
-        lock["gate_box"], cadutil.probe(p.x_film - 6, p.x_film + 6, 4, 8, -10, 10)
+        lock["gate_front"], cadutil.probe(p.x_film - 6, p.x_film + 6, 4, 8, -10, 10)
     )[1]
     assert front_plate_rear == pytest.approx(cadutil.bounds(film)[0], abs=EPS)
 
@@ -368,8 +370,7 @@ def test_onshape_frame_is_z_up_from_the_table_under_the_film():
 
 def test_assembly_step_holds_every_solid_by_name_in_the_onshape_frame(slide, step):
     read = cadutil.step_assembly(step)
-    assert sorted(read) == sorted(["adapter", "tube", "gate_box", "gate_lid", "pressure_plate", "wedge_plate",
-                                   "knob", "light_dock", "ref_film", "ref_cs_lite"])
+    assert sorted(read) == sorted(PRINTED + ["ref_film", "ref_cs_lite"])
     total = 0.0
     for name, wp in slide.items():
         got = read[name if name in PRINTED else f"ref_{name}"].solid
@@ -419,7 +420,7 @@ def test_assembly_step_has_no_overlaps_when_read_back(step):
 def test_check_step_passes_the_file_it_wrote(slide, step):
     check = assembly.check_step(step, slide)
     assert check.problems == []
-    assert check.count == 10
+    assert check.count == 12
     assert check.volume == pytest.approx(sum(cadutil.volume(wp) for wp in slide.values()), rel=cadutil.STEP_VOLUME_RTOL)
     assert check.error < cadutil.STEP_VOLUME_RTOL
 
@@ -474,12 +475,12 @@ def test_fit_labels_are_unique(report):
 def test_the_measured_numbers_are_the_designs(report):
     got = {f.label: f.measured for f in report}
     assert got["tube / adapter socket, radial clearance"] == pytest.approx(0.3, abs=1e-5)
-    assert got["tube / gate hole, radial clearance"] == pytest.approx(0.3, abs=1e-5)
+    assert got["tube / gate front socket, radial clearance"] == pytest.approx(0.3, abs=1e-5)
     assert got["film channel, SLIDE"] == pytest.approx(0.6, abs=1e-5)
     assert got["film channel, LOCK"] == pytest.approx(0.13, abs=1e-5)
     assert got["film / pressure plate, SLIDE"] == pytest.approx(0.47, abs=1e-5)
     assert got["film / pressure plate, LOCK"] == pytest.approx(0, abs=1e-5)
-    assert got["film / front plate"] == pytest.approx(0, abs=1e-5)
+    assert got["film / gate front (reference plane)"] == pytest.approx(0, abs=1e-5)
     assert got["wedge window / frame window, z clearance, SLIDE"] == pytest.approx(2.0, abs=1e-5)
     assert got["wedge window / frame window, z clearance, LOCK"] == pytest.approx(2.0, abs=1e-5)
     assert got["tab / lid slot, x clearance, front"] == pytest.approx(0.5, abs=1e-5)
@@ -491,13 +492,15 @@ def test_the_measured_numbers_are_the_designs(report):
     assert got["pressure plate / floor, clearance"] == pytest.approx(0.25, abs=1e-5)
     assert got["pressure plate / lid, clearance"] == pytest.approx(0.25, abs=1e-5)
     assert got["pressure plate / side walls, clearance (the smaller)"] == pytest.approx(0.25, abs=1e-5)
-    assert got["lid / front wall, x clearance"] == pytest.approx(0.2, abs=1e-5)
+    assert got["lid / gate front, x clearance"] == pytest.approx(0.2, abs=1e-5)
     assert got["lid / rear wall, x clearance"] == pytest.approx(0.2, abs=1e-5)
     assert got["CS-Lite slot, width less the panel"] == pytest.approx(0.5, abs=1e-5)
+    assert got["shroud / dock pocket, z clearance (the smaller)"] == pytest.approx(0.2, abs=1e-5)
+    assert got["shroud / front lip, x clearance"] == pytest.approx(0.2, abs=1e-5)
 
 
 def test_the_gate_holes_open_top_is_noted(report):
-    (hole,) = [f for f in report if f.label == "tube / gate hole, radial clearance"]
+    (hole,) = [f for f in report if f.label == "tube / gate front socket, radial clearance"]
     assert "top" in hole.note
 
 
@@ -519,8 +522,10 @@ def test_the_fits_measure_the_solids_not_the_params(slide, lock):
     ("pressure plate / floor, clearance", "pressure_plate", (0, -0.1, 0), 0.15),
     ("pressure plate / lid, clearance", "pressure_plate", (0, 0.1, 0), 0.15),
     ("pressure plate / side walls, clearance (the smaller)", "pressure_plate", (0, 0, -0.1), 0.15),
-    ("lid / front wall, x clearance", "gate_lid", (-0.05, 0, 0), 0.15),
+    ("lid / gate front, x clearance", "gate_lid", (-0.05, 0, 0), 0.15),
     ("lid / rear wall, x clearance", "gate_lid", (-0.05, 0, 0), 0.25),
+    ("shroud / dock pocket, z clearance (the smaller)", "shroud", (0, 0, 0.05), 0.15),
+    ("shroud / front lip, x clearance", "shroud", (0.05, 0, 0), 0.15),
 ])
 def test_the_new_clearances_are_measured_on_the_solids(slide, lock, label, name, moved, measured):
     report = by_label(fits.report(p, {**slide, name: slide[name].translate(moved)}, lock))

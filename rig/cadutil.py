@@ -3,12 +3,15 @@
 Every function takes a `cq.Workplane` holding exactly one solid. Lengths are mm.
 """
 
+import math
 from pathlib import Path
 from typing import NamedTuple, Sequence
 
 import cadquery as cq
 from OCP.Bnd import Bnd_Box
 from OCP.BRepBndLib import BRepBndLib
+from OCP.BRepGProp import BRepGProp_Face
+from OCP.gp import gp_Pnt, gp_Vec
 from OCP.IFSelect import IFSelect_ReturnStatus
 from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE
 from OCP.TopExp import TopExp_Explorer
@@ -147,6 +150,34 @@ def sloped_faces(wp: cq.Workplane, tol: float = 1e-9) -> list[cq.Face]:
         face for face in solid(wp).Faces()
         if face.geomType() == "PLANE" and tol < abs(face.normalAt().z) < 1 - tol
     ]
+
+
+OVERHANG_ANGLE = 45.0      # degrees from vertical: a face leaning out further than this needs support or bridging
+
+
+def overhangs(wp: cq.Workplane, angle: float = OVERHANG_ANGLE, on_bed: float = 1e-3) -> list[cq.Face]:
+    """The faces of the solid, as it is posed (Z up, on Z = 0), that lean out more than `angle` from vertical
+    somewhere: downward faces that would print over air. Faces lying on the bed are not counted (a face that only
+    touches it still is). Curved faces are sampled on a 5 x 5 grid of their parameters, plane faces at their normal."""
+    limit = -math.sin(math.radians(angle)) - 1e-6
+    found = []
+    for face in solid(wp).Faces():
+        if _bounds(face)[5] < on_bed:
+            continue
+        if face.geomType() == "PLANE":
+            normals = [face.normalAt()]
+        else:
+            u0, u1, v0, v1 = face._uvBounds()
+            props, pnt, vec = BRepGProp_Face(face.wrapped), gp_Pnt(), gp_Vec()
+            normals = []
+            for i in range(5):
+                for j in range(5):
+                    props.Normal(u0 + (u1 - u0) * i / 4, v0 + (v1 - v0) * j / 4, pnt, vec)     # outward, as oriented
+                    if vec.Magnitude() > 1e-12:
+                        normals.append(cq.Vector(vec.X(), vec.Y(), vec.Z()).normalized())
+        if any(n.z < limit for n in normals):
+            found.append(face)
+    return found
 
 
 def export(wp: cq.Workplane, step_path: str | Path, stl_path: str | Path) -> None:

@@ -6,6 +6,11 @@ STEP file per printed part that the user can import into Onshape and edit, plus 
 slicing. Some mechanisms are still undesigned (each part's "Not designed yet" below). Until
 the wedge-plate grooves exist, LOCK can't clamp.
 
+2026-11-07: redesigned for printing (F5–F8). The gate is now a gate front and a gate body joined
+by four M3 screws, the light dock's shroud is its own print, and every face that touches the film
+prints on the bed. The wedge plate now prints flat (F9). Apart from the adapter's socket ledge,
+no part prints over air (`cadutil.overhangs` checks it).
+
 Run it from `rig/`:
 - `uv run pytest`: the checks on the built solids (about a minute).
 - `uv run python build.py [--wd W] [--axis A]`: builds every part, writes `exports/`, and prints
@@ -151,28 +156,36 @@ Screws into the Laowa's 67mm filter thread. The tube slides into the other end.
 
 ### 3 · Film gate (`parts/film_gate/`)
 
-Several printed pieces. Model each as its own solid.
+Four printed pieces (F5): the gate front, the gate body, the lid and the pressure plate.
 
-**Box:**
-- Front wall: 4 thick, with a Ø72.6 hole on the lens axis.
-- Floor and lid: 3 thick.
-- Side walls: 3 thick, each with a film slot 3.2 (along x) × 37 (along y) centred on `axis`,
-  running from the front plate's rear face toward the light (F3).
-- Rear wall: 3 thick, with a 46 × 34 window toward the light.
-- Outside: 92 wide × 78.5 tall × 30 deep.
-- Lid slot: 3 × 16 for the lock switch's tab.
-- Lid lettering: SLIDE at one end of the slot and LOCK at the other, reading along z, in
-  front of the knob. In the mockup it's a texture; in CAD, engrave it about 0.4 deep.
+**Gate front** (solid block, prints with its rear face on the bed):
+- x_gate .. `x_ref` (13.7 deep), 78.5 tall, 110 wide (`gw` plus a screw pillar's width each side).
+- Socket: Ø72.6, 4 deep, on the lens axis. The tube's end rests on its floor.
+- Light passage: flares from the socket's floor (the frame window scaled until its corners reach
+  the tube's Ø64 bore) down to the 38 × 26 frame window, which runs straight for 1.8 to the
+  rear face. The passage only narrows toward the film, so it prints without support.
+- Rear face: the film reference plane, `CHANNEL/2` (0.3) in front of the film plane. It's the
+  first layer, so the film lies on bed-flat plastic, across the whole width, including where the
+  film leaves through the side walls.
+- Four Ø3.4 holes for M3 × 20 screws, counterbored Ø6.5 × 3.5 from the front.
+- SLIDE / LOCK engraved 0.4 deep in its top, reading along z, in front of the knob.
 
-**Front plate:**
-- Fixed. It sets the focus plane.
-- 1.8 thick, with a 38 × 26 window.
-- Its rear face is `CHANNEL/2` (0.3) in front of the film plane.
-- Can be part of the box. Decide based on print orientation. (Decided: part of the box, R5.)
+**Gate body** (prints rear wall down):
+- Floor (3), side walls (3) and the rear wall (3, with a 46 × 34 window toward the light),
+  from `x_ref` back: 16.3 deep, 92 wide, 78.5 tall. Open at the top for the lid and open at the
+  front, where the gate front closes it.
+- Film slots: 3.2 (along x) × 37 (along y) notches in the side walls, open toward the gate front.
+- Four 9 × 9 screw pillars outside the side walls, the body's whole depth so they stand on the
+  bed: two at the floor, two just under the lid. Ø2.5 pilots, 12 deep, for the M3 screws to
+  self-tap (`pilot_d` 4.0 for heat-set inserts).
+
+**Lid:** 3 thick, on the side walls, 0.2 short of the gate front and of the rear wall. Slot
+3 × 16 for the lock switch's tab.
 
 **Pressure plate:**
 - 1.8 thick, with a 38 × 26 window. Floats along x only. 0.25 clearance to the floor, the
   lid and the side walls (F1).
+- Prints flat with the face that presses the film on the bed (F7).
 - Sits `CHANNEL/2` behind the film plane.
 - Four pads on its back face, 4 × 4, at z = ±22 and y = axis ± 15.5. Pad thickness is
   computed in the mockup (`padT`).
@@ -187,11 +200,12 @@ Several printed pieces. Model each as its own solid.
   lid slot. Both are more than the 0.47 stroke, so LOCK can't clamp until the grooves exist.
   Their x play must be well under ~0.05.
 - **Lid retention.** Nothing holds the lid on yet.
-- **Gate position along the tube.** Nothing locates the gate along the tube. The front-wall
-  hole is a slip fit, so the film plane sits wherever the gate is pushed.
+- **Gate position along the tube.** Nothing locates the gate along the tube. The socket is a
+  slip fit, so the film plane sits wherever the gate is pushed.
 - **Light seal at the lid's front end.** The lid's 0.2 end clearance leaves a 0.2 × 86 slit
-  from the top into the chamber between the front wall and the front plate, on the lens side.
-  It needs a lip over the front wall's top, or tape.
+  from the top into the film chamber, on the light side of the film. Since F5 there is no
+  lens-side chamber for it to open into, but it still lets room light onto the film's back.
+  Tape, or a lip on the lid.
 
 ### 4 · Light dock (`parts/light_dock/`)
 
@@ -203,9 +217,12 @@ the film plane.
 - **Lips:** front and back, 12 tall. Together they make a 20.5 wide slot for the light: its
   20 plus 0.5 clearance, all behind it, so the lit face stays at the front lip.
 - **Side cheeks:** 62 tall.
-- **Shroud:** a 60 × 46 tunnel from the gate's rear window to the light face.
-- **Bed size:** at 181 wide it is the largest part. The mockup says it fits a 220 bed, but
-  the 220 bed was my assumption. **Confirm the printer's bed size.**
+- **Shroud:** its own print (F6). A 60 wide tunnel with a 56 × 46 opening, from the gate's
+  rear face to the light face. It prints on its end, the face against the gate on the bed, so
+  its top plate is a wall rather than a 56 bridge. It sits 1 deep in a pocket in the floor and
+  straddles the front lip through a notch, 0.2 clear of both, which hold it in x and z.
+- **Bed size:** at 181 wide the dock is the largest footprint. The mockup says it fits a 220
+  bed, but the 220 bed was my assumption. **Confirm the printer's bed size.**
 
 **Not designed yet:**
 - How the dock locates against the gate: pins, a dovetail or a shared baseplate.
@@ -252,13 +269,17 @@ rig/
 ├── build.py                builds every part, writes exports/, prints sizes and checks
 ├── assembly.py             places all parts at mockup coordinates, interference check, assembly STEP
 ├── fits.py                 the mating fits, measured on the assembled solids
+├── viewer.py               writes exports/nlb-scan-rig.html (the assembly)
+├── print_preview.py        writes exports/nlb-rig-print-preview.html (print direction per part)
 ├── mockup/
-│   └── nlb-scan-rig.html   copy of the published mockup (source of the numbers)
+│   ├── nlb-scan-rig.html   copy of the published mockup (source of the numbers)
+│   ├── viewer.html         template for viewer.py: the assembled CAD in three.js
+│   └── print-preview.html  template for print_preview.py: each part on the bed, layer by layer
 ├── parts/
 │   ├── lens_adapter/       model.py (+ thread_coupon in the same file)
 │   ├── tube/               model.py
-│   ├── film_gate/          model.py: box (with the front plate), lid, pressure_plate
-│   ├── light_dock/         model.py
+│   ├── film_gate/          model.py: gate_front, gate_body, gate_lid, pressure_plate
+│   ├── light_dock/         model.py: light_dock, shroud
 │   └── lock_switch/        model.py: knob, wedge_plate
 ├── tests/                  pytest on the built solids
 └── exports/
@@ -328,17 +349,17 @@ number.
 
 - **Not modelled yet (R3):** leaf springs, pressure-plate guides, wedge-plate grooves, knob
   snap, gate/dock joint, lid-slot detents. The surfaces where they'd attach are left plain.
-- **Open-top box with a separate lid (R4).** The lid sits between the front and rear walls,
-  on the side walls. A closed box can't take the plates in or print without an 86 bridge.
-- **Front plate is part of the box (R5).** It's a vertical wall inside the box, which prints
-  floor down.
+- **Open-top box with a separate lid (R4).** The lid sits between the gate front and the rear
+  wall, on the side walls. A closed box can't take the plates in or print without an 86 bridge.
+- **Front plate is part of the box (R5).** Superseded by F5: the front plate is the rear end
+  of the gate front.
 - **Sloped pads (R6).** The pads' back faces slope like the ramps, `padT` thick at the
   centre. At SLIDE pads and ramps just touch; at LOCK they overlap by the 0.113 preload.
 - **The clamp in a rigid model (R7).** At LOCK the only overlap allowed is the pads in the
   ramps, 0.113 deep. The film lies on the front plate and is only touched.
-- **Gate height kept at `axis + 36` (R8).** The Ø72.6 hole then breaks 0.3 through the top
-  edge of the front wall. `gate_above_axis` ≥ 39.3 closes it with 3 of wall over the hole.
-- **Dock 67.5 tall (R9).** The shroud top (axis + 25) stands above the 62 cheeks.
+- **Gate height kept at `axis + 36` (R8).** The Ø72.6 socket then breaks 0.3 through the top
+  of the gate front. `gate_above_axis` ≥ 39.3 closes it with 3 of wall over the hole.
+- **Shroud 67.5 tall (R9).** The shroud top (axis + 25) stands above the 62 cheeks.
 - **Exports (R10).** Per-part STEP and STL are in print pose: `PRINT_UP` side up, on the bed,
   centred. The assembly STEP is in the Onshape frame (`assembly.to_onshape`): Z up, so the
   Top plane is the table; Y = mockup x − `x_film` (the camera end toward −Y), so the Front
@@ -365,9 +386,37 @@ number.
   face (5 along x), the side wall and the plate met only along an edge: a non-manifold solid
   that Onshape marked faulty. From the rear face the side wall covers the plate's end, and the
   film lies against the plane the slot starts from.
-- **Clamp plates print on edge (F4).** The pressure plate and the wedge plate stand on their
-  bottom edge (`PRINT_UP` +y). Printed flat, the ramp and pad slopes would be stepped by
-  0.12–0.16 layers, about the size of the 0.113 preload.
+- **Clamp plates print on edge (F4).** Superseded by F7 (pressure plate) and F9 (wedge plate).
+  On edge the ramp and pad slopes were smooth, but the windows were 38 and 52 wide bridges.
+- **The gate in two pieces (F5).** The user asked for no large unsupported spans. In one
+  piece the box needed support under the front-wall hole's upper arc and bridged 38 over the
+  front plate's window and 46 over the rear window. Now the gate front is a solid block that
+  prints film-face down: the socket and a flared light passage only widen going up. The gate
+  body prints rear wall down, so its walls rise straight from the bed, and the film slots
+  become notches open at the top of the print. Four M3 screws through pillars outside the
+  side walls join the two. The pillars run the body's whole depth, so they stand on the bed.
+  The block has no lens-side chamber, so the lid's front slit no longer opens on the lens
+  side. The lettering moved from the lid to the gate front's top: the lid now starts at
+  `x_ref`, behind where the lettering was.
+- **The shroud is its own print (F6).** The user asked for it. Part of the dock, it was a 56
+  wide bridge, 9 deep. On its own it prints on its end. A 1 deep pocket in the dock's floor
+  and a notch over the front lip, each 0.2 clear (`shroud_clear`), locate it. `fits.py`
+  measures both.
+- **Film-contact faces on the bed (F7).** The user asked that every face touching the film be
+  smooth. The film lies on the gate front's rear face and is pressed by the pressure plate's
+  front face, and both print as the first layer. The film's edges pass the side walls' notch
+  faces, which print upright. Cost: the pressure plate's sloped pads face up and print
+  stepped (1:17, 0.23 rise across a pad). Use 0.12 or finer layers and ironing, and tune
+  `ramp_rise` against the print.
+- **Wedge plate prints flat (F9).** The user asked for it to print without supports. It lies
+  on its back face (`PRINT_UP` -x), with the tab flush in the same first layer and the ramps on
+  top. Nothing prints over air, but the ramps print stepped, like the pads (F7): stepped ramp
+  against stepped pad. Use 0.12 or finer layers and ironing, and tune `ramp_rise` after a test
+  print. If the lock action feels notchy, the next step is to design the slope out of one side,
+  for example flat pads with a rounded leading edge riding the ramps.
+- **Overhang check (F8).** `cadutil.overhangs` lists the faces that lean out more than 45°
+  in print pose. The gate, the dock and the shroud tests assert none, apart from the gate
+  front's 0.4 deep lettering walls.
 
 ## Mockup differences to republish
 
@@ -380,7 +429,10 @@ it is the user's call.
 | Gate floor | full gate depth, under the front and rear walls | between the front and rear walls |
 | Pressure plate | 86 × 72.5, flat pads `padT` thick | 85.5 × 72 (0.25 clearance), pads sloped like the ramps |
 | Tube | plain ring | baffle ribs inside |
-| Film slots | centred on the film plane, x 252.5–257.5 | from the front plate's front face, x 252.9–257.9 |
+| Film slots | centred on the film plane, x 252.5–257.5 | notches from the reference plane, x 254.7–257.9 |
+| Gate | one box with a thin front plate and a chamber in front of it | gate front (solid, flared light passage) + gate body, M3 screws through side pillars, 110 wide |
+| Lettering | on the lid | on the gate front's top |
+| Shroud | part of the dock | its own print, in a floor pocket, over the front lip |
 | CS-Lite slot | 20, dock 35 long | 20.5, dock 35.5 long |
 | `axis` | slider 30–60 | 39 at least |
 
@@ -393,10 +445,16 @@ it is the user's call.
   (0.9) and hit the pressure plate's body: "pressure_plate and wedge_plate intersect" at
   SLIDE. At 0.57 the preload is only 0.005.
 - **`thread_clear`** builds valid solids from 0.05 to 0.3. Print the coupon to choose.
-- **Supports:** the adapter's socket ledge (a 5.3 wide annular overhang in the thread-up
-  pose), the upper arc of the gate's front-wall hole, and the dock shroud's 56 bridge.
-- **Brim** for the pressure plate and the wedge plate: they stand 72 and 75 tall on edges
-  1.8 and 2 thick.
+- **Supports:** only the adapter's socket ledge (a 5.3 wide annular overhang in the thread-up
+  pose).
+- **First layer:** the gate front's and the pressure plate's first layers are the film's
+  surfaces. Level the bed, keep the plate clean, and turn off or compensate elephant's foot,
+  which would put a lip on the frame window's edge.
+- **Pads and ramps:** both print as top layers, stepped (F7, F9). Use 0.12 layers or finer,
+  and ironing.
+- **Gate screws:** four M3 × 20, socket or button head, from the front. They self-tap into the
+  Ø2.5 pilots, so don't overtighten. For repeated assembly, use M3 heat-set inserts and
+  `pilot_d` 4.0.
 - **Wedge window:** 26 tall, the same as the frame window, so there's no y margin. The ramps
   cap it at ±13.5 from the axis.
 - **Lettering font:** if Arial is missing, CadQuery silently uses another font. It's fine on

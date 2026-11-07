@@ -207,15 +207,17 @@ const RIG = /*__RIG_DATA__*/null;
   const INFO = {
     adapter: ['1', 'Lens adapter', 'Screws into the 67mm filter thread. Modelled ISO thread, M67 × 0.75, 0.15 clearance.', 'adapter'],
     tube: ['2', 'Tube', 'Blocks room light between lens and film. Sawtooth baffle ribs inside, 8mm apart.', 'tube'],
-    gate_box: ['3', 'Gate box', 'Open-topped box with the fixed front plate that sets the focus plane, and film slots in each side.', 'gate'],
-    gate_lid: ['3', 'Gate lid', 'Rests on the side walls. Slot for the switch tab; SLIDE and LOCK engraved 0.4 deep.', 'gate'],
-    pressure_plate: ['3', 'Pressure plate', 'Floats 0.25 inside the box, 0.6 channel behind the front plate. Four sloped pads on its back.', 'gate'],
-    light_dock: ['4', 'Light dock', 'Holds the CS-Lite on its edge, with a shroud from the gate\'s rear window to the lit face.', 'dock'],
+    gate_front: ['3', 'Gate front', 'Tube socket, light passage and frame window. Its rear face is the film reference plane, printed on the bed. SLIDE and LOCK engraved on top.', 'gate'],
+    gate_body: ['3', 'Gate body', 'Floor, side walls and rear wall; film slots are notches the gate front closes. Four M3 screws join it to the front.', 'gate'],
+    gate_lid: ['3', 'Gate lid', 'Rests on the side walls, between the gate front and the rear wall. Slot for the switch tab.', 'gate'],
+    pressure_plate: ['3', 'Pressure plate', 'Floats 0.25 inside the body, 0.6 channel behind the reference plane. Four sloped pads on its back.', 'gate'],
+    light_dock: ['4', 'Light dock', 'Holds the CS-Lite on its edge. A pocket in the floor seats the shroud.', 'dock'],
+    shroud: ['4', 'Shroud', 'Separate print, on its end. Runs from the gate\'s rear window to the lit face, straddling the front lip.', 'dock'],
     wedge_plate: ['5', 'Wedge plate', 'Slides 10mm along z. Its four ramps push the pressure plate onto the film at LOCK.', 'gate'],
     knob: ['5', 'Knob', 'Sits on the tab above the lid, three grip ridges. Printed separately.', 'gate'],
   };
-  const ORDER = ['adapter', 'tube', 'gate_box', 'gate_lid', 'pressure_plate', 'light_dock', 'wedge_plate', 'knob'];
-  const CUT = new Set(['adapter', 'tube', 'gate_box', 'gate_lid', 'light_dock']);   // sectioned in cutaway
+  const ORDER = ['adapter', 'tube', 'gate_front', 'gate_body', 'gate_lid', 'pressure_plate', 'light_dock', 'shroud', 'wedge_plate', 'knob'];
+  const CUT = new Set(['adapter', 'tube', 'gate_front', 'gate_body', 'gate_lid', 'light_dock', 'shroud']);   // sectioned in cutaway
 
   const P = { exploded: true, cut: false, ref: true, lock: false };
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -542,7 +544,7 @@ const RIG = /*__RIG_DATA__*/null;
   const SMALL = new Set(['knob', 'lock', 'pressure_plate', 'wedge_plate', 'gate_lid']);
   function focus(k) {
     const target = worldAnchor(k === 'adapter' ? 'thread' : k).clone();
-    if (['gate', 'dock', 'tube', 'gate_box', 'light_dock', 'pressure_plate', 'wedge_plate'].includes(k)) target.y = p.axis;
+    if (['gate', 'dock', 'tube', 'gate_front', 'gate_body', 'light_dock', 'shroud', 'pressure_plate', 'wedge_plate'].includes(k)) target.y = p.axis;
     const off = k === 'cam' ? new THREE.Vector3(-150, 180, 360) : SMALL.has(k) ? new THREE.Vector3(-45, 70, 95) : new THREE.Vector3(-90, 110, 220);
     userMoved = true;
     flyTo(target, target.clone().add(off));

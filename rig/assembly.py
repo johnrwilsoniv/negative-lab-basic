@@ -30,9 +30,10 @@ PRELOAD_TOL = 0.005         # mm: how far the pads' overlap may be from the desi
 
 # STEP colours: printed parts opaque and distinct, references grey-ish and translucent.
 COLORS = {
-    "adapter": (1.0, 0.65, 0.0), "tube": (0.27, 0.51, 0.71), "gate_box": (0.13, 0.55, 0.13),
-    "gate_lid": (0.56, 0.93, 0.56), "pressure_plate": (0.58, 0.44, 0.86), "wedge_plate": (0.85, 0.2, 0.2),
-    "knob": (1.0, 0.84, 0.0), "light_dock": (0.63, 0.32, 0.18),
+    "adapter": (1.0, 0.65, 0.0), "tube": (0.27, 0.51, 0.71), "gate_front": (0.1, 0.42, 0.1),
+    "gate_body": (0.13, 0.55, 0.13), "gate_lid": (0.56, 0.93, 0.56), "pressure_plate": (0.58, 0.44, 0.86),
+    "wedge_plate": (0.85, 0.2, 0.2), "knob": (1.0, 0.84, 0.0), "light_dock": (0.63, 0.32, 0.18),
+    "shroud": (0.45, 0.22, 0.12),
 }
 REFERENCE_COLORS = {"film": (0.45, 0.45, 0.45, 0.45), "cs_lite": (0.75, 0.75, 0.8, 0.35)}
 UNKNOWN_COLOR = (0.8, 0.8, 0.8)         # a printed solid that has no colour of its own yet

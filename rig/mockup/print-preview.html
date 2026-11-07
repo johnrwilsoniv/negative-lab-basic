@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NLB Scan Rig · Print Direction Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">
+<style>
+/* Template for print_preview.py, which embeds the print-pose STLs from exports/stl. */
+:root {
+  --bg: #e8ebe9; --panel: #f5f7f6; --stage: #dde2df; --fg: #1a1f1d; --muted: #5a6460; --line: #cbd3cf;
+  --print: #d4891f; --cut: #8a5512; --layer: #f2c14e; --over: #c2362b; --bed: #b9c2be;
+  --f-ui: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111413; --panel: #171b1a; --stage: #0d100f; --fg: #e3e8e5; --muted: #95a19c; --line: #2a312e;
+    --print: #e9a23b; --cut: #7a4a10; --layer: #ffd36b; --over: #f2665a; --bed: #2b322f;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--f-ui); display: flex; flex-direction: column; }
+
+header {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  padding: 12px max(18px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--line); background: var(--panel);
+}
+header h1 { font: 700 19px/1.1 var(--f-ui); margin: 0; letter-spacing: -0.01em; }
+header h1 span { color: var(--muted); font-weight: 500; }
+.pick { display: flex; align-items: center; gap: 8px; }
+.pick label { font: 600 11.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); }
+select {
+  font: 600 15px/1 var(--f-ui); color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 5px; padding: 8px 32px 8px 10px; min-width: 260px; cursor: pointer;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px; background-repeat: no-repeat;
+}
+select:hover { border-color: var(--muted); }
+select:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--print); outline-offset: 2px; }
+.meta { margin-left: auto; font: 12px var(--f-num); color: var(--muted); }
+
+.app { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; }
+.stage { position: relative; background: var(--stage); min-width: 0; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; font: 13px var(--f-num); color: var(--muted); pointer-events: none; }
+
+/* vertical layer slider: bed at the bottom, top of the part at the top */
+.scrub {
+  position: absolute; right: max(14px, env(safe-area-inset-right, 0px)); top: 16px; bottom: 16px; width: 92px;
+  display: grid; grid-template-rows: auto 1fr auto; justify-items: center; gap: 8px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line); border-radius: 6px; padding: 10px 6px;
+}
+.scrub .end { font: 600 10.5px/1.15 var(--f-ui); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); text-align: center; }
+.scrub .end b { display: block; font: 500 11px var(--f-num); letter-spacing: 0; text-transform: none; color: var(--fg); }
+.track { position: relative; width: 100%; min-height: 0; display: flex; justify-content: center; }
+.arrow { position: absolute; left: 8px; top: 4px; bottom: 4px; width: 10px; pointer-events: none; }
+.arrow::before { content: ""; position: absolute; left: 4px; top: 8px; bottom: 0; width: 2px; background: var(--line); }
+.arrow::after { content: ""; position: absolute; left: 0; top: 0; border: 5px solid transparent; border-bottom: 9px solid var(--muted); border-top: 0; }
+input[type=range].v {
+  writing-mode: vertical-lr; direction: rtl; height: 100%; width: 28px; margin: 0;
+  accent-color: var(--print); cursor: ns-resize;
+}
+.readout { position: absolute; right: calc(100% + 10px); white-space: nowrap; transform: translateY(50%);
+  font: 500 12px/1.2 var(--f-num); color: var(--fg); background: var(--panel); border: 1px solid var(--print); border-radius: 3px; padding: 4px 7px; pointer-events: none;
+  font-variant-numeric: tabular-nums; }
+.readout small { display: block; color: var(--muted); font-size: 11px; }
+
+/* the assembly's part picker: one checkbox per part, a parent checkbox per subassembly */
+.tree {
+  position: absolute; right: max(14px, env(safe-area-inset-right, 0px)); top: 16px; width: 236px;
+  max-height: calc(100% - 84px); overflow-y: auto;
+  background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--line); border-radius: 6px;
+  padding: 10px 10px 8px; font-size: 13.5px;
+}
+[hidden] { display: none !important; }
+.tree .top {
+  display: flex; width: 100%; align-items: center; gap: 8px; padding: 2px 4px 8px; margin-bottom: 6px;
+  border: 0; border-bottom: 1px solid var(--line); background: none; color: inherit; font: inherit; cursor: pointer; text-align: left;
+}
+.tree .top small { margin-left: auto; }
+.tree .chev { width: 14px; height: 14px; flex: none; color: var(--muted); transition: transform 0.15s; }
+.tree.closed .chev { transform: rotate(-90deg); }
+.tree.closed .body { display: none; }
+.tree .top:focus-visible { outline: 2px solid var(--print); outline-offset: 2px; border-radius: 4px; }
+.tree .top b { font: 600 11.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); }
+.tree .top small { font: 12px var(--f-num); color: var(--muted); font-variant-numeric: tabular-nums; }
+.tree label { display: flex; align-items: center; gap: 8px; padding: 4px 4px; border-radius: 4px; cursor: pointer; user-select: none; }
+.tree label:hover { background: color-mix(in srgb, var(--print) 10%, transparent); }
+.tree input { margin: 0; accent-color: var(--print); width: 15px; height: 15px; cursor: pointer; flex: none; }
+.tree .grp { margin-top: 4px; }
+.tree .grp > label { font-weight: 600; }
+.tree ul { list-style: none; margin: 0; padding: 0 0 2px 22px; }
+.tree .sw { flex: none; }
+.tree .all { font-weight: 600; }
+
+.toolbar { position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px)); right: 120px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.toolbar button, .toolbar .seg {
+  font: 500 13px/1 var(--f-ui); color: var(--fg); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 4px; padding: 8px 11px; cursor: pointer;
+}
+.toolbar button[aria-pressed="true"] { border-color: var(--print); box-shadow: inset 0 -2px 0 var(--print); }
+.toolbar button:hover { border-color: var(--muted); }
+.toolbar .seg { display: inline-flex; gap: 6px; align-items: center; cursor: default; padding: 4px 4px 4px 10px; }
+.toolbar .seg select { min-width: 0; font: 500 13px/1 var(--f-num); padding: 4px 24px 4px 8px; background-position: calc(100% - 12px) 50%, calc(100% - 7px) 50%; }
+.hint { font: 12px var(--f-num); color: var(--muted); margin-left: 6px; }
+
+.rail { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; min-width: 0; padding: 22px 20px 32px; display: flex; flex-direction: column; gap: 24px; }
+.rail h2 { font: 600 11.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin: 0 0 10px; }
+.title .n { font: 500 13px var(--f-num); color: var(--print); }
+.title h3 { font: 700 24px/1.1 var(--f-ui); margin: 2px 0 6px; letter-spacing: -0.01em; text-wrap: balance; }
+.title p { margin: 0; color: var(--muted); font-size: 14px; }
+.title code, .notes code { font: 12.5px var(--f-num); }
+dl { display: grid; grid-template-columns: 1fr auto; gap: 0; margin: 0; }
+dt, dd { padding: 6px 0; border-top: 1px solid var(--line); margin: 0; font-size: 13.5px; }
+dd { font: 500 12.5px var(--f-num); font-variant-numeric: tabular-nums; text-align: right; }
+dd.ok { color: var(--print); }
+.notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.key { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; color: var(--muted); }
+.key span { display: inline-flex; gap: 8px; align-items: center; }
+.sw { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
+.foot { color: var(--muted); font-size: 12.5px; margin: 0; }
+ul.asm { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+ul.asm li { display: grid; grid-template-columns: 14px 1fr auto; gap: 2px 9px; align-items: baseline; padding: 6px 6px; border-radius: 4px; cursor: pointer; }
+ul.asm li:hover, ul.asm li:focus-visible { background: color-mix(in srgb, var(--print) 12%, transparent); outline: none; }
+ul.asm .sw { align-self: center; }
+ul.asm .t { font-weight: 600; font-size: 14px; }
+ul.asm .v { font: 12px var(--f-num); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
+.foot code { font: 11.5px var(--f-num); }
+
+@media (max-width: 820px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 68vh auto; }
+  body { height: auto; display: block; }
+  .rail { border-left: 0; border-top: 1px solid var(--line); }
+  select { min-width: 200px; }
+  .meta, .hint { display: none; }
+  .toolbar { right: 110px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>NLB scan rig <span>· print direction</span></h1>
+  <div class="pick">
+    <label for="part">Part</label>
+    <select id="part"></select>
+  </div>
+  <div class="meta" id="meta"></div>
+</header>
+<div class="app">
+  <div class="stage" id="stage">
+    <div class="loading" id="loading">loading CAD…</div>
+    <div class="tree" id="tree" hidden role="group" aria-label="Parts shown in the assembly"></div>
+    <div class="scrub" id="scrub">
+      <div class="end">Top<b id="topH">—</b></div>
+      <div class="track">
+        <div class="arrow" aria-hidden="true"></div>
+        <input type="range" class="v" id="layer" min="1" max="1" value="1" step="1" aria-label="Height, bottom to top">
+        <div class="readout" id="readout"></div>
+      </div>
+      <div class="end">Bed<b>0.00</b></div>
+    </div>
+    <div class="toolbar">
+      <button id="bPlay" aria-pressed="false">▶ Play</button>
+      <span class="seg" id="segLh">Layer
+        <select id="lh" aria-label="Layer height">
+          <option value="0.12">0.12</option><option value="0.16">0.16</option>
+          <option value="0.2">0.20</option><option value="0.28">0.28</option>
+        </select>
+      </span>
+      <button id="bGhost" aria-pressed="true">Unprinted ghost</button>
+      <button id="bOver" aria-pressed="true">Overhangs</button>
+      <button id="bReset">Reset view</button>
+      <span class="hint" id="hint">drag to orbit · ↑/↓ step a layer</span>
+    </div>
+  </div>
+  <aside class="rail">
+    <section class="title">
+      <span class="n" id="pn"></span>
+      <h3 id="pt"></h3>
+      <p id="pd"></p>
+    </section>
+    <section>
+      <h2 id="statsH">On the bed</h2>
+      <dl id="stats"></dl>
+    </section>
+    <section>
+      <h2 id="notesH">Print notes</h2>
+      <ul class="notes" id="notes"></ul>
+    </section>
+    <section>
+      <h2>Key</h2>
+      <div class="key" id="key"></div>
+    </section>
+    <p class="foot" id="foot"></p>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/STLLoader.js"></script>
+<script>
+(() => {
+  const DATA = /*__PRINT_DATA__*/null;
+  const $ = (id) => document.getElementById(id);
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const f2 = (v) => v.toFixed(2);
+
+  // ---- three setup ----
+  const stage = $('stage');
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.localClippingEnabled = true;
+  stage.prepend(renderer.domElement);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(35, 1, 1, 5000);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x666655, 0.85));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.75);
+  sun.position.set(-160, 260, 200);
+  scene.add(sun);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.25);
+  fill.position.set(200, 80, -160);
+  scene.add(fill);
+
+  // Clipping: three planes in world space, y up (the print direction).
+  const below = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);  // keeps y <= c
+  const bandBot = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);  // keeps y >= -c
+  const above = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);    // keeps y >= -c
+  const belowBand = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0); // printed body stops under the band
+
+  const col = (v) => new THREE.Color(css(v));
+  const mats = {
+    body: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0, clippingPlanes: [belowBand] }),
+    bodyCut: new THREE.MeshBasicMaterial({ side: THREE.BackSide, clippingPlanes: [belowBand] }),
+    band: new THREE.MeshStandardMaterial({ roughness: 0.4, emissiveIntensity: 0.35, clippingPlanes: [below, bandBot] }),
+    bandCut: new THREE.MeshBasicMaterial({ side: THREE.BackSide, clippingPlanes: [below, bandBot] }),
+    ghost: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.07, depthWrite: false, clippingPlanes: [above] }),
+    edges: new THREE.LineBasicMaterial({ transparent: true, opacity: 0.35, clippingPlanes: [above] }),
+  };
+  function paint() {
+    scene.background = col('--stage');
+    mats.bodyCut.color = col('--cut');
+    mats.band.color = col('--layer'); mats.band.emissive = col('--layer');
+    mats.bandCut.color = col('--layer');
+    mats.ghost.color = col('--muted');
+    mats.edges.color = col('--muted');
+    bedMat.color = col('--bed'); gridMat.color = col('--muted'); planeMat.color = col('--layer');
+    if (cur && !isAsm()) colourFaces(cur);
+  }
+
+  // ---- bed ----
+  const [BX, BY] = DATA.bed;
+  const bedMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.55 });
+  const bed = new THREE.Mesh(new THREE.PlaneGeometry(BX, BY), bedMat);
+  bed.rotation.x = -Math.PI / 2; bed.position.y = -0.05;
+  scene.add(bed);
+  const gridMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.22 });
+  {
+    const pts = [];
+    for (let x = -BX / 2; x <= BX / 2 + 1e-6; x += 10) pts.push(x, 0, -BY / 2, x, 0, BY / 2);
+    for (let z = -BY / 2; z <= BY / 2 + 1e-6; z += 10) pts.push(-BX / 2, 0, z, BX / 2, 0, z);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    scene.add(new THREE.LineSegments(g, gridMat));
+  }
+  // the height marker: an outlined square at the nozzle height
+  const planeMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.9 });
+  const marker = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(
+    [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]].map(([x, z]) => new THREE.Vector3(x, 0, z))), planeMat);
+  scene.add(marker);
+
+  // ---- meshes ----
+  const loader = new THREE.STLLoader();
+  const COS45 = Math.cos(Math.PI / 4);
+  function decode(b64) {
+    const s = atob(b64), u = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+    return u.buffer;
+  }
+  function volumeOf(pos) {
+    let vol = 0;
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+    for (let i = 0; i < pos.length; i += 9) {
+      a.fromArray(pos, i); b.fromArray(pos, i + 3); c.fromArray(pos, i + 6);
+      vol += a.dot(b.cross(c)) / 6;
+    }
+    return Math.abs(vol);
+  }
+  function prepare(part) {
+    const g = loader.parse(decode(part.stl));
+    g.rotateX(-Math.PI / 2);                  // STL is Z up (print pose); three is Y up
+    g.computeBoundingBox();
+    const bb = g.boundingBox;
+    g.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+    g.computeBoundingBox();
+    g.computeVertexNormals();
+    const pos = g.attributes.position.array;
+    const n = pos.length / 9;
+    // per-face overhang flag
+    const over = new Uint8Array(n);
+    let overArea = 0;
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), ab = new THREE.Vector3(), ac = new THREE.Vector3();
+    for (let i = 0; i < n; i++) {
+      a.fromArray(pos, i * 9); b.fromArray(pos, i * 9 + 3); c.fromArray(pos, i * 9 + 6);
+      ab.subVectors(b, a); ac.subVectors(c, a); ab.cross(ac);
+      const area = ab.length() / 2;
+      if (area < 1e-12) continue;
+      const ny = ab.y / (2 * area);
+      const onBed = Math.max(a.y, b.y, c.y) < 0.05;
+      if (ny < -COS45 - 1e-3 && !onBed) { over[i] = 1; overArea += area; }     // exactly 45° (the tube's baffles) prints
+    }
+    g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(pos.length), 3));
+    const size = g.boundingBox.getSize(new THREE.Vector3());
+    return { g, over, size, vol: volumeOf(pos), overArea, edges: new THREE.EdgesGeometry(g, 28) };
+  }
+  function colourFaces(part) {
+    const c = part.cache, arr = c.g.attributes.color.array;
+    const pr = col('--print'), ov = col('--over'), show = state.over;
+    for (let i = 0; i < c.over.length; i++) {
+      const k = show && c.over[i] ? ov : pr;
+      for (let j = 0; j < 3; j++) { arr[i * 9 + j * 3] = k.r; arr[i * 9 + j * 3 + 1] = k.g; arr[i * 9 + j * 3 + 2] = k.b; }
+    }
+    c.g.attributes.color.needsUpdate = true;
+  }
+
+  // ---- the assembly: every printed solid in place at SLIDE, on the table ----
+  // One hue per part, in assembly order; the CS-Lite and the film are grey references.
+  const ASM_COLOURS = ['#d4891f', '#3f7fb5', '#2f8a5c', '#7fbf6a', '#8f6fd0', '#c4473a', '#e0b23a', '#8a5a3b', '#c27a5a', '#4aa7a0'];
+  const PARTS = Object.fromEntries(DATA.parts.map((p) => [p.name, p]));
+  const ASM = {
+    name: 'assembly', num: 'all', label: 'Entire assembly',
+    desc: 'Every printed part in place at SLIDE, standing on the table, with the film strip and the CS-Lite. ' +
+          'Tick parts or whole subassemblies on and off with the picker.',
+  };
+  function prepareAsm() {
+    const items = DATA.assembly.solids.map((s, i) => {
+      const g = loader.parse(decode(s.stl));          // mockup coordinates already: y up, the table at y = 0
+      g.computeVertexNormals();
+      return { name: s.name, g, colour: ASM_COLOURS[i % ASM_COLOURS.length], vol: volumeOf(g.attributes.position.array) };
+    });
+    const box = new THREE.Box3();
+    for (const it of items) { it.g.computeBoundingBox(); box.union(it.g.boundingBox); }
+    const refs = DATA.assembly.refs.map((r) => {
+      const [x0, x1, y0, y1, z0, z1] = r.box;
+      const g = new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0);
+      g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+      g.computeBoundingBox(); box.union(g.boundingBox);
+      return { name: r.name, label: r.label, g };
+    });
+    const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2;
+    for (const it of [...items, ...refs]) it.g.translate(-cx, 0, -cz);
+    for (const it of items) it.mat = new THREE.MeshStandardMaterial({ color: it.colour, roughness: 0.6 });
+    const refMat = new THREE.MeshStandardMaterial({ color: 0x9aa3a0, roughness: 0.8, transparent: true, opacity: 0.35,
+                                                   depthWrite: false });
+    const size = box.getSize(new THREE.Vector3());
+    return { items, refs, refMat, size, vol: items.reduce((t, it) => t + it.vol, 0) };
+  }
+
+  const group = new THREE.Group();
+  scene.add(group);
+  let cur = null;
+  const state = { ghost: true, over: true, playing: false, hidden: new Set() };
+  const isAsm = () => cur === ASM;
+
+  function show(part) {
+    cur = part;
+    group.clear();
+    const gh = new THREE.Group();
+    gh.name = 'ghost';
+    let c;
+    if (isAsm()) {
+      if (!ASM.cache) ASM.cache = prepareAsm();
+      c = ASM.cache;
+      for (const it of c.items) {
+        const m = new THREE.Mesh(it.g, it.mat);
+        m.userData.part = it.name;
+        group.add(m);
+      }
+      for (const r of c.refs) {
+        const m = new THREE.Mesh(r.g, c.refMat);
+        m.userData.part = r.name;
+        group.add(m);
+      }
+    } else {
+      if (!part.cache) part.cache = prepare(part);
+      c = part.cache;
+      group.add(new THREE.Mesh(c.g, mats.body), new THREE.Mesh(c.g, mats.bodyCut),
+                new THREE.Mesh(c.g, mats.band), new THREE.Mesh(c.g, mats.bandCut));
+      gh.add(new THREE.Mesh(c.g, mats.ghost), new THREE.LineSegments(c.edges, mats.edges));
+      colourFaces(part);
+      $('lh').value = String(part.layer);
+    }
+    gh.visible = state.ghost;
+    group.add(gh);
+    marker.scale.set(c.size.x + 16, 1, c.size.z + 16);
+    // the assembly isn't printed in one piece: no layer slider, no layers, no overhangs; a part picker instead
+    const asm = isAsm();
+    $('scrub').hidden = $('bPlay').hidden = $('segLh').hidden = $('bGhost').hidden = $('bOver').hidden = asm;
+    $('tree').hidden = !asm;
+    marker.visible = !asm;
+    $('hint').textContent = asm ? 'drag to orbit · scroll to zoom' : 'drag to orbit · ↑/↓ step a layer';
+    if (asm) {
+      buildTree();
+      applyVisible();
+    } else {
+      setLayers(true);
+    }
+    resize();
+    frame();
+    rail(part);
+    hash();
+  }
+  function hash() {
+    if (isAsm()) {
+      const off = [...state.hidden].join(',');
+      history.replaceState(null, '', `#part=${ASM.name}` + (off ? `&hide=${off}` : ''));
+      return;
+    }
+    const s = $('layer');
+    history.replaceState(null, '', `#part=${cur.name}&layer=${s.value}&lh=${$('lh').value}`);
+  }
+
+  // ---- the assembly's part picker ----
+  // Subassemblies in assembly order, each the parts the page groups under it; then the bought references.
+  function treeGroups() {
+    const c = ASM.cache, groups = [];
+    for (const it of c.items) {
+      const label = PARTS[it.name].group;
+      let g = groups.find((x) => x.label === label);
+      if (!g) groups.push(g = { label, parts: [] });
+      g.parts.push({ name: it.name, label: PARTS[it.name].label, colour: it.colour });
+    }
+    groups.sort((a, b) => parseFloat(a.label) - parseFloat(b.label));     // by subassembly number: "4 · …" before "5 · …"
+    groups.push({ label: 'Bought (reference)', parts: c.refs.map((r) => ({ name: r.name, label: r.label, colour: '#9aa3a0' })) });
+    return groups;
+  }
+  function buildTree() {
+    const tree = $('tree');
+    if (tree.dataset.built) return syncTree();
+    const groups = treeGroups();
+    tree.innerHTML = `<button type="button" class="top" id="tToggle" aria-controls="tBody">
+        <svg class="chev" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <b>Show</b><small id="tCount"></small></button>
+      <label class="all"><input type="checkbox" id="tAll">All parts</label><div class="body" id="tBody">` +
+      groups.map((g, i) => `<div class="grp"><label><input type="checkbox" data-group="${i}">${g.label}</label><ul>` +
+        g.parts.map((p) => `<li><label><input type="checkbox" data-part="${p.name}"><i class="sw" style="background:${p.colour}"></i>${p.label}</label></li>`).join('') +
+        '</ul></div>').join('') + '</div>';
+    tree.dataset.built = '1';
+    // collapsible to its header and "All parts": starts folded where it would cover most of the model (phones)
+    const fold = (closed) => {
+      tree.classList.toggle('closed', closed);
+      $('tToggle').setAttribute('aria-expanded', String(!closed));
+      resize();
+    };
+    $('tToggle').addEventListener('click', () => fold(!tree.classList.contains('closed')));
+    fold(stage.clientWidth < 700);
+    const set = (names, on) => { for (const n of names) on ? state.hidden.delete(n) : state.hidden.add(n); applyVisible(); hash(); };
+    $('tAll').addEventListener('change', (e) => set(groups.flatMap((g) => g.parts.map((p) => p.name)), e.target.checked));
+    for (const box of tree.querySelectorAll('input[data-group]')) {
+      box.addEventListener('change', () => set(groups[+box.dataset.group].parts.map((p) => p.name), box.checked));
+    }
+    for (const box of tree.querySelectorAll('input[data-part]')) {
+      box.addEventListener('change', () => set([box.dataset.part], box.checked));
+    }
+    tree._groups = groups;
+    syncTree();
+  }
+  // a parent is checked when all its parts are shown, mixed (indeterminate) when some are
+  function syncTree() {
+    const tree = $('tree'), groups = tree._groups;
+    const mark = (box, names) => {
+      const on = names.filter((n) => !state.hidden.has(n)).length;
+      box.checked = on === names.length;
+      box.indeterminate = on > 0 && on < names.length;
+    };
+    for (const box of tree.querySelectorAll('input[data-part]')) box.checked = !state.hidden.has(box.dataset.part);
+    for (const box of tree.querySelectorAll('input[data-group]')) mark(box, groups[+box.dataset.group].parts.map((p) => p.name));
+    const all = groups.flatMap((g) => g.parts.map((p) => p.name));
+    mark($('tAll'), all);
+    $('tCount').textContent = `${all.filter((n) => !state.hidden.has(n)).length} / ${all.length}`;
+  }
+  function applyVisible() {
+    for (const m of group.children) if (m.userData.part) m.visible = !state.hidden.has(m.userData.part);
+    if ($('tree').dataset.built) syncTree();
+  }
+
+  function setLayers(toTop) {
+    const n = Math.max(1, Math.ceil(cur.cache.size.y / +$('lh').value - 1e-6));
+    const s = $('layer');
+    const frac = s.max > 1 ? (+s.value - 1) / (+s.max - 1) : 1;
+    s.max = n;
+    s.value = toTop ? n : Math.max(1, Math.round(frac * (n - 1) + 1));
+    $('topH').textContent = f2(cur.cache.size.y);
+    cut();
+  }
+
+  function cut() {
+    const lh = +$('lh').value, H = cur.cache.size.y;
+    const L = +$('layer').value, N = +$('layer').max;
+    const h = Math.min(H, L * lh) + (L === N ? 0.01 : 0);  // the top step shows the whole thing
+    const h0 = Math.max(0, h - lh);
+    below.constant = h; bandBot.constant = -h0; belowBand.constant = h0; above.constant = -h;
+    marker.position.y = h;
+    const s = $('layer'), r = $('readout');
+    const t = (L - 1) / Math.max(1, N - 1);
+    r.style.bottom = `calc(${t * 100}% - ${t * 28 - 14}px)`;
+    const mm = f2(Math.min(h, H));
+    r.innerHTML = `${mm} mm<small>layer ${L} / ${N}</small>`;
+    s.setAttribute('aria-valuetext', `${mm} millimetres, layer ${L} of ${N}`);
+  }
+
+  function frame() {
+    const s = cur.cache.size;
+    const r = Math.max(s.x, s.y, s.z, 30);
+    const d = r * (isAsm() ? 1.9 : 2.6) + 40;
+    controls.target.set(0, s.y * 0.45, 0);
+    camera.position.set(d * 0.62, s.y * 0.45 + d * 0.5, d * 0.78);
+    camera.near = 0.5; camera.far = d * 20; camera.updateProjectionMatrix();
+    controls.update();
+  }
+
+  const KEY_PART = `
+    <span><i class="sw" style="background:var(--print)"></i>Printed so far</span>
+    <span><i class="sw" style="background:var(--layer)"></i>Layer at the nozzle (the cut face)</span>
+    <span><i class="sw" style="background:var(--over)"></i>Overhang steeper than 45° (may need support)</span>
+    <span><i class="sw" style="border:1px solid var(--muted)"></i>Still to print</span>`;
+  const KEY_ASM = `
+    <span><i class="sw" style="background:#9aa3a0;opacity:.6"></i>Film strip and CS-Lite (bought, for reference)</span>
+    <span>One colour per printed part, as in the picker and the list above</span>`;
+
+  function rail(part) {
+    const c = part.cache;
+    $('pn').textContent = part.num;
+    $('pt').textContent = part.label;
+    $('pd').innerHTML = part.desc;
+    $('key').innerHTML = isAsm() ? KEY_ASM : KEY_PART;
+    let rows;
+    if (isAsm()) {
+      $('statsH').textContent = 'Assembled'; $('notesH').textContent = 'Parts · click one to see it print';
+      rows = [
+        ['Printed parts', `${c.items.length}`],
+        ['Overall, with film and CS-Lite', `${f2(c.size.x)} × ${f2(c.size.z)}`],
+        ['Height', `${f2(c.size.y)} mm`],
+        ['Plastic', `${(c.vol / 1000).toFixed(1)} cm³ solid`],
+        ['Hardware', '4 × M3 × 20'],
+      ];
+      $('notes').outerHTML = `<ul class="asm" id="notes">${c.items.map((it) => {
+        const p = PARTS[it.name];
+        return `<li tabindex="0" data-part="${it.name}"><i class="sw" style="background:${it.colour}"></i>` +
+               `<span class="t">${p.label}</span><span class="v"><code>${p.up}</code> up</span></li>`;
+      }).join('')}</ul>`;
+      for (const li of $('notes').querySelectorAll('li')) {
+        const go = () => { stop(); sel.value = li.dataset.part; show(PARTS[li.dataset.part]); };
+        li.addEventListener('click', go);
+        li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+      }
+    } else {
+      $('statsH').textContent = 'On the bed'; $('notesH').textContent = 'Print notes';
+      const fits = c.size.x <= BX + 1e-6 && c.size.z <= BY + 1e-6;
+      rows = [
+        ['Face up', `<code>${part.up}</code> (model axis)`],
+        ['Footprint', `${f2(c.size.x)} × ${f2(c.size.z)}`],
+        ['Height', `${f2(c.size.y)} mm`],
+        ['Layers', `${$('layer').max} at ${(+$('lh').value).toFixed(2)}`],
+        ['Volume', `${(c.vol / 1000).toFixed(2)} cm³`],
+        ['Overhang area > 45°', `${(c.overArea).toFixed(0)} mm²`],
+        [`Fits ${BX} × ${BY} bed`, fits ? 'yes' : 'NO', fits ? 'ok' : ''],
+      ];
+      $('notes').outerHTML = `<ul class="notes" id="notes">${part.notes.map((n) => `<li>${n}</li>`).join('')}</ul>`;
+    }
+    $('stats').innerHTML = rows.map(([k, v, cl]) => `<dt>${k}</dt><dd class="${cl || ''}">${v}</dd>`).join('');
+  }
+
+  // ---- UI ----
+  const sel = $('part');
+  {
+    const o = document.createElement('option');
+    o.value = ASM.name; o.textContent = 'Entire assembly';
+    sel.append(o);
+  }
+  const groups = {};
+  for (const p of DATA.parts) {
+    let og = groups[p.group];
+    if (!og) { og = groups[p.group] = document.createElement('optgroup'); og.label = p.group; sel.append(og); }
+    const o = document.createElement('option');
+    o.value = p.name; o.textContent = `${p.num} · ${p.label}`;
+    og.append(o);
+  }
+  const byName = { ...PARTS, [ASM.name]: ASM };
+  sel.addEventListener('change', () => { stop(); show(byName[sel.value]); });
+  $('layer').addEventListener('input', () => { stop(); cut(); hash(); });
+  $('lh').addEventListener('change', () => { setLayers(false); rail(cur); hash(); });
+
+  const toggle = (id, key, fn) => $(id).addEventListener('click', () => {
+    state[key] = !state[key]; $(id).setAttribute('aria-pressed', state[key]); fn();
+  });
+  toggle('bGhost', 'ghost', () => { const g = group.getObjectByName('ghost'); if (g) g.visible = state.ghost; });
+  toggle('bOver', 'over', () => { if (!isAsm()) colourFaces(cur); });
+  $('bReset').addEventListener('click', frame);
+
+  let last = 0;
+  function stop() { state.playing = false; $('bPlay').setAttribute('aria-pressed', 'false'); $('bPlay').textContent = '▶ Play'; }
+  $('bPlay').addEventListener('click', () => {
+    if (state.playing) return stop();
+    const s = $('layer');
+    if (+s.value >= +s.max) s.value = 1;
+    state.playing = true; last = performance.now();
+    $('bPlay').setAttribute('aria-pressed', 'true'); $('bPlay').textContent = '❚❚ Pause';
+  });
+  let acc = 0;
+  function step(now) {
+    if (!state.playing) return;
+    const s = $('layer'), N = +s.max;
+    acc += (now - last) / 1000 * (N / 7);   // bottom to top in about 7 s
+    last = now;
+    if (acc >= 1) {
+      const k = Math.floor(acc); acc -= k;
+      s.value = Math.min(N, +s.value + k); cut();
+      if (+s.value >= N) { stop(); hash(); }
+    }
+  }
+  addEventListener('keydown', (e) => {
+    if (isAsm() || e.target === sel || e.target.closest('ul.asm')) return;
+    const s = $('layer');
+    const d = { ArrowUp: 1, ArrowDown: -1, PageUp: 10, PageDown: -10 }[e.key];
+    if (d && e.target !== s) { e.preventDefault(); stop(); s.value = +s.value + d; cut(); hash(); }
+    if (e.key === ' ' && e.target.tagName !== 'BUTTON') { e.preventDefault(); $('bPlay').click(); }
+  });
+
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    // with the part picker open, centre the model in the space to its left
+    const panel = cur && isAsm() && !$('tree').classList.contains('closed') ? $('tree').offsetWidth + 14 : 0;
+    if (panel && w > 2 * panel) camera.setViewOffset(w, h, panel / 2, 0, w, h);
+    else camera.clearViewOffset();
+    camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(stage);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paint);
+
+  $('meta').textContent = DATA.built;
+  $('foot').innerHTML = DATA.foot;
+  paint();
+  const q = new URLSearchParams(location.hash.slice(1));
+  for (const n of (q.get('hide') || '').split(',')) if (n) state.hidden.add(n);
+  const first = byName[q.get('part')] || DATA.parts[0];
+  sel.value = first.name;
+  show(first);
+  if (!isAsm() && ['0.12', '0.16', '0.2', '0.28'].includes(q.get('lh'))) { $('lh').value = q.get('lh'); setLayers(true); rail(cur); }
+  if (!isAsm() && +q.get('layer') >= 1) { $('layer').value = q.get('layer'); cut(); }
+  hash();
+  resize();
+  $('loading').remove();
+  renderer.setAnimationLoop((now) => { step(now); controls.update(); renderer.render(scene, camera); });
+})();
+</script>
+</body>
+</html>

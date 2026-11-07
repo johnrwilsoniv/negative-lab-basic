@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import cadquery as cq
 import pytest
 
+import assembly
 import build
 import cadutil
 from params import DEFAULT
@@ -207,7 +208,7 @@ def test_main_leaves_the_assembly_out_until_every_part_exists(tmp_path, capsys):
 
 def test_main_returns_nonzero_when_the_assembly_checks_fail(tmp_path, capsys):
     # every printed solid present, none touching another, but no clamp at LOCK and none of the fits to measure
-    names = ["adapter", "tube", "gate_box", "gate_lid", "pressure_plate", "wedge_plate", "knob", "light_dock"]
+    names = list(assembly.PRINTED)
     solids = {name: stub(20 * i, 20 * i + 10) for i, name in enumerate(names)}
     part = fake_part(solids, {name: "+z" for name in names})
 
@@ -293,7 +294,7 @@ def test_a_full_build_passes_and_writes_the_assembly_step(real_run):
     assert "FAIL" not in out
     path = out_dir / "step" / "nlb-scan-rig-assembly.step"
     assert path.stat().st_size > 0
-    assert len(cadutil.step_assembly(path)) == 10
+    assert len(cadutil.step_assembly(path)) == 12
 
 
 def test_a_full_build_reports_the_assembly_in_order(real_run):

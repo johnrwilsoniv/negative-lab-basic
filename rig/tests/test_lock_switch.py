@@ -24,7 +24,7 @@ FACE_TOL = 1e-3
 SLOPE = p.ramp_rise / p.ramp_len
 SLIDE_Z, LOCK_Z = -p.sw_travel / 2, p.sw_travel / 2
 RAMPS = [(zc, p.axis + dy) for zc in (-p.pad_z, p.pad_z) for dy in (-p.pad_dy, p.pad_dy)]
-GATE_PARTS = ["gate_box", "gate_lid", "pressure_plate"]
+GATE_PARTS = ["gate_front", "gate_body", "gate_lid", "pressure_plate"]
 ALL = GATE_PARTS + ["wedge_plate", "knob"]
 
 
@@ -106,7 +106,7 @@ def solids(gate_, switch_):
 
 def test_solid_names_and_print_directions(switch):
     assert list(switch) == ["wedge_plate", "knob"]
-    assert model.PRINT_UP == {"wedge_plate": "+y", "knob": "+y"}
+    assert model.PRINT_UP == {"wedge_plate": "-x", "knob": "+y"}
 
 
 @pytest.mark.parametrize("name", ["wedge_plate", "knob"])
@@ -160,7 +160,7 @@ def test_the_plate_clears_the_floor_and_the_lid_by_half_a_millimetre(wedge, gate
     assert plate[2] - floor_top == pytest.approx(0.5, abs=EPS)
     assert lid_bottom - plate[3] == pytest.approx(0.5, abs=EPS)
     assert cadutil.common_volume(wedge, gate["gate_lid"]) < 1e-3
-    assert cadutil.common_volume(wedge, gate["gate_box"]) < 1e-3
+    assert cadutil.common_volume(wedge, gate["gate_body"]) < 1e-3
 
 
 @pytest.mark.parametrize("lock", [False, True])
@@ -201,13 +201,13 @@ def test_the_tab_is_2_by_4_on_the_plates_top_up_to_the_lid_top(wedge):
 @pytest.mark.parametrize("lock, z", [(False, (-40, 30)), (True, (-30, 40))])
 def test_the_wedge_plate_stays_inside_the_gate_interior_at_both_ends(lock, z, gate):
     # interior: between the side walls' inner faces (z +-43) and the floor and the lid (y 3 .. gh - 3).
-    # Measured against the box: the plate (below its tab) clears every wall of it.
+    # Measured against the body: the plate (below its tab) clears every wall of it.
     w = model.build(p, lock)["wedge_plate"]
     plate = cadutil.common_bounds(w, probe(0, 400, 0, p.gh - p.wall, -100, 100))      # the tab is above the lid's underside
     assert (plate[4], plate[5]) == pytest.approx(z, abs=EPS)
     assert plate[2] >= 3 and plate[3] <= p.gh - 3
     assert -43 <= plate[4] and plate[5] <= 43
-    assert cadutil.common_volume(w, gate["gate_box"]) < 1e-3
+    assert cadutil.common_volume(w, gate["gate_body"]) < 1e-3
 
 
 # ---- wedge plate: the ramps ----------------------------------------------------------
@@ -387,12 +387,17 @@ def test_knob_sits_on_the_lid_and_the_tab_by_contact_only(lock, gate, switch, sw
 
 
 @pytest.mark.parametrize("lock", [False, True])
-def test_the_lid_under_the_knob_is_not_engraved(lock, gate, switch, switch_lock):
+def test_the_top_under_the_knob_is_not_engraved(lock, gate, switch, switch_lock):
+    # the knob's front 0.7 rides on the gate front's top (F5), the rest on the lid: both plain under it but for the slot
     k = (switch_lock if lock else switch)["knob"]
     kx0, kx1, _, _, kz0, kz1 = cadutil.bounds(k)
-    under = probe(kx0, kx1, p.gh - 0.5, p.gh, kz0, kz1)
+    lid_x0 = cadutil.bounds(gate["gate_lid"])[0]
+    assert kx0 < p.x_ref < lid_x0 < kx1
+    under = probe(lid_x0, kx1, p.gh - 0.5, p.gh, kz0, kz1)
     slot = cadutil.common_volume(under, probe(p.x_wedge - 0.5, p.x_wedge + 2.5, 0, 100, -8, 8))
     assert cadutil.common_volume(gate["gate_lid"], under) == pytest.approx(cadutil.volume(under) - slot, rel=1e-9)
+    front = probe(kx0, p.x_ref, p.gh - 0.5, p.gh, kz0, kz1)
+    assert cadutil.common_volume(gate["gate_front"], front) == pytest.approx(cadutil.volume(front), rel=1e-9)
 
 
 # ---- print orientation, bed and volumes ----------------------------------------------
@@ -406,22 +411,24 @@ def test_fits_the_bed_in_print_pose(switch, name):
 
 
 def test_print_pose_sizes(switch):
-    # the wedge plate stands 75 tall (tab up) on a 2.8 x 70 footprint
-    assert cadutil.size(cadutil.print_pose(switch["wedge_plate"], "+y")) == pytest.approx((2.8, 70, 75), abs=EPS)
+    # the wedge plate lies flat, 70 x 75 (tab included) and 2.8 tall with the ramps
+    assert cadutil.size(cadutil.print_pose(switch["wedge_plate"], "-x")) == pytest.approx((70, 75, 2.8), abs=EPS)
     assert cadutil.size(cadutil.print_pose(switch["knob"], "+y")) == pytest.approx((10, 12, 5.8), abs=EPS)
 
 
-def test_wedge_plate_prints_on_its_bottom_edge_with_the_ramp_slopes_in_the_bed_plane(switch):
+def test_wedge_plate_prints_flat_on_its_back_with_nothing_over_air(switch):
+    # F9: on its bottom edge the window's top was a 52 bridge. Flat, the back face and the tab are the first layer
+    # and the ramps are the top layers.
     posed = cadutil.print_pose(switch["wedge_plate"], model.PRINT_UP["wedge_plate"])
-    # +y up: the first layers are the plate's bottom edge, 2 x 70, and nothing else; the tab is at the top
-    x0, x1, y0, y1, *_ = cadutil.common_bounds(posed, probe(-100, 100, -100, 100, 0, 0.2))
-    assert (x1 - x0, y1 - y0) == pytest.approx((2, 70), abs=EPS)
-    assert filled(posed, x0, x1, y0, y1, 0, 0.2) > 1 - EPS
-    tab = cadutil.common_bounds(posed, probe(-100, 100, -100, 100, 75 - 3.5 + 0.01, 80))
-    assert (tab[1] - tab[0], tab[3] - tab[2]) == pytest.approx((2, 4), abs=EPS)
-    # the ramps' sloped faces stand upright, so each layer traces the 0.1 -> 0.8 slope instead of stepping it
-    assert cadutil.sloped_faces(posed) == []
-    assert len(cadutil.sloped_faces(cadutil.print_pose(switch["wedge_plate"], "-x"))) == 4      # printed flat, they were
+    sl = cadutil.solid(posed).intersect(cadutil.solid(probe(-100, 100, -100, 100, 0, 0.01)))
+    plate = 70 * (p.gh - 2 * p.wall - 2 * p.wedge_clear) - 52 * 26
+    assert sl.Volume() / 0.01 == pytest.approx(plate + 4 * 3.5, rel=1e-4)        # the plate and the tab (4 x 3.5)
+    assert cadutil.overhangs(posed) == []
+    assert cadutil.overhangs(cadutil.print_pose(switch["wedge_plate"], "+y"))      # on edge, the window bridged
+    # the price: the four ramps' slopes face up and are stepped by the layers
+    sloped = cadutil.sloped_faces(posed)
+    assert len(sloped) == 4 and all(f.normalAt().z > 0.99 for f in sloped)
+    assert cadutil.bounds(posed)[5] == pytest.approx(2 + 0.8, abs=EPS)                # the ramps' thick ends on top
 
 
 def test_knob_prints_flat_with_the_ridges_up(switch):

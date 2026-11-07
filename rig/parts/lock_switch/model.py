@@ -22,9 +22,9 @@ import cadquery as cq
 
 from params import DEFAULT, Params
 
-# Wedge plate on its bottom edge: the ramp slopes are traced in XY, not stepped by layers as thick as the preload.
-# The knob prints flat with the grip ridges up.
-PRINT_UP = {"wedge_plate": "+y", "knob": "+y"}
+# Wedge plate flat, back face on the bed, ramps up (F9): on its bottom edge it bridged 52 over its window. The ramps'
+# slopes then print stepped by the layers, as the pressure plate's pads do (F7). The knob prints flat, ridges up.
+PRINT_UP = {"wedge_plate": "-x", "knob": "+y"}
 
 
 def _shift(p: Params, lock: bool) -> float:

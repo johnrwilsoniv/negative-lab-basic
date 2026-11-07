@@ -295,3 +295,27 @@ def test_fits_bed_follows_the_bed_params():
     assert cadutil.fits_bed(wp, DEFAULT)
     assert not cadutil.fits_bed(wp, Params(bed_x=140))
     assert not cadutil.fits_bed(wp, Params(bed_y=140))
+
+
+# ---- overhangs -----------------------------------------------------------------------
+
+
+def test_overhangs_finds_a_shelf_over_air_but_not_the_bed_or_a_45_degree_chamfer():
+    post = cq.Workplane("XY").box(10, 10, 20, centered=(True, True, False))
+    shelf = cq.Workplane("XY").box(30, 10, 2, centered=(True, True, False)).translate((0, 0, 18))
+    t = post.union(shelf)
+    over = cadutil.overhangs(t)
+    assert len(over) == 2 and all(f.normalAt().z < -0.99 for f in over)       # the shelf's two undersides
+    assert cadutil.overhangs(post) == []                                       # the bed face does not count
+    wedge = cq.Workplane("XZ").polyline([(0, 0), (10, 0), (20, 10), (0, 10)]).close().extrude(5)
+    assert cadutil.overhangs(wedge) == []                                      # 45 degrees prints
+    steep = cq.Workplane("XZ").polyline([(0, 0), (10, 0), (25, 10), (0, 10)]).close().extrude(5)
+    assert len(cadutil.overhangs(steep)) == 1
+
+
+def test_overhangs_samples_curved_faces():
+    # a horizontal cylinder's lower half leans out over the bed; standing upright it does not
+    lying = cq.Workplane("YZ").circle(5).extrude(20).translate((0, 0, 5))
+    standing = cq.Workplane("XY").circle(5).extrude(20)
+    assert len(cadutil.overhangs(lying)) >= 1
+    assert cadutil.overhangs(standing) == []

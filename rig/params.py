@@ -85,7 +85,8 @@ class Params:
     pad: float = 4                # pressure plate pad footprint, square
     pad_z: float = 22             # pad centres at z = +-pad_z
     pad_dy: float = 15.5          # ... and at y = axis +- pad_dy
-    lid_text_size: float = 5.5    # font size, em height; the letters then fill the 16 x 4.4 boxes
+    lid_text_size: float = 5.5    # SLIDE / LOCK lettering, engraved in the gate front's top beside the lid (F5): font size,
+                                  # em height; the letters then fill the 16 x 4.4 boxes
     lid_text_depth: float = 0.4   # engraving depth
     lid_text_z: float = 14        # SLIDE centred at z = -lid_text_z, LOCK at +lid_text_z
     lid_text_back: float = 11     # lettering centred this far in front (-x) of the knob
@@ -113,6 +114,15 @@ class Params:
     shroud_w: float = 60          # ... shroud outside width, z, ...
     shroud_h: float = 46          # ... opening height, y, centred on the axis, ...
     shroud_t: float = 2           # ... and wall thickness (side walls and top plate)
+    shroud_seat: float = 1        # ... sits this deep in a pocket in the dock's floor (F6), ...
+    shroud_clear: float = 0.2     # ... with this much to the pocket's sides and to the front lip it straddles
+    ear_w: float = 9              # gate joint (F5): screw pillars outside the side walls, this wide in z, ...
+    ear_h: float = 9              # ... and this tall in y, at the bottom and under the lid; 1.25 around the counterbore
+    joint_hole_d: float = 3.4     # ... M3 clearance through the gate front, ...
+    cbore_d: float = 6.5          # ... counterbored for the head, ...
+    cbore_depth: float = 3.5
+    pilot_d: float = 2.5          # ... into a pilot the M3 self-taps (4.0 for an M3 heat-set insert), ...
+    pilot_depth: float = 12       # ... this deep into the pillar
 
     # ---- reference solids in the assembly (not printed) ----
     film_strip_len: float = 228   # the film strip drawn through the gate, along z, ...
@@ -234,6 +244,24 @@ class Params:
     @property
     def film_slot_h(self) -> float:     # side walls' film slot, along y: 37
         return self.film_w + 2 * self.film_slot_clear
+
+    @property
+    def x_ref(self) -> float:           # the film reference plane (F5): the gate front's rear face, which prints on the
+        return self.x_film - self.channel / 2   # bed; the film lies against it, half the channel in front of the film plane
+
+    @property
+    def gate_front_w(self) -> float:    # the gate front, as wide as the body and its screw pillars
+        return self.gw + 2 * self.ear_w
+
+    @property
+    def flare_scale(self) -> float:     # the light passage flares from the frame window to this times its size at the
+        return 2 * self.tube_ri / math.hypot(self.win_w, self.win_h)    # tube end: its corners on the tube's bore
+
+    @property
+    def screw_points(self) -> list[tuple[float, float]]:    # (y, z) of the four gate joint screws, one per pillar
+        ys = (self.ear_h / 2, self.gh - self.wall - self.ear_h / 2)
+        zs = (-(self.gw / 2 + self.ear_w / 2), self.gw / 2 + self.ear_w / 2)
+        return [(y, z) for y in ys for z in zs]
 
     @property
     def film_slot_x0(self) -> float:    # ... and its lens-side edge: flush with the front plate's rear face, so the

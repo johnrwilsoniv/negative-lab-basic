@@ -3,7 +3,9 @@
 Parts return their solids in mockup coordinates already, so assembling is collecting them. Only the STEP
 file is turned into Onshape's frame (`to_onshape`): Z up, the origin on the table under the film. Two
 reference solids stand in for what is bought (ruling R14): the film strip, lying against the front
-plate's rear face, and the CS-Lite panel in the dock. There is no camera or lens.
+plate's rear face, and the CS-Lite panel in the dock. There is no camera or lens. The strip has its
+perforations cut through it, and each exposed frame is its own solid filling a hole in it (film_frame_1
+from -z), so the STEP can colour the frames apart from the base.
 
 At LOCK the pressure plate's pads press `preload` into the wedge plate's ramps; the rigid model has no
 other way to show the clamp, so that is the one overlap allowed (ruling R7). The film does not move: the
@@ -23,7 +25,7 @@ from params import DEFAULT, Params
 
 STEP_PATH = Path(__file__).parent / "exports" / "step" / "nlb-scan-rig-assembly.step"
 
-REFERENCE_NAMES = ("film", "cs_lite")
+REFERENCE_NAMES = ("film", "cs_lite")     # plus a film_frame_<n> per frame, see is_reference
 CONTACT_VOLUME = 1e-3       # mm3: a common smaller than this is two solids touching
 PREFILTER_GAP = 1e-6        # mm: boxes further apart than this cannot intersect (bounds are exact to ~1e-9)
 PRELOAD_TOL = 0.005         # mm: how far the pads' overlap may be from the designed preload
@@ -33,9 +35,9 @@ COLORS = {
     "adapter": (1.0, 0.65, 0.0), "tube": (0.27, 0.51, 0.71), "gate_front": (0.1, 0.42, 0.1),
     "gate_body": (0.13, 0.55, 0.13), "gate_lid": (0.56, 0.93, 0.56), "pressure_plate": (0.58, 0.44, 0.86),
     "wedge_plate": (0.85, 0.2, 0.2), "knob": (1.0, 0.84, 0.0), "light_dock": (0.63, 0.32, 0.18),
-    "shroud": (0.45, 0.22, 0.12),
 }
-REFERENCE_COLORS = {"film": (0.45, 0.45, 0.45, 0.45), "cs_lite": (0.75, 0.75, 0.8, 0.35)}
+REFERENCE_COLORS = {"film": (0.66, 0.6, 0.5, 0.45), "cs_lite": (0.75, 0.75, 0.8, 0.35)}
+FRAME_COLOR = (0.17, 0.15, 0.13, 0.75)  # the exposures: dark, as on a negative
 UNKNOWN_COLOR = (0.8, 0.8, 0.8)         # a printed solid that has no colour of its own yet
 PRINTED = tuple(COLORS)                 # the solids a complete rig has
 
@@ -62,18 +64,45 @@ def parts(
     return solids
 
 
+def is_reference(name: str) -> bool:
+    return name in REFERENCE_NAMES or name.startswith("film_frame_")
+
+
+def _frames(p: Params, x0: float) -> list[cq.Workplane]:
+    """The exposed frames, frame_w along z by frame_h across, centred on the axis, each one solid."""
+    return [cadutil.probe(
+        x0, x0 + p.film_t, p.axis - p.frame_h / 2, p.axis + p.frame_h / 2, z - p.frame_w / 2, z + p.frame_w / 2
+    ) for z in p.frame_zs]
+
+
+def _perforations(p: Params, x0: float) -> cq.Workplane:
+    """Both rows of perforations, as one cutter: rounded rectangles through the film's thickness."""
+    ys = (p.axis - p.perf_inner - p.perf_w / 2, p.axis + p.perf_inner + p.perf_w / 2)
+    return (
+        cq.Workplane("YZ", origin=(x0, 0, 0))           # local x is y, local y is z, extruded along +x
+        .pushPoints([(y, z) for y in ys for z in p.perf_zs])
+        .rect(p.perf_w, p.perf_l)
+        .extrude(p.film_t)
+        .edges("|X").fillet(p.perf_r)
+    )
+
+
 def references(p: Params = DEFAULT, lock: bool = False) -> dict[str, cq.Workplane]:
-    """The film strip and the CS-Lite panel. Neither moves with `lock`."""
+    """The film strip, its frames and the CS-Lite panel. None of them moves with `lock`."""
     x0 = p.x_film - p.channel / 2            # against the front plate's rear face
-    film = cadutil.probe(
+    strip = cadutil.probe(
         x0, x0 + p.film_t,
         p.axis - p.film_w / 2, p.axis + p.film_w / 2,
         p.film_strip_z - p.film_strip_len / 2, p.film_strip_z + p.film_strip_len / 2,
     )
+    frames = _frames(p, x0)
+    film = strip.cut(_perforations(p, x0))
+    for frame in frames:
+        film = film.cut(frame)
     cs_lite = cadutil.probe(
         p.x_light, p.x_light + p.csl_t, p.floor_t, p.floor_t + p.csl_h, -p.csl_l / 2, p.csl_l / 2
     )
-    return {"film": film, "cs_lite": cs_lite}
+    return {"film": film, **{f"film_frame_{i}": f for i, f in enumerate(frames, 1)}, "cs_lite": cs_lite}
 
 
 def placed(
@@ -87,7 +116,7 @@ def pairs(solids: Mapping[str, cq.Workplane]) -> list[tuple[str, str]]:
     """Every two printed solids, and every printed solid with each reference; references not with each other."""
     return [
         (a, b) for a, b in itertools.combinations(solids, 2)
-        if not (a in REFERENCE_NAMES and b in REFERENCE_NAMES)
+        if not (is_reference(a) and is_reference(b))
     ]
 
 
@@ -160,7 +189,7 @@ def to_onshape(p: Params, wp: cq.Workplane) -> cq.Workplane:
 
 
 def _step_name(name: str) -> str:
-    return f"ref_{name}" if name in REFERENCE_NAMES else name
+    return f"ref_{name}" if is_reference(name) else name
 
 
 def write_step(
@@ -168,14 +197,14 @@ def write_step(
 ) -> None:
     """The assembly at SLIDE, in the Onshape frame (`to_onshape`), one named and coloured solid per part.
 
-    The references are named ref_film and ref_cs_lite, grey and translucent.
+    The references are named ref_film, ref_film_frame_<n> and ref_cs_lite, translucent; the frames darker.
     """
     solids = placed(p, False) if solids is None else solids
     asm = cq.Assembly(name="nlb-scan-rig")
     for name, wp in solids.items():
         wp = to_onshape(p, wp)
-        if name in REFERENCE_NAMES:
-            asm.add(wp, name=_step_name(name), color=cq.Color(*REFERENCE_COLORS[name]))
+        if is_reference(name):
+            asm.add(wp, name=_step_name(name), color=cq.Color(*REFERENCE_COLORS.get(name, FRAME_COLOR)))
         else:
             asm.add(wp, name=name, color=cq.Color(*COLORS.get(name, UNKNOWN_COLOR), 1.0))
     Path(path).parent.mkdir(parents=True, exist_ok=True)

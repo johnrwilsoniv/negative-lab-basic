@@ -29,7 +29,7 @@ def test_plan_constants():
     assert p.thread_clear == 0.15
     assert (p.adapter_r, p.adapter_bore_r, p.socket_depth, p.flange) == (39, 31, 9, 3)
     assert (p.tube_ro, p.tube_ri) == (36, 32)
-    assert (p.gw, p.gate_d, p.gate_front, p.wall) == (92, 30, 14, 3)
+    assert (p.gw, p.gate_d, p.gate_front, p.wall) == (92, 39, 14, 3)     # gate_d = gate_front + gap (F10)
     assert (p.win_w, p.win_h, p.gap) == (38, 26, 25)
     assert (p.front_wall, p.fit_clear, p.plate_t, p.wedge_gap) == (4, 0.3, 1.8, 0.9)
     assert p.gate_above_axis == 36
@@ -69,9 +69,9 @@ def test_rail_values_at_defaults():
     assert p.tube_len == 117
     assert p.fit_r == pytest.approx(36.3)
     assert p.dock_w == 181
-    assert p.dock_x0 == 271
+    assert p.dock_x0 == pytest.approx(236.8)          # the front wall's front face: 4.2 in front of the gate (F11)
     assert p.dock_x1 == 306.5
-    assert p.dock_x1 - p.dock_x0 == 35.5
+    assert p.dock_x1 - p.dock_x0 == pytest.approx(69.7)
 
 
 def test_lock_mechanism_x_stations():
@@ -105,7 +105,7 @@ def test_tube_len_tracks_wd():
     p = Params(wd=150)
     assert p.tube_len == p.wd - 13 == 137
     assert p.x_film == 275
-    assert p.dock_x1 - p.dock_x0 == 35.5
+    assert p.dock_x1 - p.dock_x0 == pytest.approx(69.7)
 
 
 def test_baffles():
@@ -153,3 +153,27 @@ def test_the_film_slot_starts_at_the_front_plates_rear_face():
     assert p.x_front_plate == pytest.approx(p.x_film - p.channel / 2 - p.plate_t) == pytest.approx(252.9)
     assert p.film_slot_x0 == pytest.approx(p.x_front_plate + p.plate_t) == pytest.approx(254.7)
     assert p.film_slot_x0 + p.film_slot_w == pytest.approx(257.9)     # the slot's far edge has not moved
+
+
+def test_ks_perforations_and_frame_pitch():
+    p = Params()
+    assert (p.perf_pitch, p.perf_l, p.perf_w, p.perf_r, p.perf_edge) == (4.75, 1.98, 2.79, 0.5, 2.01)
+    assert p.frame_pitch == pytest.approx(38)
+    assert p.perf_inner == pytest.approx(12.7)          # 0.7 clear of the 24 frame's edge
+
+
+def test_the_strip_holds_six_frames_one_centred_on_the_window():
+    p = Params()
+    assert p.frame_zs == pytest.approx([-76, -38, 0, 38, 76, 114])
+    zs = p.perf_zs
+    assert len(zs) == 48
+    assert zs[0] == pytest.approx(-95 + 2.375) and zs[-1] == pytest.approx(133 - 2.375)
+    assert all(b - a == pytest.approx(4.75) for a, b in zip(zs, zs[1:]))
+    assert sum(1 for z in zs if -18 < z < 18) == 8      # 8 perforations a frame, symmetric about its centre
+
+
+def test_frames_and_perforations_stay_on_a_shorter_strip():
+    p = Params(film_strip_len=120, film_strip_z=0)
+    assert p.frame_zs == pytest.approx([-38, 0, 38])                # -56 to 56 on a -60 to 60 strip
+    assert Params(film_strip_len=100, film_strip_z=0).frame_zs == pytest.approx([0])
+    assert min(p.perf_zs) - p.perf_l / 2 >= -60 and max(p.perf_zs) + p.perf_l / 2 <= 60

@@ -74,6 +74,7 @@ def data(p: Params, stl_dir: Path = STL_DIR) -> dict:
                 "x_gate", "x_light", "gh", "gate_d", "channel", "film_t", "film_w", "film_strip_len",
                 "film_strip_z", "csl_l", "csl_h", "csl_t", "csl_lit_w", "csl_lit_h", "floor_t",
                 "sw_travel", "preload", "bed_x", "bed_y", "win_w", "win_h", "gap", "x_knob",
+                "frame_w", "frame_h", "frame_zs", "perf_l", "perf_w", "perf_r", "perf_inner", "perf_zs",
             )
         },
         "solids": solids,

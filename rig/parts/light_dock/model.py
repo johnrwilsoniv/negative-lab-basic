@@ -1,36 +1,36 @@
-"""6 · Light dock: the printed holder for the CS-Lite panel, and the shroud from the gate to its face.
+"""6 · Light dock: the printed holder for the CS-Lite panel, with the film gate inset in it.
 
 Mockup `rebuild()` lines 473-494. The panel (bought, 165 x 112 x 20) stands on its long edge in a
-slot between two lips, its lit face toward the film, against the front lip. A short tunnel, the
-shroud, runs from the gate's rear face to that lit face so no stray light reaches the film.
+slot between two lips, its lit face toward the film, against the front lip. The gate body's rear face
+lies flush on that lit face (ruling F10): the gate is `gate_front + gap` deep, so its rear wall ends at
+x_light, and the panel closes the rear window. There is no shroud.
 
-Two solids (ruling F6). The dock is the union of:
-  - the floor, from the gate's rear face (dock_x0) to `dock_tail` past the slot's back edge, with a
-    pocket `shroud_seat` deep at its front edge for the shroud;
+One solid, the union of:
+  - the floor, from the front wall's front face (dock_x0) to `dock_tail` past the slot's back edge;
+  - the front wall (F11), `dock_front_t` thick, `dock_gate_clear` in front of the gate front, full width and up
+    to `cheek_top`, with a U for the tube: a half circle `dock_tube_clear` around it below the axis, straight
+    up from there, so it prints with no overhang. The gate front and the gate body are held between it and
+    the panel, so they can't come apart by more than dock_gate_clear;
   - a front and a back lip, full width, `lip_t` thick, with the panel's slot (`csl_slot`) between them;
   - a side cheek at each end of the slot, from `cheek_clear` outside the panel's end to the floor's
-    edge, up to `cheek_top`.
-The shroud is its own print: x dock_x0 .. x_light, `shroud_w` wide outside, with a `shroud_h` tall
-opening centred on the axis and `shroud_t` walls around it, a solid block below sitting in the pocket.
-It straddles the front lip, `shroud_clear` from it, and sits `shroud_clear` inside the pocket's sides,
-so the lip and the pocket hold it in x and z. Printed on its end, its top plate is no longer a bridge.
+    edge, up to `cheek_top`;
+less the gate notch: through the floor and the front lip, from the front wall to x_light, as wide as the
+gate front (the body and its screw pillars) plus `dock_gate_clear` each side. The whole gate stands on the
+table in it, between two floor arms that locate it in z, its rear wall in the lip's gap.
+What is left of the front lip holds the panel's ends; the gate's rear wall holds its middle.
 
 The slot is the panel's thickness plus `csl_clear` (ruling F1, which reverses R16's zero clearance): the
-front lip stays at x_light, so the lit face does not move, and the back lip moves back. The shroud top,
-axis + shroud_h/2 + shroud_t, stands above the cheeks (ruling R9). At the lowest axis Params allows
-(adapter_r, 39; ruling F2) the opening's bottom is level with the lips' top, inside the lip notch.
+front lip stays at x_light, so the lit face does not move, and the back lip moves back.
 
-Not modelled (ruling R3): how the dock locates against the gate, and keeping light from leaking at
-the gate/shroud joint. The shroud's front face is the gate's rear face, touching, and nothing more.
+The front wall covers the gate front's two lower screw heads: lift the gate out to reach them.
 """
 
 import cadquery as cq
 
 from params import DEFAULT, Params
 
-# The dock prints floor down: lips and cheeks stand up from it. The shroud prints on its end, the face against the
-# gate on the bed, so its opening is a vertical tunnel and the lip notch opens upward.
-PRINT_UP = {"light_dock": "+y", "shroud": "+x"}
+# The dock prints floor down: lips and cheeks stand up from it.
+PRINT_UP = {"light_dock": "+y"}
 
 
 def _box(x0: float, x1: float, y0: float, y1: float, z0: float, z1: float) -> cq.Workplane:
@@ -38,10 +38,7 @@ def _box(x0: float, x1: float, y0: float, y1: float, z0: float, z1: float) -> cq
 
 
 def _floor(p: Params) -> cq.Workplane:
-    """With the shroud's pocket: dock_x0 .. the front lip, shroud_clear wider than the shroud each side."""
-    floor = _box(p.dock_x0, p.dock_x1, 0, p.floor_t, -p.dock_w / 2, p.dock_w / 2)
-    hw = p.shroud_w / 2 + p.shroud_clear
-    return floor.cut(_box(p.dock_x0 - 1, p.x_light - p.lip_t, p.floor_t - p.shroud_seat, p.floor_t + 1, -hw, hw))
+    return _box(p.dock_x0, p.dock_x1, 0, p.floor_t, -p.dock_w / 2, p.dock_w / 2)
 
 
 def _lips(p: Params) -> list[cq.Workplane]:
@@ -60,31 +57,30 @@ def _cheeks(p: Params) -> list[cq.Workplane]:
     return [_box(x0, x1, p.floor_t, p.cheek_top, inner, outer), _box(x0, x1, p.floor_t, p.cheek_top, -outer, -inner)]
 
 
-def shroud(p: Params = DEFAULT) -> cq.Workplane:
-    """dock_x0 .. x_light. One (z, y) profile extruded along x: the outside rectangle from the pocket's floor to the
-    top plate, less the opening, so the block under the opening is solid; less a notch over the front lip, shroud_clear
-    clear of it in x and in y."""
-    y0 = p.floor_t - p.shroud_seat
-    top = p.axis + p.shroud_h / 2 + p.shroud_t
-    open_w = p.shroud_w - 2 * p.shroud_t
-    tunnel = (
-        cq.Workplane("YZ", origin=(p.dock_x0, 0, 0))
-        .moveTo((y0 + top) / 2, 0).rect(top - y0, p.shroud_w)
-        .moveTo(p.axis, 0).rect(p.shroud_h, open_w)
-        .extrude(p.x_light - p.dock_x0)
-    )
-    hw = p.shroud_w / 2 + 1
-    notch = _box(p.x_light - p.lip_t - p.shroud_clear, p.x_light + 1, y0 - 1, p.floor_t + p.lip_h + p.shroud_clear, -hw, hw)
-    return tunnel.cut(notch)
+def _front_wall(p: Params) -> cq.Workplane:
+    """In front of the gate front, full width, up to cheek_top, less the U the tube passes through."""
+    x0, x1 = p.dock_x0, p.x_gate - p.dock_gate_clear
+    wall = _box(x0, x1, 0, p.cheek_top, -p.dock_w / 2, p.dock_w / 2)
+    r = p.tube_ro + p.dock_tube_clear
+    round_ = cq.Workplane("YZ", origin=(x0 - 1, 0, 0)).center(p.axis, 0).circle(r).extrude(x1 - x0 + 2)
+    straight = _box(x0 - 1, x1 + 1, p.axis, p.cheek_top + 1, -r, r)
+    return wall.cut(round_).cut(straight)
+
+
+def _gate_notch(p: Params) -> cq.Workplane:
+    """Where the gate stands: the front wall to x_light, the gate front's width plus dock_gate_clear each side,
+    through the floor and the front lip."""
+    hw = p.gate_front_w / 2 + p.dock_gate_clear
+    return _box(p.x_gate - p.dock_gate_clear, p.x_light, -1, p.floor_t + p.lip_h + 1, -hw, hw)
 
 
 def light_dock(p: Params = DEFAULT) -> cq.Workplane:
     dock = _floor(p)
     for part in (*_lips(p), *_cheeks(p)):
         dock = dock.union(part)
-    return dock
+    return dock.cut(_gate_notch(p)).union(_front_wall(p))
 
 
 def build(p: Params = DEFAULT, lock: bool = False) -> dict[str, cq.Workplane]:
-    """The light dock and the shroud in mockup coordinates. Neither moves with the lock switch."""
-    return {"light_dock": light_dock(p), "shroud": shroud(p)}
+    """The light dock in mockup coordinates. It does not move with the lock switch."""
+    return {"light_dock": light_dock(p)}

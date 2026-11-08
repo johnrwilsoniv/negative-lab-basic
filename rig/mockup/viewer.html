@@ -208,16 +208,15 @@ const RIG = /*__RIG_DATA__*/null;
     adapter: ['1', 'Lens adapter', 'Screws into the 67mm filter thread. Modelled ISO thread, M67 × 0.75, 0.15 clearance.', 'adapter'],
     tube: ['2', 'Tube', 'Blocks room light between lens and film. Sawtooth baffle ribs inside, 8mm apart.', 'tube'],
     gate_front: ['3', 'Gate front', 'Tube socket, light passage and frame window. Its rear face is the film reference plane, printed on the bed. SLIDE and LOCK engraved on top.', 'gate'],
-    gate_body: ['3', 'Gate body', 'Floor, side walls and rear wall; film slots are notches the gate front closes. Four M3 screws join it to the front.', 'gate'],
+    gate_body: ['3', 'Gate body', 'Floor, side walls and rear wall; film slots are notches the gate front closes. A backer below the film takes the wedge plate\'s push at LOCK. Four M3 screws join it to the front.', 'gate'],
     gate_lid: ['3', 'Gate lid', 'Rests on the side walls, between the gate front and the rear wall. Slot for the switch tab.', 'gate'],
     pressure_plate: ['3', 'Pressure plate', 'Floats 0.25 inside the body, 0.6 channel behind the reference plane. Four sloped pads on its back.', 'gate'],
-    light_dock: ['4', 'Light dock', 'Holds the CS-Lite on its edge. A pocket in the floor seats the shroud.', 'dock'],
-    shroud: ['4', 'Shroud', 'Separate print, on its end. Runs from the gate\'s rear window to the lit face, straddling the front lip.', 'dock'],
+    light_dock: ['4', 'Light dock', 'Holds the CS-Lite on its edge. The gate stands in a notch between its front wall and the lit face, which hold the gate front and body together.', 'dock'],
     wedge_plate: ['5', 'Wedge plate', 'Slides 10mm along z. Its four ramps push the pressure plate onto the film at LOCK.', 'gate'],
     knob: ['5', 'Knob', 'Sits on the tab above the lid, three grip ridges. Printed separately.', 'gate'],
   };
-  const ORDER = ['adapter', 'tube', 'gate_front', 'gate_body', 'gate_lid', 'pressure_plate', 'light_dock', 'shroud', 'wedge_plate', 'knob'];
-  const CUT = new Set(['adapter', 'tube', 'gate_front', 'gate_body', 'gate_lid', 'light_dock', 'shroud']);   // sectioned in cutaway
+  const ORDER = ['adapter', 'tube', 'gate_front', 'gate_body', 'gate_lid', 'pressure_plate', 'light_dock', 'wedge_plate', 'knob'];
+  const CUT = new Set(['adapter', 'tube', 'gate_front', 'gate_body', 'gate_lid', 'light_dock']);   // sectioned in cutaway
 
   const P = { exploded: true, cut: false, ref: true, lock: false };
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -365,14 +364,17 @@ const RIG = /*__RIG_DATA__*/null;
     anchors.light = [G.dock, new THREE.Vector3(xl + p.csl_t / 2, y0 + p.csl_h, 0)];
   }
 
+  // The strip as the assembly builds it (params.py): frames at frame_zs, KS perforations at perf_zs, both rows
+  // perf_inner from the axis. The canvas runs along z left to right and is drawn base side up (top = +y).
   function filmTexture() {
-    const pxmm = 10, L = 228, W = 35;
-    const c = document.createElement('canvas'); c.width = L * pxmm; c.height = W * pxmm;
+    const pxmm = 10, L = p.film_strip_len, W = p.film_w, z0 = p.film_strip_z - L / 2;
+    const c = document.createElement('canvas'); c.width = Math.round(L * pxmm); c.height = Math.round(W * pxmm);
     const x = c.getContext('2d');
-    x.fillStyle = 'rgba(168,160,146,0.55)'; x.fillRect(0, 0, c.width, c.height);
+    const u = z => (z - z0) * pxmm, v = dy => (W / 2 - dy) * pxmm;     // z, and y up from the axis, to canvas px
+    x.fillStyle = 'rgba(176,150,112,0.55)'; x.fillRect(0, 0, c.width, c.height);   // base: clear orange-ish
     let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let f = 0; f < 6; f++) {
-      const fx = (1 + f * 38) * pxmm, fy = 5.5 * pxmm, fw = 36 * pxmm, fh = 24 * pxmm;
+    p.frame_zs.forEach((fz, f) => {
+      const fx = u(fz - p.frame_w / 2), fy = v(p.frame_h / 2), fw = p.frame_w * pxmm, fh = p.frame_h * pxmm;
       const gr = x.createLinearGradient(fx, fy, fx + fw, fy + fh);
       gr.addColorStop(0, 'rgba(40,36,32,0.92)'); gr.addColorStop(1, 'rgba(78,72,64,0.88)');
       x.fillStyle = gr; x.fillRect(fx, fy, fw, fh);
@@ -382,14 +384,16 @@ const RIG = /*__RIG_DATA__*/null;
         x.ellipse(fx + rnd() * fw, fy + rnd() * fh, 10 + rnd() * 70, 8 + rnd() * 50, rnd() * 3, 0, Math.PI * 2);
         x.fill();
       }
-      x.fillStyle = 'rgba(40,36,32,0.8)'; x.font = `${2.2 * pxmm}px monospace`;
-      x.fillText(`▸${12 + f}  ${12 + f}A`, fx + 4 * pxmm, 34.6 * pxmm);
+      // edge print, in the margin outside the lower row of perforations
+      x.fillStyle = 'rgba(40,36,32,0.8)'; x.font = `${1.4 * pxmm}px monospace`; x.textBaseline = 'middle';
+      x.fillText(`▸${12 + f}  ${12 + f}A`, fx + 4 * pxmm, v(-(W / 2 - (W / 2 - p.perf_inner - p.perf_w) / 2)));
+    });
+    const r = p.perf_r * pxmm, pw = p.perf_l * pxmm, ph = p.perf_w * pxmm;
+    x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000';
+    for (const pz of p.perf_zs) for (const dy of [p.perf_inner + p.perf_w, -p.perf_inner]) {
+      x.beginPath(); x.roundRect(u(pz - p.perf_l / 2), v(dy), pw, ph, r); x.fill();
     }
-    for (let i = 0; i < 48; i++) {
-      const hx = (1.4 + i * 4.75) * pxmm;
-      x.clearRect(hx, 1.0 * pxmm, 2.8 * pxmm, 2.0 * pxmm);
-      x.clearRect(hx, (W - 3.0) * pxmm, 2.8 * pxmm, 2.0 * pxmm);
-    }
+    x.globalCompositeOperation = 'source-over';
     const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
     return t;
   }
@@ -544,7 +548,7 @@ const RIG = /*__RIG_DATA__*/null;
   const SMALL = new Set(['knob', 'lock', 'pressure_plate', 'wedge_plate', 'gate_lid']);
   function focus(k) {
     const target = worldAnchor(k === 'adapter' ? 'thread' : k).clone();
-    if (['gate', 'dock', 'tube', 'gate_front', 'gate_body', 'light_dock', 'shroud', 'pressure_plate', 'wedge_plate'].includes(k)) target.y = p.axis;
+    if (['gate', 'dock', 'tube', 'gate_front', 'gate_body', 'light_dock', 'pressure_plate', 'wedge_plate'].includes(k)) target.y = p.axis;
     const off = k === 'cam' ? new THREE.Vector3(-150, 180, 360) : SMALL.has(k) ? new THREE.Vector3(-45, 70, 95) : new THREE.Vector3(-90, 110, 220);
     userMoved = true;
     flyTo(target, target.clone().add(off));

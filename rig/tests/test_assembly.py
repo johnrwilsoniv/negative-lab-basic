@@ -5,6 +5,7 @@ fits on the assembled solids. The probes below measure the same things independe
 Each parameter set is built once per module (the thread and the lettering are slow).
 """
 
+import math
 from types import SimpleNamespace
 
 import cadquery as cq
@@ -18,8 +19,9 @@ from params import DEFAULT, Params
 p = DEFAULT
 Q = Params(wd=150, axis=50)        # not the defaults, so nothing is right by coincidence
 PRINTED = ["adapter", "tube", "gate_front", "gate_body", "gate_lid", "pressure_plate", "wedge_plate", "knob",
-           "light_dock", "shroud"]
-REFERENCES = ["film", "cs_lite"]
+           "light_dock"]
+FRAMES = [f"film_frame_{i}" for i in range(1, 7)]
+REFERENCES = ["film", *FRAMES, "cs_lite"]
 EPS = 1e-6
 
 
@@ -121,6 +123,35 @@ def test_film_strip_is_228_along_z_centred_at_z19_on_the_axis(slide):
     assert (z0, z1) == pytest.approx((19 - 114, 19 + 114), abs=EPS)
 
 
+def test_six_frames_36_by_24_on_a_38_pitch_the_third_in_the_window(slide):
+    x0 = p.x_film - p.channel / 2
+    for i, name in enumerate(FRAMES):
+        z = (i - 2) * 38
+        assert cadutil.bounds(slide[name]) == pytest.approx(
+            (x0, x0 + p.film_t, p.axis - 12, p.axis + 12, z - 18, z + 18), abs=EPS), name
+
+
+def test_the_frames_fill_their_holes_in_the_strip(slide):
+    for name in FRAMES:
+        assert cadutil.common_volume(slide["film"], slide[name]) < 1e-6, name
+
+
+def test_film_has_two_rows_of_48_ks_perforations_through_it(slide):
+    x0 = p.x_film - p.channel / 2
+    film = slide["film"]
+    # a probe inside a perforation finds no film; one between two perforations does
+    for y in (p.axis - 14.1, p.axis + 14.1):
+        hole = cadutil.probe(x0 - 1, x0 + 1, y - 1, y + 1, 2.375 - 0.5, 2.375 + 0.5)
+        web = cadutil.probe(x0 - 1, x0 + 1, y - 1, y + 1, -0.5, 0.5)
+        assert cadutil.common_volume(film, hole) == 0
+        assert cadutil.common_volume(film, web) == pytest.approx(1 * 2 * p.film_t, rel=1e-6)
+    # the strip, less 96 rounded 2.79 x 1.98 holes, less the frames
+    perf = 2.79 * 1.98 - (4 - math.pi) * 0.5 ** 2
+    expected = (228 * 35 - 96 * perf - 6 * 36 * 24) * p.film_t
+    assert cadutil.volume(film) == pytest.approx(expected, rel=1e-6)
+    assert cadutil.is_valid(film)
+
+
 def test_film_lies_against_the_gate_fronts_rear_face(slide):
     plate = cadutil.common_bounds(
         slide["gate_front"], cadutil.probe(p.x_film - 6, p.x_film + 6, 4, 8, -10, 10)
@@ -169,7 +200,7 @@ def test_slide_nothing_intersects(found_slide):
 
 def test_every_printed_pair_and_every_printed_against_a_reference_is_checked(slide):
     pairs = assembly.pairs(slide)
-    assert len(pairs) == 45 + 20                     # 10 printed: 45 pairs; each against the 2 references: 20
+    assert len(pairs) == 36 + 72                     # 9 printed: 36 pairs; each against the 8 references: 72
     assert len({frozenset(pair) for pair in pairs}) == len(pairs)
     assert not any(a in REFERENCES and b in REFERENCES for a, b in pairs)
 
@@ -370,7 +401,7 @@ def test_onshape_frame_is_z_up_from_the_table_under_the_film():
 
 def test_assembly_step_holds_every_solid_by_name_in_the_onshape_frame(slide, step):
     read = cadutil.step_assembly(step)
-    assert sorted(read) == sorted(PRINTED + ["ref_film", "ref_cs_lite"])
+    assert sorted(read) == sorted(PRINTED + [f"ref_{n}" for n in REFERENCES])
     total = 0.0
     for name, wp in slide.items():
         got = read[name if name in PRINTED else f"ref_{name}"].solid
@@ -383,7 +414,7 @@ def test_assembly_step_holds_every_solid_by_name_in_the_onshape_frame(slide, ste
 def test_assembly_step_colours_are_distinct_and_the_references_translucent(step):
     read = cadutil.step_assembly(step)
     printed = [read[n].color for n in PRINTED]
-    refs = [read["ref_film"].color, read["ref_cs_lite"].color]
+    refs = [read[f"ref_{n}"].color for n in REFERENCES]
     assert all(c is not None for c in printed + refs)
 
     def rgb(colors):
@@ -408,7 +439,7 @@ def test_assembly_step_sits_on_the_top_plane_with_the_film_on_the_front_plane(st
     assert (ymin, ymax) == pytest.approx((-p.channel / 2, -p.channel / 2 + p.film_t))   # film plane at Y = 0
     assert (zmin + zmax) / 2 == pytest.approx(p.axis)                                   # optical axis at Z = axis
     assert (xmin + xmax) / 2 == pytest.approx(p.film_strip_z)                           # X = z
-    assert cadutil.bounds(read["adapter"].solid)[3] < 0 < cadutil.bounds(read["light_dock"].solid)[2]  # camera at -Y
+    assert cadutil.bounds(read["adapter"].solid)[3] < 0 < cadutil.bounds(read["ref_cs_lite"].solid)[2]  # camera at -Y
 
 
 def test_assembly_step_has_no_overlaps_when_read_back(step):
@@ -420,7 +451,7 @@ def test_assembly_step_has_no_overlaps_when_read_back(step):
 def test_check_step_passes_the_file_it_wrote(slide, step):
     check = assembly.check_step(step, slide)
     assert check.problems == []
-    assert check.count == 12
+    assert check.count == len(PRINTED + REFERENCES)       # 17
     assert check.volume == pytest.approx(sum(cadutil.volume(wp) for wp in slide.values()), rel=cadutil.STEP_VOLUME_RTOL)
     assert check.error < cadutil.STEP_VOLUME_RTOL
 
@@ -487,16 +518,17 @@ def test_the_measured_numbers_are_the_designs(report):
     assert got["tab / lid slot, x clearance, rear"] == pytest.approx(0.5, abs=1e-5)
     assert got["tab / lid slot, z clearance to the end, SLIDE"] == pytest.approx(1.0, abs=1e-5)
     assert got["tab / lid slot, z clearance to the end, LOCK"] == pytest.approx(1.0, abs=1e-5)
-    assert got["shroud opening / rear window, z margin per side"] == pytest.approx(5.0, abs=1e-5)
-    assert got["shroud opening / rear window, y margin per side"] == pytest.approx(6.0, abs=1e-5)
     assert got["pressure plate / floor, clearance"] == pytest.approx(0.25, abs=1e-5)
     assert got["pressure plate / lid, clearance"] == pytest.approx(0.25, abs=1e-5)
     assert got["pressure plate / side walls, clearance (the smaller)"] == pytest.approx(0.25, abs=1e-5)
     assert got["lid / gate front, x clearance"] == pytest.approx(0.2, abs=1e-5)
     assert got["lid / rear wall, x clearance"] == pytest.approx(0.2, abs=1e-5)
+    assert got["wedge plate / backer, x clearance"] == pytest.approx(0.05, abs=1e-5)
     assert got["CS-Lite slot, width less the panel"] == pytest.approx(0.5, abs=1e-5)
-    assert got["shroud / dock pocket, z clearance (the smaller)"] == pytest.approx(0.2, abs=1e-5)
-    assert got["shroud / front lip, x clearance"] == pytest.approx(0.2, abs=1e-5)
+    assert got["gate body / dock notch, z clearance (the smaller)"] == pytest.approx(0.2, abs=1e-5)
+    assert got["gate body rear face / CS-Lite lit face"] == pytest.approx(0, abs=1e-5)
+    assert got["gate front / dock front wall, x clearance"] == pytest.approx(0.2, abs=1e-5)
+    assert got["tube / dock front wall, radial clearance"] == pytest.approx(1.0, abs=1e-5)
 
 
 def test_the_gate_holes_open_top_is_noted(report):
@@ -524,8 +556,11 @@ def test_the_fits_measure_the_solids_not_the_params(slide, lock):
     ("pressure plate / side walls, clearance (the smaller)", "pressure_plate", (0, 0, -0.1), 0.15),
     ("lid / gate front, x clearance", "gate_lid", (-0.05, 0, 0), 0.15),
     ("lid / rear wall, x clearance", "gate_lid", (-0.05, 0, 0), 0.25),
-    ("shroud / dock pocket, z clearance (the smaller)", "shroud", (0, 0, 0.05), 0.15),
-    ("shroud / front lip, x clearance", "shroud", (0.05, 0, 0), 0.15),
+    ("wedge plate / backer, x clearance", "wedge_plate", (0.02, 0, 0), 0.03),
+    ("gate body / dock notch, z clearance (the smaller)", "light_dock", (0, 0, 0.05), 0.15),
+    ("gate body rear face / CS-Lite lit face", "cs_lite", (0.05, 0, 0), 0.05),
+    ("gate front / dock front wall, x clearance", "light_dock", (0.05, 0, 0), 0.15),
+    ("tube / dock front wall, radial clearance", "light_dock", (0, 0.5, 0), 0.5),
 ])
 def test_the_new_clearances_are_measured_on_the_solids(slide, lock, label, name, moved, measured):
     report = by_label(fits.report(p, {**slide, name: slide[name].translate(moved)}, lock))

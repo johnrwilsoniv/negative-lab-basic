@@ -36,6 +36,12 @@ class Params:
     film_t: float = 0.13
     frame_w: float = 36             # frame 36 x 24
     frame_h: float = 24
+    perf_pitch: float = 4.75        # ISO 1007 (135) KS perforations: pitch along the film, ...
+    perf_l: float = 1.98            # ... each this long along the film, ...
+    perf_w: float = 2.79            # ... this wide across it, ...
+    perf_r: float = 0.5             # ... with this corner radius, ...
+    perf_edge: float = 2.01         # ... this far in from the film's edge
+    perfs_per_frame: int = 8        # a frame advances 8 perforations: 38
 
     # ---- guesses ----
     lens_len: float = 125     # Laowa barrel length, mount to front
@@ -43,7 +49,6 @@ class Params:
 
     # ---- picks (chosen, not measured) ----
     gw: float = 92            # gate width
-    gate_d: float = 30        # gate depth
     gate_front: float = 14    # gate front wall to film
     wall: float = 3
     win_w: float = 38         # gate window
@@ -96,6 +101,8 @@ class Params:
     wedge_w: float = 70           # ... and width, z
     wedge_win_w: float = 52       # its window along z (the height is win_h): shifted +-sw_travel/2 it still clears win_w
     wedge_clear: float = 0.5      # its clearance to the gate's floor and to the lid's underside
+    wedge_back_clear: float = 0.05  # ... and to the backer behind it, a block on the gate body's floor (F12): the clamp
+                                    # pushes the plate back onto it, so this much of the preload is lost
     tab_w: float = 4              # lock switch tab width, z (thickness is tab_t)
     knob_w: float = 10            # lock switch knob: along x, ...
     knob_h: float = 5             # ... up from the lid top (grip ridges not counted), ...
@@ -111,11 +118,10 @@ class Params:
     lip_t: float = 4              # ... and this thick along x; the slot between them is csl_slot
     cheek_top: float = 62         # ... side cheeks, up to this y (above the table)
     cheek_clear: float = 0.5      # ... their inner faces this far from the CS-Lite's ends
-    shroud_w: float = 60          # ... shroud outside width, z, ...
-    shroud_h: float = 46          # ... opening height, y, centred on the axis, ...
-    shroud_t: float = 2           # ... and wall thickness (side walls and top plate)
-    shroud_seat: float = 1        # ... sits this deep in a pocket in the dock's floor (F6), ...
-    shroud_clear: float = 0.2     # ... with this much to the pocket's sides and to the front lip it straddles
+    dock_gate_clear: float = 0.2  # ... the gate sits in a notch in its floor and front lip (F10), this much clear each side
+                                  # and to the front wall (F11)
+    dock_front_t: float = 4       # ... front wall, in front of the gate front, holding the gate together (F11), ...
+    dock_tube_clear: float = 1    # ... with a U around the tube, this much clear of it radially
     ear_w: float = 9              # gate joint (F5): screw pillars outside the side walls, this wide in z, ...
     ear_h: float = 9              # ... and this tall in y, at the bottom and under the lid; 1.25 around the counterbore
     joint_hole_d: float = 3.4     # ... M3 clearance through the gate front, ...
@@ -126,7 +132,7 @@ class Params:
 
     # ---- reference solids in the assembly (not printed) ----
     film_strip_len: float = 228   # the film strip drawn through the gate, along z, ...
-    film_strip_z: float = 19      # ... centred here (mockup line 470)
+    film_strip_z: float = 19      # ... centred here (mockup line 470): six frames, the third centred in the window
 
     # ---- assumed, not confirmed with the user ----
     bed_x: float = 220
@@ -163,6 +169,10 @@ class Params:
     @property
     def gh(self) -> float:              # [GH] gate box height
         return self.axis + self.gate_above_axis
+
+    @property
+    def gate_d(self) -> float:          # [GATE_D] gate depth: the body's rear face is the CS-Lite's lit face (F10)
+        return self.gate_front + self.gap
 
     # Thread profile: ISO 68-1 external thread, crest and root left flat (truncated), the whole
     # profile moved inward by `thread_clear`.
@@ -214,8 +224,8 @@ class Params:
         return self.csl_l + self.dock_extra_w
 
     @property
-    def dock_x0(self) -> float:
-        return self.x_gate + self.gate_d
+    def dock_x0(self) -> float:         # the front wall's front face: the gate (front and body) is inset between it and the
+        return self.x_gate - self.dock_gate_clear - self.dock_front_t   # CS-Lite (F11)
 
     @property
     def csl_slot(self) -> float:        # the CS-Lite's slot between the dock's lips, along x
@@ -246,7 +256,28 @@ class Params:
         return self.film_w + 2 * self.film_slot_clear
 
     @property
-    def x_ref(self) -> float:           # the film reference plane (F5): the gate front's rear face, which prints on the
+    def frame_pitch(self) -> float:     # frame to frame along the film: 38, so 2 of unexposed film between frames
+        return self.perfs_per_frame * self.perf_pitch
+
+    @property
+    def perf_inner(self) -> float:      # the axis to the perforations' inner edges, along y: 12.7, 0.7 past the frame
+        return self.film_w / 2 - self.perf_edge - self.perf_w
+
+    @property
+    def frame_zs(self) -> list[float]:  # centres of the frames on the reference strip: one at z = 0, in the window,
+        k0 = math.ceil((self.film_strip_z - self.film_strip_len / 2 + self.frame_w / 2) / self.frame_pitch - 1e-9)
+        k1 = math.floor((self.film_strip_z + self.film_strip_len / 2 - self.frame_w / 2) / self.frame_pitch + 1e-9)
+        return [k * self.frame_pitch for k in range(k0, k1 + 1)]   # the rest every frame_pitch, all wholly on the strip
+
+    @property
+    def perf_zs(self) -> list[float]:   # centres of each row's perforations: half a pitch either side of each frame
+        half = self.perf_pitch / 2      # centre, so a frame spans 8 of them, and all wholly on the strip
+        j0 = math.ceil((self.film_strip_z - self.film_strip_len / 2 + self.perf_l / 2 - half) / self.perf_pitch - 1e-9)
+        j1 = math.floor((self.film_strip_z + self.film_strip_len / 2 - self.perf_l / 2 - half) / self.perf_pitch + 1e-9)
+        return [half + j * self.perf_pitch for j in range(j0, j1 + 1)]
+
+    @property
+    def x_ref(self) -> float:          # the film reference plane (F5): the gate front's rear face, which prints on the
         return self.x_film - self.channel / 2   # bed; the film lies against it, half the channel in front of the film plane
 
     @property

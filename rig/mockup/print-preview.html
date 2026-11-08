@@ -333,7 +333,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   }
 
   // ---- the assembly: every printed solid in place at SLIDE, on the table ----
-  // One hue per part, in assembly order; the CS-Lite and the film are grey references.
+  // One hue per part, in assembly order; the references (film, exposures, CS-Lite) bring their own colours.
   const ASM_COLOURS = ['#d4891f', '#3f7fb5', '#2f8a5c', '#7fbf6a', '#8f6fd0', '#c4473a', '#e0b23a', '#8a5a3b', '#c27a5a', '#4aa7a0'];
   const PARTS = Object.fromEntries(DATA.parts.map((p) => [p.name, p]));
   const ASM = {
@@ -349,20 +349,27 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
     });
     const box = new THREE.Box3();
     for (const it of items) { it.g.computeBoundingBox(); box.union(it.g.boundingBox); }
+    // references: a mesh (the perforated film, its exposures) or a box (the CS-Lite), each its own colour
     const refs = DATA.assembly.refs.map((r) => {
-      const [x0, x1, y0, y1, z0, z1] = r.box;
-      const g = new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0);
-      g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+      let g;
+      if (r.stl) {
+        g = loader.parse(decode(r.stl));
+        g.computeVertexNormals();
+      } else {
+        const [x0, x1, y0, y1, z0, z1] = r.box;
+        g = new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0);
+        g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+      }
       g.computeBoundingBox(); box.union(g.boundingBox);
-      return { name: r.name, label: r.label, g };
+      const mat = new THREE.MeshStandardMaterial({ color: r.colour, roughness: 0.8, transparent: true, opacity: r.opacity,
+                                                   depthWrite: false, side: THREE.DoubleSide });
+      return { name: r.name, label: r.label, colour: r.colour, g, mat };
     });
     const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2;
     for (const it of [...items, ...refs]) it.g.translate(-cx, 0, -cz);
     for (const it of items) it.mat = new THREE.MeshStandardMaterial({ color: it.colour, roughness: 0.6 });
-    const refMat = new THREE.MeshStandardMaterial({ color: 0x9aa3a0, roughness: 0.8, transparent: true, opacity: 0.35,
-                                                   depthWrite: false });
     const size = box.getSize(new THREE.Vector3());
-    return { items, refs, refMat, size, vol: items.reduce((t, it) => t + it.vol, 0) };
+    return { items, refs, size, vol: items.reduce((t, it) => t + it.vol, 0) };
   }
 
   const group = new THREE.Group();
@@ -386,7 +393,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
         group.add(m);
       }
       for (const r of c.refs) {
-        const m = new THREE.Mesh(r.g, c.refMat);
+        const m = new THREE.Mesh(r.g, r.mat);
         m.userData.part = r.name;
         group.add(m);
       }
@@ -440,7 +447,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
       g.parts.push({ name: it.name, label: PARTS[it.name].label, colour: it.colour });
     }
     groups.sort((a, b) => parseFloat(a.label) - parseFloat(b.label));     // by subassembly number: "4 · …" before "5 · …"
-    groups.push({ label: 'Bought (reference)', parts: c.refs.map((r) => ({ name: r.name, label: r.label, colour: '#9aa3a0' })) });
+    groups.push({ label: 'Bought (reference)', parts: c.refs.map((r) => ({ name: r.name, label: r.label, colour: r.colour })) });
     return groups;
   }
   function buildTree() {
@@ -534,7 +541,9 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
     <span><i class="sw" style="background:var(--over)"></i>Overhang steeper than 45° (may need support)</span>
     <span><i class="sw" style="border:1px solid var(--muted)"></i>Still to print</span>`;
   const KEY_ASM = `
-    <span><i class="sw" style="background:#9aa3a0;opacity:.6"></i>Film strip and CS-Lite (bought, for reference)</span>
+    <span><i class="sw" style="background:#b39466;opacity:.7"></i>Film strip, KS perforations</span>
+    <span><i class="sw" style="background:#2b2622"></i>Exposures, 36 × 24 every 38</span>
+    <span><i class="sw" style="background:#9aa3a0;opacity:.6"></i>CS-Lite (bought, for reference)</span>
     <span>One colour per printed part, as in the picker and the list above</span>`;
 
   function rail(part) {
@@ -654,7 +663,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   paint();
   const q = new URLSearchParams(location.hash.slice(1));
   for (const n of (q.get('hide') || '').split(',')) if (n) state.hidden.add(n);
-  const first = byName[q.get('part')] || DATA.parts[0];
+  const first = byName[q.get('part')] || ASM;          // no part in the link: the whole rig
   sel.value = first.name;
   show(first);
   if (!isAsm() && ['0.12', '0.16', '0.2', '0.28'].includes(q.get('lh'))) { $('lh').value = q.get('lh'); setLayers(true); rail(cur); }

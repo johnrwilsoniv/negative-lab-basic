@@ -5,7 +5,8 @@
 
 Writes exports/nlb-rig-print-preview.html, one self-contained page with the print-pose STLs from
 exports/stl/ embedded, and the assembly: every printed solid in place at SLIDE (built here, meshed
-more coarsely to keep the page small) with the film and the CS-Lite as boxes. The page template is
+more coarsely to keep the page small) with the references: the film strip with its perforations and its
+exposures as meshes, the CS-Lite as a box. The page template is
 mockup/print-preview.html. The notes per solid come from PLAN.md ("Tuning and print notes" and each
 part's "Printing" line).
 """
@@ -17,6 +18,8 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+import cadquery as cq
 
 import assembly
 import build
@@ -30,6 +33,11 @@ STL_DIR = build.EXPORTS / "stl"
 MARK = "/*__PRINT_DATA__*/null"
 ASM_LINEAR_TOL = 0.05         # coarser than the print STLs (0.01): the assembly is for looking at, and it halves the page
 ASM_ANGULAR_TOL = 0.2
+REF_GREY = "#9aa3a0"
+REF_MESHES = (                  # name, label, colour, opacity: the film's base is clear orange, its exposures dark
+    ("film", "Film strip (perforated)", "#b39466", 0.55),
+    ("film_frames", "Exposures, 36 × 24", "#2b2622", 0.85),
+)
 
 # name: (number, label, group, default layer, description, notes); which way up comes from the models' PRINT_UP
 SOLIDS = {
@@ -73,7 +81,8 @@ SOLIDS = {
     ),
     "gate_body": (
         "3b", "Gate body", "3 · Film gate", 0.2,
-        "Floor, side walls and rear wall, with four screw pillars outside the walls. Joins to the gate front's rear face.",
+        "Floor, side walls and rear wall, with four screw pillars outside the walls, and a backer below the film that "
+        "the wedge plate is wedged against at LOCK. Joins to the gate front's rear face.",
         [
             "Rear wall on the bed. Walls, pillars and the film notches all rise straight up: no bridges, no supports.",
             "The film slots are notches open at the top of the print; the gate front closes them, so the film's "
@@ -115,23 +124,16 @@ SOLIDS = {
     ),
     "light_dock": (
         "4", "Light dock", "4 · Light dock", 0.2,
-        "Holds the CS-Lite on its long edge, 25 behind the film. A 1 deep pocket in the floor seats the shroud.",
+        "Holds the CS-Lite on its long edge, 25 behind the film. The gate stands in a notch between a front wall "
+        "(a U around the tube) and the lit face, which hold the gate front and body together.",
         [
-            "Floor down. No bridges now that the shroud is its own print.",
+            "Floor down. No bridges.",
             "At 181 wide it's the largest part: confirm the bed size.",
-        ],
-    ),
-    "shroud": (
-        "4b", "Shroud", "4 · Light dock", 0.2,
-        "Light tunnel from the gate's rear window to the CS-Lite's lit face. Straddles the dock's front lip.",
-        [
-            "On its end, the face that seals against the gate on the bed. The old 56 bridge is now a wall.",
-            "Sits in the dock's pocket and over the front lip with 0.2 all round.",
         ],
     ),
 }
 ORDER = [
-    "thread_coupon", "adapter", "tube", "gate_front", "gate_body", "gate_lid", "pressure_plate", "light_dock", "shroud",
+    "thread_coupon", "adapter", "tube", "gate_front", "gate_body", "gate_lid", "pressure_plate", "light_dock",
     "wedge_plate", "knob",
 ]
 
@@ -147,7 +149,8 @@ def _commit() -> str:
 
 def assembled(p: Params) -> dict:
     """The printed solids in place at SLIDE (mockup coordinates: y up, the table at y = 0), as STLs, in assembly order;
-    the film and the CS-Lite as boxes."""
+    then the references: the perforated film strip and its exposures (all frames in one mesh) as STLs, the CS-Lite
+    as a box."""
     placed = assembly.placed(p, False)
     solids = []
     with tempfile.TemporaryDirectory() as tmp:
@@ -158,10 +161,22 @@ def assembled(p: Params) -> dict:
             ):
                 raise RuntimeError(f"STL export of {name} failed")
             solids.append({"name": name, "stl": base64.b64encode(path.read_bytes()).decode()})
-    refs = [
-        {"name": name, "label": label, "box": [round(v, 4) for v in cadutil.bounds(placed[name])]}
-        for name, label in (("film", "Film strip"), ("cs_lite", "CS-Lite"))
-    ]
+        frames = [wp for name, wp in placed.items() if name.startswith("film_frame_")]
+        meshes = {
+            "film": cadutil.solid(placed["film"]),
+            "film_frames": cq.Compound.makeCompound([cadutil.solid(wp) for wp in frames]),
+        }
+        refs = []
+        for name, label, colour, opacity in REF_MESHES:
+            path = Path(tmp) / f"{name}.stl"
+            if not meshes[name].exportStl(
+                str(path), tolerance=ASM_LINEAR_TOL, angularTolerance=ASM_ANGULAR_TOL, relative=False
+            ):
+                raise RuntimeError(f"STL export of {name} failed")
+            refs.append({"name": name, "label": label, "colour": colour, "opacity": opacity,
+                         "stl": base64.b64encode(path.read_bytes()).decode()})
+    refs.append({"name": "cs_lite", "label": "CS-Lite", "colour": REF_GREY, "opacity": 0.35,
+                 "box": [round(v, 4) for v in cadutil.bounds(placed["cs_lite"])]})
     return {"solids": solids, "refs": refs}
 
 

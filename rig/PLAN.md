@@ -11,6 +11,11 @@ by four M3 screws, the light dock's shroud is its own print, and every face that
 prints on the bed. The wedge plate now prints flat (F9). Apart from the adapter's socket ledge,
 no part prints over air (`cadutil.overhangs` checks it).
 
+2026-11-07, later: no shroud (F10). The gate is 39 deep, so the gate body's rear face lies flush on
+the CS-Lite's lit face, and the body stands in a notch in the dock's floor and front lip. Then the
+dock grew a front wall (F11), so the whole gate is held between it and the CS-Lite. And the gate
+body got a backer behind the wedge plate (F12), so LOCK wedges the plate instead of bending it.
+
 Run it from `rig/`:
 - `uv run pytest`: the checks on the built solids (about a minute).
 - `uv run python build.py [--wd W] [--axis A]`: builds every part, writes `exports/`, and prints
@@ -96,7 +101,7 @@ size.
 | Constant | Value | Meaning |
 |---|---|---|
 | `GW` | 92 | Gate width |
-| `GATE_D` | 30 | Gate depth |
+| `GATE_D` | 39 | Gate depth: `GATE_FRONT + GAP`, so the body ends on the lit face (F10; was 30) |
 | `GATE_FRONT` | 14 | Gate front wall to film |
 | `WALL` | 3 | Wall thickness |
 | Window | 38 × 26 | Gate window |
@@ -172,12 +177,16 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
 
 **Gate body** (prints rear wall down):
 - Floor (3), side walls (3) and the rear wall (3, with a 46 × 34 window toward the light),
-  from `x_ref` back: 16.3 deep, 92 wide, 78.5 tall. Open at the top for the lid and open at the
+  from `x_ref` back to the CS-Lite's lit face (F10): 25.3 deep, 92 wide, 78.5 tall. Open at the top for the lid and open at the
   front, where the gate front closes it.
 - Film slots: 3.2 (along x) × 37 (along y) notches in the side walls, open toward the gate front.
 - Four 9 × 9 screw pillars outside the side walls, the body's whole depth so they stand on the
   bed: two at the floor, two just under the lid. Ø2.5 pilots, 12 deep, for the M3 screws to
   self-tap (`pilot_d` 4.0 for heat-set inserts).
+- **Backer** (F12): a block on the floor behind the wedge plate, from 0.05 (`wedge_back_clear`)
+  behind its back face to the rear wall, side wall to side wall, up to the film's bottom edge
+  (y 25), so it stays out of the light path. At LOCK the plate is wedged between the pressure
+  plate's pads and the backer.
 
 **Lid:** 3 thick, on the side walls, 0.2 short of the gate front and of the rear wall. Slot
 3 × 16 for the lock switch's tab.
@@ -195,10 +204,11 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
   They should be printed flexures, probably in PETG. They are what returns the plate to
   SLIDE: nothing else pulls it off the film.
 - **Guides** that let the pressure plate move along x but stop it moving along y or z.
-- **Grooves** that guide the wedge plate along z. They must also carry the clamp's reaction
-  in x. Today the wedge plate has 8 free behind it, and its tab has 0.5 play each side in the
-  lid slot. Both are more than the 0.47 stroke, so LOCK can't clamp until the grooves exist.
-  Their x play must be well under ~0.05.
+- **Grooves** that guide the wedge plate along z. Below the film the backer (F12) now carries the
+  clamp's reaction in x with 0.05 play. Above the film nothing does: the upper ramps (y 58) push
+  on a 2 thick plate held only by its tab, which has 0.5 play each side in the lid slot, more
+  than the 0.47 stroke. The upper ramps need backing too, outside the light path: at the sides
+  (|z| > 26, beside the wedge window) or a lid-side rail.
 - **Lid retention.** Nothing holds the lid on yet.
 - **Gate position along the tube.** Nothing locates the gate along the tube. The socket is a
   slip fit, so the film plane sits wherever the gate is pushed.
@@ -212,22 +222,26 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
 Holds the CS-Lite standing on its long edge, lit face toward the film, `GAP` (25) behind
 the film plane.
 
-- **Floor:** 4 thick, 181 wide. It runs along x from the back of the gate to 6 past the
-  slot's back edge (35.5 at the default).
+- **Floor:** 4 thick, 181 wide. It runs along x from the front wall to 6 past the slot's back
+  edge (69.7 at the default).
+- **Front wall** (F11): 4 thick, full width, 62 tall, 0.2 in front of the gate front. A U 1 clear
+  of the tube (a half circle below the axis, straight up above it) lets the tube through. The gate
+  front and the gate body are held between it and the CS-Lite, with 0.2 play. It covers the gate
+  front's two lower screw heads: lift the gate out to reach them.
 - **Lips:** front and back, 12 tall. Together they make a 20.5 wide slot for the light: its
   20 plus 0.5 clearance, all behind it, so the lit face stays at the front lip.
 - **Side cheeks:** 62 tall.
-- **Shroud:** its own print (F6). A 60 wide tunnel with a 56 × 46 opening, from the gate's
-  rear face to the light face. It prints on its end, the face against the gate on the bed, so
-  its top plate is a wall rather than a 56 bridge. It sits 1 deep in a pocket in the floor and
-  straddles the front lip through a notch, 0.2 clear of both, which hold it in x and z.
+- **Gate notch** (F10): 110.4 wide (the gate front's 110 plus `dock_gate_clear` 0.2 each side),
+  through the floor and the front lip, from the front wall to the lit face. The whole gate
+  stands on the table in it, between two floor arms that locate it in z, its rear face flush on
+  the panel, which closes the rear window. What's left of the front lip holds the panel's ends.
+  There's no shroud.
 - **Bed size:** at 181 wide the dock is the largest footprint. The mockup says it fits a 220
   bed, but the 220 bed was my assumption. **Confirm the printer's bed size.**
 
 **Not designed yet:**
-- How the dock locates against the gate: pins, a dovetail or a shared baseplate.
-- Keeping light from leaking at the gate/shroud joint.
-- Holding the CS-Lite against the front lip. The slot has 0.5 play behind it.
+- Holding the CS-Lite against the front lip. The slot has 0.5 play behind it. With the front
+  wall's 0.2, the gate's rear face can sit up to 0.2 off the lit face and leak light.
 
 ### 5 · Lock switch (`parts/lock_switch/`)
 
@@ -279,7 +293,7 @@ rig/
 │   ├── lens_adapter/       model.py (+ thread_coupon in the same file)
 │   ├── tube/               model.py
 │   ├── film_gate/          model.py: gate_front, gate_body, gate_lid, pressure_plate
-│   ├── light_dock/         model.py: light_dock, shroud
+│   ├── light_dock/         model.py: light_dock
 │   └── lock_switch/        model.py: knob, wedge_plate
 ├── tests/                  pytest on the built solids
 └── exports/
@@ -359,7 +373,7 @@ number.
   ramps, 0.113 deep. The film lies on the front plate and is only touched.
 - **Gate height kept at `axis + 36` (R8).** The Ø72.6 socket then breaks 0.3 through the top
   of the gate front. `gate_above_axis` ≥ 39.3 closes it with 3 of wall over the hole.
-- **Shroud 67.5 tall (R9).** The shroud top (axis + 25) stands above the 62 cheeks.
+- **Shroud 67.5 tall (R9).** Superseded by F10: there's no shroud.
 - **Exports (R10).** Per-part STEP and STL are in print pose: `PRINT_UP` side up, on the bed,
   centred. The assembly STEP is in the Onshape frame (`assembly.to_onshape`): Z up, so the
   Top plane is the table; Y = mockup x − `x_film` (the camera end toward −Y), so the Front
@@ -378,7 +392,7 @@ number.
   CS-Lite slot 20.5 (`csl_clear` 0.5, all behind the panel), so the dock is 35.5 long. This
   reverses R16, which kept the slot at exactly 20. `fits.py` measures each one.
 - **Lowest axis 39 (F2).** `Params` refuses an `axis` below `adapter_r`: the Ø78 adapter would
-  hit the table, and the dock's front lip would reach into the shroud opening. Lower still,
+  hit the table. Lower still,
   the tube (36) and the gate hole (36.3) reach the table too.
 - **Film slots start at the front plate (F3).** Each side-wall slot runs from the front
   plate's rear face (`film_slot_x0`) to x 257.9, 3.2 along x. Centred on the film, as in the
@@ -398,7 +412,7 @@ number.
   The block has no lens-side chamber, so the lid's front slit no longer opens on the lens
   side. The lettering moved from the lid to the gate front's top: the lid now starts at
   `x_ref`, behind where the lettering was.
-- **The shroud is its own print (F6).** The user asked for it. Part of the dock, it was a 56
+- **The shroud is its own print (F6).** Superseded by F10. The user asked for it. Part of the dock, it was a 56
   wide bridge, 9 deep. On its own it prints on its end. A 1 deep pocket in the dock's floor
   and a notch over the front lip, each 0.2 clear (`shroud_clear`), locate it. `fits.py`
   measures both.
@@ -415,8 +429,27 @@ number.
   print. If the lock action feels notchy, the next step is to design the slope out of one side,
   for example flat pads with a rounded leading edge riding the ramps.
 - **Overhang check (F8).** `cadutil.overhangs` lists the faces that lean out more than 45°
-  in print pose. The gate, the dock and the shroud tests assert none, apart from the gate
+  in print pose. The gate and the dock tests assert none, apart from the gate
   front's 0.4 deep lettering walls.
+- **No shroud: the gate body is inset in the dock (F10).** The user asked for it. `gate_d` is now
+  derived, `gate_front + gap` (39, was 30), so the gate body's rear face is the CS-Lite's lit face
+  and the panel closes the rear window directly. The film-to-light gap stays 25. The dock's floor
+  starts at `x_ref`, and a notch through its floor and front lip, 0.2 clear each side of the gate's
+  110 (`dock_gate_clear`), takes the body. `fits.py` measures the notch clearance and the gate's
+  rear face against the panel. The body is 9 deeper (25.3), and the lid 9 longer (21.9).
+- **The dock holds the gate together (F11).** The user asked for it. The dock's floor runs on
+  under the gate front to a front wall, 4 thick and 62 tall, 0.2 (`dock_gate_clear`) in front of
+  the gate front, with a U 1 (`dock_tube_clear`) around the tube, open at the top so it prints
+  without overhangs. The gate front and body are trapped between that wall and the CS-Lite, and
+  the dock is a closed frame instead of two cantilevered arms. The dock is 69.7 long. `fits.py`
+  measures the wall's clearance to the gate front and to the tube. The M3 screws stay.
+- **A backer behind the wedge plate (F12).** The user asked for it. The gate body's floor rises
+  into a block that fills the 17 behind the wedge plate, from 0.05 behind it to the rear wall,
+  wall to wall, up to the film's bottom edge (y 25, half a millimetre under the rear window), so
+  no light is cut. At LOCK the pads push the plate back onto it, so the clamp holds instead of
+  the plate bending away. The 0.05 play comes off the 0.113 preload: tune `wedge_back_clear`
+  with `ramp_rise`. It prints standing on the rear wall, like the rest of the body. `fits.py`
+  measures the 0.05.
 
 ## Mockup differences to republish
 
@@ -432,8 +465,8 @@ it is the user's call.
 | Film slots | centred on the film plane, x 252.5–257.5 | notches from the reference plane, x 254.7–257.9 |
 | Gate | one box with a thin front plate and a chamber in front of it | gate front (solid, flared light passage) + gate body, M3 screws through side pillars, 110 wide |
 | Lettering | on the lid | on the gate front's top |
-| Shroud | part of the dock | its own print, in a floor pocket, over the front lip |
-| CS-Lite slot | 20, dock 35 long | 20.5, dock 35.5 long |
+| Shroud | part of the dock | none: the gate body (39 deep) stands in a notch in the dock, flush on the lit face |
+| CS-Lite slot | 20, dock 35 long | 20.5; the dock runs forward under the gate to a front wall, 69.7 long |
 | `axis` | slider 30–60 | 39 at least |
 
 ## Tuning and print notes

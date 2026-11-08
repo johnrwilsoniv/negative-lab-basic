@@ -8,6 +8,11 @@ is the floor, the side walls and the rear wall, from the reference plane back; i
 down. The film slots in its side walls are notches open toward the gate front, which closes them, so
 neither part has a bridge. Four M3 screws join the two through pillars outside the side walls.
 
+Below the film the gate body fills the space behind the wedge plate with the backer (ruling F12): a block on
+the floor from `wedge_back_clear` behind the plate to the rear wall, wall to wall, up to the film's bottom
+edge, so it stays out of the light path. At LOCK the pads push the plate back onto it, so the plate is
+wedged between the pressure plate and the body rather than bending away into free space.
+
 The lid is its own solid resting on the side walls, `lid_clear` short of the gate front and of the
 rear wall. The pressure plate is `plate_clear` inside the floor, the lid and the side walls all round,
 so it drops in and floats; it prints with the face that meets the film on the bed (F7).
@@ -129,9 +134,16 @@ def _pillars(p: Params) -> list[cq.Workplane]:
     return out
 
 
+def _backer(p: Params) -> cq.Workplane:
+    """wedge_back_clear behind the wedge plate's back face to the rear wall, side wall to side wall, from the floor up to
+    the film's bottom edge."""
+    x0 = p.x_wedge + p.wedge_t + p.wedge_back_clear
+    return _box(x0, p.x_gate + p.gate_d - p.wall, p.wall, p.axis - p.film_w / 2, -(p.gw / 2 - p.wall), p.gw / 2 - p.wall)
+
+
 def gate_body(p: Params = DEFAULT) -> cq.Workplane:
     body = _rear_wall(p)
-    for part in (_floor(p), _side_wall(p, -1), _side_wall(p, 1), *_pillars(p)):
+    for part in (_floor(p), _side_wall(p, -1), _side_wall(p, 1), _backer(p), *_pillars(p)):
         body = body.union(part)
     return body.cut(_bores(p, p.x_ref - 1, p.x_ref + p.pilot_depth, p.pilot_d))
 

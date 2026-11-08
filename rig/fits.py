@@ -82,7 +82,9 @@ def _outer_radii(wp: cq.Workplane, p: Params) -> dict[str, float]:
     return {"+y": yb - p.axis, "-y": p.axis - ya, "+z": zb, "-z": -za}
 
 
-def _radial_clearance(tube: cq.Workplane, bore: cq.Workplane, p: Params, x0: float) -> tuple[float, str]:
+def _radial_clearance(
+    tube: cq.Workplane, bore: cq.Workplane, p: Params, x0: float, top: str = "the hole breaks through the top edge, R8"
+) -> tuple[float, str]:
     """Smallest gap between the tube's outside and the bore of `bore` around it (looked at from x0 + 1 to x0 + 2),
     and a note on any side where `bore` has no wall."""
     reach = _outer_radii(tube, p)
@@ -94,7 +96,7 @@ def _radial_clearance(tube: cq.Workplane, bore: cq.Workplane, p: Params, x0: flo
     note = ""
     if open_sides:
         note = f"no wall toward {', '.join(open_sides)}" + (
-            " (the hole breaks through the top edge, R8)" if TOP in open_sides else ""
+            f" ({top})" if TOP in open_sides else ""
         )
     return min(gaps.values()), note
 
@@ -184,30 +186,22 @@ def _csl_slot(solids: Solids) -> float:
     return (back - front) - (x1 - x0)
 
 
-def _shroud_margins(solids: Solids, p: Params) -> dict[str, float]:
-    """Per side, how far the shroud's opening is outside the rear wall's window: z and y."""
-    box, shroud = solids["gate_body"], solids["shroud"]
-    rear = cadutil.bounds(box)[1]
-    window = _walled(_rays(box, p, rear - 2, rear - 1), "the rear wall")
-    x0 = cadutil.bounds(shroud)[0]
-    opening = _walled(_rays(shroud, p, x0 + 1, x0 + 2), "the shroud")
-    margin = {side: opening[side] - window[side] for side in window}
-    return {"z": min(margin["+z"], margin["-z"]), "y": min(margin["+y"], margin["-y"])}
-
-
-def _shroud_seat(solids: Solids, p: Params) -> dict[str, float]:
-    """The shroud's clearance to the pocket's sides in z (the smaller), and to the front lip it straddles in x, probed
-    in the pocket (y within the seat) and beside the lip's top (y above the lip, x over it)."""
-    dock, shroud = solids["light_dock"], solids["shroud"]
-    x0, x1, y0, _, z0, z1 = cadutil.bounds(shroud)
-    seat = (y0 + 0.1, p.floor_t - 0.1)
-    lip_x = _slice_bounds(dock, x0, x1, p.floor_t + 1, p.floor_t + 2, -1, 1)[0]       # the front lip's front face
+def _gate_seat(solids: Solids, p: Params) -> dict[str, float]:
+    """The gate body's clearance to the dock's notch in z (the smaller), probed in the floor's thickness over the
+    floor arms; how far the body's rear face is in front of the CS-Lite's lit face, probed on the rear wall
+    beside its window; and the dock's front wall's clearance to the gate front, in x (F11)."""
+    dock, body, front = solids["light_dock"], solids["gate_body"], solids["gate_front"]
+    x0, x1 = cadutil.bounds(body)[0], cadutil.bounds(solids["cs_lite"])[0]
+    floor = (0.5, p.floor_t - 0.5)
+    beside = (p.axis - 1, p.axis + 1, p.rear_win_w / 2 + 1, p.gw / 2 - 1)      # the rear wall, +z of the window
     return {
         "z": min(
-            _gap(shroud, dock, 2, x0, lip_x - 0.5, *seat, 0, z1 + REACH),
-            _gap(dock, shroud, 2, x0, lip_x - 0.5, *seat, z0 - REACH, 0),
+            _gap(body, dock, 2, x0, x1, *floor, 0, REACH),
+            _gap(dock, body, 2, x0, x1, *floor, -REACH, 0),
         ),
-        "lip": lip_x - _slice_bounds(shroud, x0, lip_x, p.floor_t + 1, p.floor_t + 2, -1, 1)[1],
+        "light": x1 - _slice_bounds(body, x1 - REACH, x1 + REACH, *beside)[1],
+        # the front wall to the gate front's front face, beside the tube and below the lower screw counterbores' z
+        "front": _gap(dock, front, 0, x0 - REACH, x0, p.floor_t + 1, p.floor_t + 5, p.tube_ro + 2, p.gw / 2),
     }
 
 
@@ -258,19 +252,21 @@ def report(p: Params, slide: Solids, lock: Solids) -> list[Fit]:
         _fit("tab / lid slot, x clearance, front", p.tab_clear, lambda: _tab_slot(slide, p)["front"]),
         _fit("tab / lid slot, x clearance, rear", p.tab_clear, lambda: _tab_slot(slide, p)["rear"]),
         _fit("lid / gate front, x clearance", p.lid_clear, lambda: lid()["front"]),
+        _fit("wedge plate / backer, x clearance", p.wedge_back_clear, lambda: _gap(
+            slide["wedge_plate"], slide["gate_body"], 0, p.x_film, p.x_light, p.wall + 2, p.axis - p.film_w / 2 - 2, -20, 20)),
         _fit("lid / rear wall, x clearance", p.lid_clear, lambda: lid()["rear"]),
     ]
     for name, solids in both.items():
         out.append(_fit(f"tab / lid slot, z clearance to the end, {name}", p.slot_end - p.tab_w / 2,
                         lambda s=solids: _tab_slot(s, p)["z"]))
     out += [
-        _fit("shroud opening / rear window, z margin per side",
-             (p.shroud_w - 2 * p.shroud_t - p.rear_win_w) / 2, lambda: _shroud_margins(slide, p)["z"]),
-        _fit("shroud opening / rear window, y margin per side",
-             (p.shroud_h - p.rear_win_h) / 2, lambda: _shroud_margins(slide, p)["y"]),
         _fit("CS-Lite slot, width less the panel", p.csl_clear, lambda: _csl_slot(slide)),
-        _fit("shroud / dock pocket, z clearance (the smaller)", p.shroud_clear, lambda: _shroud_seat(slide, p)["z"]),
-        _fit("shroud / front lip, x clearance", p.shroud_clear, lambda: _shroud_seat(slide, p)["lip"]),
+        _fit("gate body / dock notch, z clearance (the smaller)", p.dock_gate_clear,
+             lambda: _gate_seat(slide, p)["z"]),
+        _fit("gate body rear face / CS-Lite lit face", 0.0, lambda: _gate_seat(slide, p)["light"]),
+        _fit("gate front / dock front wall, x clearance", p.dock_gate_clear, lambda: _gate_seat(slide, p)["front"]),
+        _fit("tube / dock front wall, radial clearance", p.dock_tube_clear, lambda: _radial_clearance(
+            slide["tube"], slide["light_dock"], p, cadutil.bounds(slide["light_dock"])[0], "a U, open at the top, F11")),
     ]
     return out
 

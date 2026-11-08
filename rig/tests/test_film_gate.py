@@ -1,5 +1,5 @@
-"""Film gate: the gate front (tube socket, light passage, frame window, the film reference plane and the
-engraved lettering), the gate body (floor, side walls, rear wall, screw pillars), the lid, and the floating
+"""Film gate: the gate front (tube socket, light passage, frame window, and the film reference plane),
+the gate body (floor, side walls, rear wall, screw pillars), the lid, and the floating
 pressure plate.
 
 Windows, slots and pads are measured by probing the solids with thin boxes, and faces by the
@@ -167,8 +167,6 @@ def test_new_params_defaults():
     assert (p.rear_win_w, p.rear_win_h) == (46, 34)
     assert (p.tab_t, p.tab_clear, p.slot_end) == (2, 0.5, 3)
     assert (p.pad, p.pad_z, p.pad_dy) == (4, 22, 15.5)
-    assert (p.lid_text_depth, p.lid_text_z, p.lid_text_back) == (0.4, 14, 11)
-    assert (p.lid_text_w, p.lid_text_h) == (16, 4.4)
     assert (p.ear_w, p.ear_h, p.joint_hole_d, p.cbore_d, p.cbore_depth, p.pilot_d, p.pilot_depth) == (9, 9, 3.4, 6.5, 3.5, 2.5, 12)
     assert (p.x_ref, p.gate_front_w) == (REF, 110)
     assert p.screw_points == [(4.5, -50.5), (4.5, 50.5), (71, -50.5), (71, 50.5)]
@@ -248,97 +246,23 @@ def test_four_screw_holes_counterbored_from_the_front(front):
         assert_full(front, 241, 244.5, y + 3.26, y + 3.26 + T, z - 0.05, z + 0.05)
 
 
-def front_plain():
-    """The gate front without its lettering: the same cuts on the same block."""
-    q = p
-    block = probe(241, REF, 0, 78.5, -55, 55)
-    socket = cq.Workplane("YZ", origin=(240, 0, 0)).center(q.axis, 0).circle(q.fit_r).extrude(5)
-    return block.cut(socket).cut(model._light_passage(q)).cut(model._bores(q, 240, REF + 1, 3.4)).cut(
-        model._bores(q, 240, 244.5, 6.5))
-
-
 def segment_area(r, d):
     """Area of the circle of radius r on the far side of a chord d from its centre."""
     return r * r * math.acos(d / r) - d * math.sqrt(r * r - d * d)
 
 
-def test_front_volume_less_the_lettering(front):
+def test_front_volume(front):
     a1, k = 38 * 26, p.flare_scale
     a2 = k * k * a1
     flare = 7.9 / 3 * (a1 + a2 + math.sqrt(a1 * a2))
     socket = 4 * (math.pi * 36.3**2 - segment_area(36.3, 36.0))         # breaks 0.3 through the top
     holes = 4 * (13.7 * math.pi * 1.7**2 + 3.5 * math.pi * (3.25**2 - 1.7**2))
-    plain = 13.7 * 78.5 * 110 - socket - 1.8 * a1 - flare - holes
-    assert cadutil.volume(front_plain()) == pytest.approx(plain, rel=1e-6)
-    engraved = plain - cadutil.volume(front)
-    area_boxes = 2 * 16 * 4.4
-    assert 0.1 * area_boxes * 0.4 < engraved < 0.6 * area_boxes * 0.4
+    assert cadutil.volume(front) == pytest.approx(13.7 * 78.5 * 110 - socket - 1.8 * a1 - flare - holes, rel=1e-6)
 
 
-def engraving(front):
-    """The glyphs' material that was cut out, as one solid per letter."""
-    return front_plain().val().cut(cadutil.solid(front)).Solids()
-
-
-def words(front):
-    """(SLIDE solids, LOCK solids), by which side of z = 0 they are on."""
-    glyphs = engraving(front)
-    z_of = lambda s: sum(cadutil.shape_bounds(s)[4:]) / 2
-    return [g for g in glyphs if z_of(g) < 0], [g for g in glyphs if z_of(g) > 0]
-
-
-def word_bounds(solids):
-    boxes = [cadutil.shape_bounds(s) for s in solids]
-    return (min(b[0] for b in boxes), max(b[1] for b in boxes), min(b[2] for b in boxes),
-            max(b[3] for b in boxes), min(b[4] for b in boxes), max(b[5] for b in boxes))
-
-
-def test_lettering_is_cut_one_solid_per_letter_with_the_font_glyphs(front):
-    slide, lock = words(front)
-    assert (len(slide), len(lock)) == (5, 4)                     # S L I D E, L O C K
-
-
-def test_lettering_is_engraved_0_4_deep_in_the_top_face(front):
-    for glyph in engraving(front):
-        ymin, ymax = cadutil.shape_bounds(glyph)[2:4]
-        assert (ymin, ymax) == pytest.approx((78.1, 78.5), abs=EPS)
-
-
-@pytest.mark.parametrize("which, zc", [(0, -14), (1, 14)])
-def test_each_word_fits_its_16_by_4_4_box_in_front_of_the_knob(front, which, zc):
-    xmin, xmax, _, _, zmin, zmax = word_bounds(words(front)[which])
-    x_centre = p.x_knob - 11
-    assert (xmin, xmax) == pytest.approx((x_centre - (xmax - xmin) / 2, x_centre + (xmax - xmin) / 2), abs=0.01)
-    assert (zmin + zmax) / 2 == pytest.approx(zc, abs=0.01)
-    assert xmax - xmin <= 4.4 + EPS
-    assert zmax - zmin <= 16 + EPS
-    assert x_centre == pytest.approx(248.0)
-    assert 245 < xmin and xmax < REF                         # on the gate front's top, behind the socket's notch
-
-
-def test_the_longer_word_fills_its_box(front):
-    xmin, xmax, _, _, zmin, zmax = word_bounds(words(front)[0])
-    assert max((xmax - xmin) / 4.4, (zmax - zmin) / 16) > 0.9
-
-
-def test_lettering_reads_along_plus_z_with_the_letter_tops_toward_plus_x(front):
-    # LOCK's first letter is an L: stem at the start of the reading direction (-z end), foot along
-    # the bottom (-x end) pointing the way the word reads (+z)
-    _, lock = words(front)
-    letter_l = min(lock, key=lambda s: cadutil.shape_bounds(s)[4])
-    x0, x1, y0, y1, z0, z1 = cadutil.shape_bounds(letter_l)
-    xm, zm = (x0 + x1) / 2, (z0 + z1) / 2
-
-    def quadrant(xa, xb, za, zb):
-        pr = cadutil.solid(probe(xa, xb, y0 - 1, y1 + 1, za, zb))
-        return letter_l.intersect(pr).Volume()
-
-    top_stem = quadrant(xm, x1 + 1, z0 - 1, zm)
-    bottom_stem = quadrant(x0 - 1, xm, z0 - 1, zm)
-    foot = quadrant(x0 - 1, xm, zm, z1 + 1)
-    empty = quadrant(xm, x1 + 1, zm, z1 + 1)
-    assert empty < 1e-6
-    assert min(top_stem, bottom_stem, foot) > 0.05 * 0.4 * (x1 - x0) * (z1 - z0) / 4
+def test_front_top_is_plain_behind_the_socket(front):
+    # F14: no lettering. The lock icons are on the knob; the top is solid from the socket's notch to x_ref.
+    assert_full(front, 245, REF, 78, 78.5, -55, 55)
 
 
 # ---- gate body -----------------------------------------------------------------------
@@ -651,14 +575,9 @@ def test_the_faces_that_meet_the_film_print_on_the_bed(built, name):
 
 @pytest.mark.parametrize("name", ["gate_front", "gate_body", "gate_lid", "pressure_plate"])
 def test_nothing_prints_over_air(built, name):
-    # no face leans out more than 45 degrees, except the gate front's 0.4 deep lettering walls (it is engraved in a
-    # face that stands upright in the print)
+    # no face leans out more than 45 degrees
     posed = cadutil.print_pose(built[name], model.PRINT_UP[name])
-    over = cadutil.overhangs(posed)
-    if name == "gate_front":
-        assert over and all(min(f.BoundingBox().xlen, f.BoundingBox().ylen) <= 0.4 + 1e-6 for f in over)
-    else:
-        assert over == []
+    assert cadutil.overhangs(posed) == []
 
 
 def test_the_pads_print_as_the_top_layers_stepped_by_them(built):

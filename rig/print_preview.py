@@ -70,14 +70,13 @@ SOLIDS = {
     "gate_front": (
         "3", "Gate front", "3 · Film gate", 0.2,
         "Solid block: tube socket, a light passage flaring down to the 38 × 26 frame window, and the film "
-        "reference plane. SLIDE / LOCK engraved on top.",
+        "reference plane.",
         [
             "<b>Film face on the bed.</b> The rear face, which the film lies on, is the first layer: as flat and "
             "smooth as the bed. Keep the first layer clean (no elephant's foot) around the window.",
             "No supports. The passage and the socket only widen going up.",
             "Four M3 × 20 screws, heads in the counterbores, self-tap into the body's pillars (or use heat-set inserts: "
             "set <code>pilot_d</code> 4.0).",
-            "The lettering is engraved in a face that stands upright here; its 0.4 deep walls are the only overhang.",
         ],
     ),
     "gate_body": (
@@ -117,9 +116,9 @@ SOLIDS = {
     ),
     "knob": (
         "5b", "Knob", "5 · Lock switch", 0.2,
-        "Sits on the tab above the lid, three grip ridges on top. Printed separately.",
+        "Sits on the tab above the lid, open and shut padlocks on top for SLIDE and LOCK. Printed separately.",
         [
-            "Ridges up.",
+            "Top up: the icons are the last layers.",
             "The snap onto the tab isn't designed yet.",
         ],
     ),

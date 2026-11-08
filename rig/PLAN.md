@@ -178,7 +178,7 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
   first layer, so the film lies on bed-flat plastic, across the whole width, including where the
   film leaves through the side walls.
 - Four Ø3.4 holes for M3 × 20 screws, counterbored Ø6.5 × 3.5 from the front.
-- SLIDE / LOCK engraved 0.4 deep in its top, reading along z, in front of the knob.
+- Its top is plain: the lock icons are on the knob (F14).
 
 **Gate body** (prints rear wall down):
 - Floor (3), side walls (3) and the rear wall (3, with a 46 × 34 window toward the light),
@@ -252,7 +252,8 @@ the film plane.
 
 ### 5 · Lock switch (`parts/lock_switch/`)
 
-**Knob:** 10 (x) × 12 (z) × 5, with three grip ridges on top.
+**Knob:** 10 (x) × 12 (z) × 5, with two padlock icons raised 0.6 on top (F14): open toward −z
+(SLIDE), shut toward +z (LOCK), shackles toward +x.
 
 **Tab:** 2 × 4, running down through the lid slot.
 
@@ -436,8 +437,7 @@ number.
   print. If the lock action feels notchy, the next step is to design the slope out of one side,
   for example flat pads with a rounded leading edge riding the ramps.
 - **Overhang check (F8).** `cadutil.overhangs` lists the faces that lean out more than 45°
-  in print pose. The gate and the dock tests assert none, apart from the gate
-  front's 0.4 deep lettering walls.
+  in print pose. The gate and the dock tests assert none.
 - **No shroud: the gate body is inset in the dock (F10).** The user asked for it. `gate_d` is now
   derived, `gate_front + gap` (39, was 30), so the gate body's rear face is the CS-Lite's lit face
   and the panel closes the rear window directly. The film-to-light gap stays 25. The dock's floor
@@ -463,6 +463,13 @@ number.
   it, and the roof is 0.2 (`film_slot_clear`) over the upper edge so the strip still slides. The
   film hasn't moved: it stays centred on the window. FDM tends to print a slot a little narrow, so
   check the strip slides freely and open `film_slot_clear` if it doesn't.
+- **Lock icons on the knob, not lettering on the gate front (F14).** The user asked for it. With the
+  gate front printing film face down, the SLIDE / LOCK engraving was in a face standing upright in
+  the print, so it couldn't print cleanly. The gate front's top is now plain. The knob's three grip
+  ridges are gone, and two padlock icons are raised 0.6 on its top instead (`icon_*`): open at
+  the −z end, the way to SLIDE, and shut at the +z end, the way to LOCK. Each body is 4 × 3, the
+  shackle stroke is 0.8 (two 0.4 lines), and the shackles point +x, so they read upright from the
+  camera end. The knob prints top up, so the icons are its last layers and nothing overhangs.
 
 ## Mockup differences to republish
 

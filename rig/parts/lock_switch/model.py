@@ -20,10 +20,11 @@ the lid slot's ends, the plate's z edges) are left plain.
 
 import cadquery as cq
 
+import cadutil
 from params import DEFAULT, Params
 
 # Wedge plate flat, back face on the bed, ramps up (F9): on its bottom edge it bridged 52 over its window. The ramps'
-# slopes then print stepped by the layers, as the pressure plate's pads do (F7). The knob prints flat, ridges up.
+# slopes then print stepped by the layers, as the pressure plate's pads do (F7). The knob prints flat, icons up.
 PRINT_UP = {"wedge_plate": "-x", "knob": "+y"}
 
 
@@ -77,27 +78,46 @@ def wedge_plate(p: Params = DEFAULT, lock: bool = False) -> cq.Workplane:
     return wedge.translate((0, 0, _shift(p, lock)))
 
 
-def knob(p: Params = DEFAULT, lock: bool = False) -> cq.Workplane:
-    """knob_w by knob_h by knob_l on the lid top and the tab's top, with the grip ridges above it.
+def _icon(p: Params, shut: bool, zc: float) -> cq.Workplane:
+    """A padlock icon_h tall on the knob's top, its body centred on zc along z, the shackle toward +x.
 
-    One profile in (x, y), ridges as teeth along its top edge, extruded along z.
+    Drawn in (u, v) on the top face, u along +z and v along +x from the body's -x edge, so it is upright to someone
+    at the camera end looking down, as the lettering on the gate front was. Shut, both legs run into the body. Open,
+    the shackle is lifted icon_lift and only its -z leg reaches the body, so a gap shows on the +z side.
     """
-    x0, x1 = p.x_knob - p.knob_w / 2, p.x_knob + p.knob_w / 2
-    top = p.gh + p.knob_h
-    centres = [p.x_knob + (i - (p.ridges - 1) / 2) * p.ridge_pitch for i in range(p.ridges)]
-    if p.ridges > 0 and (
-        min(centres) - p.ridge_w / 2 < x0
-        or max(centres) + p.ridge_w / 2 > x1
-        or (p.ridges > 1 and p.ridge_pitch <= p.ridge_w)
-    ):
-        raise ValueError("the grip ridges must fit on the knob's top without touching each other")
+    ro = p.icon_w / 2 - p.icon_stroke / 2
+    ri = ro - p.icon_stroke
+    if ri <= 0 or p.icon_leg <= 0 or p.icon_lift <= 0 or p.icon_h <= 0:
+        raise ValueError("the lock icons need a positive height, legs, lift and a shackle with a hole in it")
+    lift = 0 if shut else p.icon_lift
+    cy = p.icon_body_h + p.icon_leg + lift                     # the shackle's arc centre
+    v0 = p.x_knob - (p.icon_body_h + p.icon_leg + p.icon_lift + ro) / 2   # both icons' bodies on one line, the open
+    top = cq.Plane(origin=(v0, p.gh + p.knob_h, zc), xDir=(0, 0, 1), normal=(0, 1, 0))  # one centred on the knob
 
-    outline = [(x0, p.gh), (x1, p.gh), (x1, top)]
-    for c in reversed(centres):                        # along the top, from +x to -x
-        outline += [(c + p.ridge_w / 2, top), (c + p.ridge_w / 2, top + p.ridge_h),
-                    (c - p.ridge_w / 2, top + p.ridge_h), (c - p.ridge_w / 2, top)]
-    outline.append((x0, top))
-    body = cq.Workplane("XY", origin=(0, 0, -p.knob_l / 2)).polyline(outline).close().extrude(p.knob_l)
+    def box(u0, u1, a, b):
+        return cq.Workplane(top).center((u0 + u1) / 2, (a + b) / 2).rect(u1 - u0, b - a).extrude(p.icon_h)
+
+    arc = cq.Workplane(top).center(0, cy).circle(ro).circle(ri).extrude(p.icon_h).intersect(box(-ro, ro, cy, cy + ro))
+    icon = box(-p.icon_w / 2, p.icon_w / 2, 0, p.icon_body_h).union(arc)
+    icon = icon.union(box(-ro, -ri, p.icon_body_h / 2, cy))                   # the -z leg, always in the body
+    icon = icon.union(box(ri, ro, p.icon_body_h / 2 if shut else cy - p.icon_leg, cy))
+    return icon
+
+
+def knob(p: Params = DEFAULT, lock: bool = False) -> cq.Workplane:
+    """knob_w by knob_h by knob_l on the lid top and the tab's top, with the two lock icons raised on its top: open
+    toward -z, the way it slides to SLIDE, shut toward +z, the way to LOCK."""
+    x0 = p.x_knob - p.knob_w / 2
+    body = cq.Workplane("XY").box(p.knob_w, p.knob_h, p.knob_l, centered=False).translate((x0, p.gh, -p.knob_l / 2))
+    icons = [_icon(p, False, -p.icon_z), _icon(p, True, p.icon_z)]
+    for icon in icons:
+        b = cadutil.bounds(icon)
+        if b[0] < x0 or b[1] > x0 + p.knob_w or b[4] < -p.knob_l / 2 or b[5] > p.knob_l / 2:
+            raise ValueError("the lock icons must fit on the knob's top")
+    if cadutil.bounds(icons[0])[5] >= cadutil.bounds(icons[1])[4]:
+        raise ValueError("the lock icons must not touch each other")
+    for icon in icons:
+        body = body.union(icon)
     return body.translate((0, 0, _shift(p, lock)))
 
 

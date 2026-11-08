@@ -7,6 +7,7 @@ window. The mockup-drawn ramps (the interface Task 4 built the pads for) are an 
 oracle for the ramps' shape.
 """
 
+import math
 from itertools import combinations
 
 import cadquery as cq
@@ -122,7 +123,7 @@ def test_new_params_defaults():
     assert (p.wedge_t, p.wedge_w, p.wedge_win_w, p.wedge_clear) == (2, 70, 52, 0.5)
     assert p.tab_w == 4
     assert (p.knob_w, p.knob_h, p.knob_l) == (10, 5, 12)
-    assert (p.ridges, p.ridge_w, p.ridge_h, p.ridge_pitch) == (3, 1.2, 0.8, 3)
+    assert (p.icon_h, p.icon_z, p.icon_w, p.icon_body_h, p.icon_stroke, p.icon_leg, p.icon_lift) == (0.6, 3, 4, 3, 0.8, 1, 1.2)
     # reused, not duplicated: the lid slot's tab values, the pad footprint, the window height
     assert (p.tab_t, p.tab_clear, p.slot_end, p.pad, p.win_h) == (2, 0.5, 3, 4, 26)
 
@@ -344,8 +345,8 @@ def test_the_tab_stays_in_the_slot_in_z_with_a_millimetre_to_spare_at_the_end(lo
 
 
 def test_knob_bounds_at_slide(knob):
-    assert cadutil.bounds(knob) == pytest.approx((254, 264, 78.5, 84.3, -11, 1), abs=EPS)
-    assert cadutil.size(knob) == pytest.approx((10, 5.8, 12), abs=EPS)
+    assert cadutil.bounds(knob) == pytest.approx((254, 264, 78.5, 84.1, -11, 1), abs=EPS)
+    assert cadutil.size(knob) == pytest.approx((10, 5.6, 12), abs=EPS)
 
 
 def test_knob_is_at_minus_z_at_slide_and_plus_z_at_lock(knob, switch_lock):
@@ -360,21 +361,54 @@ def test_knob_body_is_10_by_5_by_12_on_the_lid_top(knob):
     assert_void(knob, 250, 270, p.gh - 5, p.gh - 0.001, -20, 20)
 
 
-def test_three_grip_ridges_on_top(knob):
-    ridge_zone = knob.intersect(probe(250, 270, p.gh + 5.01, p.gh + 6, -20, 20))
-    ridges = sorted(ridge_zone.val().Solids(), key=lambda s: cadutil.shape_bounds(s)[0])
-    assert len(ridges) == 3
-    for ridge, centre in zip(ridges, (p.x_knob - 3, p.x_knob, p.x_knob + 3)):
-        x0, x1, _, y1, z0, z1 = cadutil.shape_bounds(ridge)
-        assert (x0, x1) == pytest.approx((centre - 0.6, centre + 0.6), abs=EPS)       # 1.2 wide
-        assert y1 == pytest.approx(p.gh + 5.8, abs=EPS)                               # 0.8 tall
-        assert (z0, z1) == pytest.approx((-11, 1), abs=EPS)                           # the full 12
-    assert_full(knob, p.x_knob - 3.6, p.x_knob - 2.4, p.gh + 5, p.gh + 5.8, -11, 1)
-    assert_void(knob, p.x_knob - 2.4 + 0.01, p.x_knob - 0.6 - 0.01, p.gh + 5.001, p.gh + 6, -11, 1)
+ICON_TOP = p.gh + 5.6
+RING = math.pi * (1.6**2 - 0.8**2) / 2                         # the shackle's arc: 4 - 0.8 across outside, 0.8 stroke
+SHUT = 4 * 3 + 2 * 0.8 * 1 + RING                              # body, two legs 1 above it, the arc
+OPEN = 4 * 3 + 0.8 * 2.2 + 0.8 * 1 + RING                      # the -z leg runs 2.2 to the lifted arc, the +z one 1
 
 
-def test_knob_volume_is_the_body_plus_the_ridges(knob):
-    assert cadutil.volume(knob) == pytest.approx(10 * 5 * 12 + 3 * 1.2 * 0.8 * 12, rel=1e-9)
+def icons(knob):
+    """The icons' solids above the knob's top face, -z first."""
+    layer = knob.intersect(probe(250, 270, p.gh + 5, p.gh + 6, -20, 20))
+    return sorted(layer.val().Solids(), key=lambda s: cadutil.shape_bounds(s)[4])
+
+
+def test_two_lock_icons_raised_0_6_on_top(knob):
+    found = icons(knob)
+    assert len(found) == 2
+    for icon, zc, area in zip(found, (-5 - 3, -5 + 3), (OPEN, SHUT)):           # the knob is at z = -5 at SLIDE
+        x0, _, y0, y1, z0, z1 = cadutil.shape_bounds(icon)
+        assert (y0, y1) == pytest.approx((p.gh + 5, ICON_TOP), abs=EPS)
+        assert (z0, z1) == pytest.approx((zc - 2, zc + 2), abs=EPS)            # 4 wide, 1 from each end, 2 apart
+        assert icon.Volume() == pytest.approx(0.6 * area, rel=1e-9)
+        assert x0 == pytest.approx(p.x_knob - 3.4, abs=EPS)                     # bodies on one line
+    # the open one's shackle is lifted 1.2, and the pair is centred on the knob along x
+    assert cadutil.shape_bounds(found[0])[1] == pytest.approx(p.x_knob + 3.4, abs=EPS)
+    assert cadutil.shape_bounds(found[1])[1] == pytest.approx(p.x_knob + 2.2, abs=EPS)
+
+
+def test_open_icon_at_the_slide_end_shut_one_at_the_lock_end(knob):
+    # each icon's +z leg, just above its body: there on the shut one, a gap on the open one. Its -z leg is there on both.
+    body_top = p.x_knob - 3.4 + 3
+    for zc, shut in ((-8, False), (-2, True)):
+        plus_leg = (body_top + 0.01, body_top + 0.99, ICON_TOP - 0.5, ICON_TOP - 0.1, zc + 0.81, zc + 1.59)
+        minus_leg = (body_top + 0.01, body_top + 0.99, ICON_TOP - 0.5, ICON_TOP - 0.1, zc - 1.59, zc - 0.81)
+        (assert_full if shut else assert_void)(knob, *plus_leg)
+        assert_full(knob, *minus_leg)
+        assert_void(knob, body_top + 0.01, body_top + 0.99, ICON_TOP - 0.5, ICON_TOP + 1, zc - 0.79, zc + 0.79)
+
+
+def test_shackles_point_toward_plus_x(knob):
+    for icon in icons(knob):
+        x0, x1 = cadutil.shape_bounds(icon)[:2]
+        body_end = cadutil.solid(probe(x0, x0 + 3, 0, 100, -20, 20))
+        shackle_end = cadutil.solid(probe(x0 + 3, x1, 0, 100, -20, 20))
+        assert icon.intersect(body_end).Volume() == pytest.approx(0.6 * 12, rel=1e-9)   # the full 4 x 3 body at -x
+        assert icon.intersect(shackle_end).Volume() < 0.6 * 12
+
+
+def test_knob_volume_is_the_body_plus_the_icons(knob):
+    assert cadutil.volume(knob) == pytest.approx(10 * 5 * 12 + 0.6 * (SHUT + OPEN), rel=1e-9)
 
 
 @pytest.mark.parametrize("lock", [False, True])
@@ -387,7 +421,7 @@ def test_knob_sits_on_the_lid_and_the_tab_by_contact_only(lock, gate, switch, sw
 
 
 @pytest.mark.parametrize("lock", [False, True])
-def test_the_top_under_the_knob_is_not_engraved(lock, gate, switch, switch_lock):
+def test_the_top_under_the_knob_is_plain(lock, gate, switch, switch_lock):
     # the knob's front 0.7 rides on the gate front's top (F5), the rest on the lid: both plain under it but for the slot
     k = (switch_lock if lock else switch)["knob"]
     kx0, kx1, _, _, kz0, kz1 = cadutil.bounds(k)
@@ -413,7 +447,7 @@ def test_fits_the_bed_in_print_pose(switch, name):
 def test_print_pose_sizes(switch):
     # the wedge plate lies flat, 70 x 75 (tab included) and 2.8 tall with the ramps
     assert cadutil.size(cadutil.print_pose(switch["wedge_plate"], "-x")) == pytest.approx((70, 75, 2.8), abs=EPS)
-    assert cadutil.size(cadutil.print_pose(switch["knob"], "+y")) == pytest.approx((10, 12, 5.8), abs=EPS)
+    assert cadutil.size(cadutil.print_pose(switch["knob"], "+y")) == pytest.approx((10, 12, 5.6), abs=EPS)
 
 
 def test_wedge_plate_prints_flat_on_its_back_with_nothing_over_air(switch):
@@ -431,10 +465,11 @@ def test_wedge_plate_prints_flat_on_its_back_with_nothing_over_air(switch):
     assert cadutil.bounds(posed)[5] == pytest.approx(2 + 0.8, abs=EPS)                # the ramps' thick ends on top
 
 
-def test_knob_prints_flat_with_the_ridges_up(switch):
+def test_knob_prints_flat_with_the_icons_up(switch):
     posed = cadutil.print_pose(switch["knob"], "+y")
-    assert cadutil.bounds(posed)[5] == pytest.approx(5.8, abs=EPS)
-    assert cadutil.common_volume(posed, probe(-100, 100, -100, 100, 5, 6)) == pytest.approx(3 * 1.2 * 0.8 * 12, rel=1e-6)
+    assert cadutil.bounds(posed)[5] == pytest.approx(5.6, abs=EPS)
+    assert cadutil.common_volume(posed, probe(-100, 100, -100, 100, 5, 6)) == pytest.approx(0.6 * (SHUT + OPEN), rel=1e-6)
+    assert cadutil.overhangs(posed) == []
     assert_full(posed, -5, 5, -6, 6, 0, 5)
 
 
@@ -449,7 +484,7 @@ def test_switch_follows_wd_and_axis(q):
         (q.x_wedge - 0.8, q.x_wedge + 2, q.wall + 0.5, q.gh, -40, 30), abs=EPS
     )
     assert cadutil.bounds(built["knob"]) == pytest.approx(
-        (q.x_knob - 5, q.x_knob + 5, q.gh, q.gh + 5.8, -11, 1), abs=EPS
+        (q.x_knob - 5, q.x_knob + 5, q.gh, q.gh + 5.6, -11, 1), abs=EPS
     )
     for zc, yc in [(zc, q.axis + dy) for zc in (-q.pad_z, q.pad_z) for dy in (-q.pad_dy, q.pad_dy)]:
         zr = zc - q.sw_travel / 2

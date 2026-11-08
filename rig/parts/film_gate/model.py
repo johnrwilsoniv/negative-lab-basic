@@ -19,7 +19,8 @@ so it drops in and floats; it prints with the face that meets the film on the be
 
 The walls are slabs with rectangular windows extruded in one go, so the booleans are the tube socket
 (it breaks through the top edge, ruling R8), the light passage, the screw holes, the pads joined to the
-pressure plate, the unions that make the body, and the lettering cut into the gate front's top.
+pressure plate, and the unions that make the body. The gate front's top is plain: the lock icons are on the
+knob (F14).
 
 Not modelled (ruling R3): leaf springs, pressure plate guides, wedge plate z-grooves, the
 lid-slot detent bumps, and how the lid is fastened.
@@ -27,18 +28,12 @@ lid-slot detent bumps, and how the lid is fastened.
 
 import cadquery as cq
 
-import cadutil
 from params import DEFAULT, Params
 
 # The gate front and the pressure plate print with their film faces on the bed (F5, F7): -x up for the gate front,
 # whose rear face is the reference plane, +x up for the pressure plate, whose front face meets the film. The body
 # prints rear wall down (-x up), so its walls, pillars and film notches all stand straight up from the bed.
 PRINT_UP = {"gate_front": "-x", "gate_body": "-x", "gate_lid": "+y", "pressure_plate": "+x"}
-
-LETTER_FONT = "Arial"        # a system font; CadQuery finds it by name on macOS
-LETTER_STYLE = "bold"        # a 0.4 deep engraving needs strokes wider than a regular weight gives
-OVERCUT = 0.1                # the lettering tool pokes this far above the top so its top face isn't coplanar
-
 
 def _slab(plane, origin, outer, hole, depth):
     """Extrude the rectangle `outer` = (u0, u1, v0, v1), with `hole` (same form, or None) cut through,
@@ -92,16 +87,12 @@ def _light_passage(p: Params) -> cq.Workplane:
 
 
 def gate_front(p: Params = DEFAULT) -> cq.Workplane:
-    """x_gate .. x_ref, gh tall, gate_front_w wide: the tube socket, the light passage, the screw holes, and SLIDE /
-    LOCK engraved in its top beside the lid."""
+    """x_gate .. x_ref, gh tall, gate_front_w wide: the tube socket, the light passage and the screw holes."""
     block = _box(p.x_gate, p.x_ref, 0, p.gh, -p.gate_front_w / 2, p.gate_front_w / 2)
     socket = cq.Workplane("YZ", origin=(p.x_gate - 1, 0, 0)).center(p.axis, 0).circle(p.fit_r).extrude(p.front_wall + 1)
     block = block.cut(socket).cut(_light_passage(p))
     block = block.cut(_bores(p, p.x_gate - 1, p.x_ref + 1, p.joint_hole_d))
-    block = block.cut(_bores(p, p.x_gate - 1, p.x_gate + p.cbore_depth, p.cbore_d))
-    for word, z in (("SLIDE", -p.lid_text_z), ("LOCK", p.lid_text_z)):
-        block = block.cut(_lettering(p, word, p.x_knob - p.lid_text_back, z))
-    return block
+    return block.cut(_bores(p, p.x_gate - 1, p.x_gate + p.cbore_depth, p.cbore_d))
 
 
 def _rear_wall(p: Params) -> cq.Workplane:
@@ -159,25 +150,6 @@ def gate_lid(p: Params = DEFAULT) -> cq.Workplane:
         (slot_x0, slot_x0 + p.tab_t + 2 * p.tab_clear, -slot_z, slot_z),
         p.wall,
     )
-
-
-def _lettering(p: Params, word: str, x: float, z: float) -> cq.Workplane:
-    """The engraving tool for `word`, its glyphs centred on (x, z) in the gate front's top face (y = gh).
-
-    Reads along +z with the letter tops toward +x, so it is upright to someone at the camera end
-    looking down on the gate.
-    """
-    if p.lid_text_depth <= 0:
-        raise ValueError(f"lid_text_depth must be positive, got {p.lid_text_depth:g}")
-    plane = cq.Plane(origin=(0, p.gh + OVERCUT, 0), xDir=(0, 0, 1), normal=(0, 1, 0))
-    text = cq.Workplane(plane).text(
-        word, p.lid_text_size, -(p.lid_text_depth + OVERCUT),
-        combine=False, halign="center", valign="center", font=LETTER_FONT, kind=LETTER_STYLE,
-    )
-    if not text.val().Solids():
-        raise RuntimeError(f"no glyphs were made for {word!r}; font {LETTER_FONT!r} not found?")
-    xmin, xmax, _, _, zmin, zmax = cadutil.shape_bounds(text.val())
-    return text.translate((x - (xmin + xmax) / 2, 0, z - (zmin + zmax) / 2))
 
 
 def _pad(p: Params, zc: float, yc: float) -> cq.Workplane:

@@ -2,7 +2,7 @@
 
 assembly.py collects the parts and proves they do not intersect; fits.py measures the mating
 fits on the assembled solids. The probes below measure the same things independently of fits.py.
-Each parameter set is built once per module (the thread and the lettering are slow).
+Each parameter set is built once per module (the thread is slow).
 """
 
 import math

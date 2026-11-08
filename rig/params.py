@@ -91,13 +91,6 @@ class Params:
     pad: float = 4                # pressure plate pad footprint, square
     pad_z: float = 22             # pad centres at z = +-pad_z
     pad_dy: float = 15.5          # ... and at y = axis +- pad_dy
-    lid_text_size: float = 5.5    # SLIDE / LOCK lettering, engraved in the gate front's top beside the lid (F5): font size,
-                                  # em height; the letters then fill the 16 x 4.4 boxes
-    lid_text_depth: float = 0.4   # engraving depth
-    lid_text_z: float = 14        # SLIDE centred at z = -lid_text_z, LOCK at +lid_text_z
-    lid_text_back: float = 11     # lettering centred this far in front (-x) of the knob
-    lid_text_w: float = 16        # each word's box: along z, ...
-    lid_text_h: float = 4.4       # ... and along x
     wedge_t: float = 2            # lock switch wedge plate thickness, x
     wedge_w: float = 70           # ... and width, z
     wedge_win_w: float = 52       # its window along z (the height is win_h): shifted +-sw_travel/2 it still clears win_w
@@ -106,12 +99,16 @@ class Params:
                                     # pushes the plate back onto it, so this much of the preload is lost
     tab_w: float = 4              # lock switch tab width, z (thickness is tab_t)
     knob_w: float = 10            # lock switch knob: along x, ...
-    knob_h: float = 5             # ... up from the lid top (grip ridges not counted), ...
+    knob_h: float = 5             # ... up from the lid top (the lock icons not counted), ...
     knob_l: float = 12            # ... and along z
-    ridges: int = 3               # grip ridges on the knob, running the knob's length, centred on x_knob
-    ridge_w: float = 1.2          # ... each this wide, along x
-    ridge_h: float = 0.8          # ... this tall
-    ridge_pitch: float = 3        # ... and this far apart, centre to centre
+    icon_h: float = 0.6           # lock icons, raised on the knob's top (F14): open padlock at the SLIDE end (-z), shut
+                                  # at the LOCK end (+z), shackles toward +x. Raised this much, ...
+    icon_z: float = 3             # ... centred this far either side of the knob's middle, along z, ...
+    icon_w: float = 4             # ... each body this wide (z) ...
+    icon_body_h: float = 3        # ... and this long (x), ...
+    icon_stroke: float = 0.8      # ... the shackle's stroke (two 0.4 lines), its outside icon_w - 0.8 across, ...
+    icon_leg: float = 1           # ... its legs this long above the body when shut, ...
+    icon_lift: float = 1.2        # ... and lifted this far when open, its -z leg still in the body
     dock_extra_w: float = 16      # light dock: floor width beyond the CS-Lite's length, 8 each side
     dock_tail: float = 6          # ... floor length past the slot's back edge (the back lip's front face)
     floor_t: float = 4            # ... floor thickness

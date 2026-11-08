@@ -163,7 +163,7 @@ def test_each_solid_is_one_valid_closed_solid(name, lock):
 
 
 def test_new_params_defaults():
-    assert (p.film_slot_w, p.film_slot_h) == (3.2, 37)
+    assert (p.film_slot_w, p.film_slot_h, p.film_slot_y0) == (3.2, 35.2, p.axis - 17.5)
     assert (p.rear_win_w, p.rear_win_h) == (46, 34)
     assert (p.tab_t, p.tab_clear, p.slot_end) == (2, 0.5, 3)
     assert (p.pad, p.pad_z, p.pad_dy) == (4, 22, 15.5)
@@ -373,14 +373,15 @@ def test_rear_wall_is_full_height_and_full_width_with_its_window(body):
 
 
 @pytest.mark.parametrize("sign", [-1, 1])
-def test_film_slots_are_3_2_by_37_notches_open_toward_the_gate_front(body, front, sign):
+def test_film_slots_are_3_2_by_35_2_notches_open_toward_the_gate_front(body, front, sign):
     z = sorted((sign * 43, sign * 46))
-    assert_void(body, REF, REF + 3.2 - T, p.axis - 18.5 + T, p.axis + 18.5 - T, *z)
-    assert_full(body, REF + 3.2 + 0.001, REF + 3.2 + T, p.axis - 18.5 + T, p.axis + 18.5 - T, *z)
-    assert_full(body, REF, REF + 3.2, p.axis + 18.5 + 0.001, p.axis + 18.5 + T, *z)
-    assert_full(body, REF, REF + 3.2, p.axis - 18.5 - T, p.axis - 18.5 - 0.001, *z)
+    lo, hi = p.axis - 17.5, p.axis + 17.7        # floor flush under the film's lower edge, roof 0.2 over its upper (F13)
+    assert_void(body, REF, REF + 3.2 - T, lo + T, hi - T, *z)
+    assert_full(body, REF + 3.2 + 0.001, REF + 3.2 + T, lo + T, hi - T, *z)
+    assert_full(body, REF, REF + 3.2, hi + 0.001, hi + T, *z)
+    assert_full(body, REF, REF + 3.2, lo - T, lo - 0.001, *z)
     # the gate front closes the notch: the film (x 254.7 .. 254.83) lies on the reference plane through the wall
-    assert_full(front, REF - T, REF, p.axis - 18.5, p.axis + 18.5, *z)
+    assert_full(front, REF - T, REF, lo, hi, *z)
     assert p.film_slot_x0 == pytest.approx(REF, abs=EPS)
 
 
@@ -408,7 +409,7 @@ def test_four_screw_pillars_stand_the_bodys_whole_depth_outside_the_side_walls(b
 def test_body_volume_is_the_sum_of_its_walls_and_pillars(body):
     t = 3
     floor = 22.3 * 3 * 92
-    sides = 2 * (22.3 * 72.5 * t - 3.2 * 37 * t)
+    sides = 2 * (22.3 * 72.5 * t - 3.2 * 35.2 * t)
     rear = 3 * 78.5 * 92 - 3 * 46 * 34
     pillars = 4 * (25.3 * 9 * 9 - 12 * math.pi * 1.25**2)
     backer = 16.95 * 22 * 86

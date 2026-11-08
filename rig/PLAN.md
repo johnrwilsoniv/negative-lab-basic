@@ -21,6 +21,11 @@ Run it from `rig/`:
 - `uv run python build.py [--wd W] [--axis A]`: builds every part, writes `exports/`, and prints
   the sizes and volumes, the interference check at SLIDE and LOCK, the fit numbers and the bed
   margins. It exits non-zero if a check fails. An axis below 39 is refused with a one-line message.
+- `uv run python print_preview.py`: writes `exports/nlb-rig-print-preview.html`. **Whenever the
+  print preview changes** (the template, `print_preview.py`, or the parts it shows), rebuild it and
+  republish the webpage with `../../tmp-artifacts/bin/tmp-push exports/nlb-rig-print-preview.html`.
+  Keep the filename: re-pushing the same name replaces the page and keeps its URL
+  (https://tmp.jrwiv.com/a/nlb-rig-print-preview-a5yj677u).
 
 `exports/step/` and `exports/stl/` hold one STEP and one STL per printed solid, plus the thread
 coupon, in print pose. `exports/step/nlb-scan-rig-assembly.step` has every part in place at
@@ -179,7 +184,9 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
 - Floor (3), side walls (3) and the rear wall (3, with a 46 × 34 window toward the light),
   from `x_ref` back to the CS-Lite's lit face (F10): 25.3 deep, 92 wide, 78.5 tall. Open at the top for the lid and open at the
   front, where the gate front closes it.
-- Film slots: 3.2 (along x) × 37 (along y) notches in the side walls, open toward the gate front.
+- Film slots: 3.2 (along x) × 35.2 (along y) notches in the side walls, open toward the gate front.
+  Each floor is flush under the film's lower edge, so the strip rests on it; the roof is 0.2
+  (`film_slot_clear`) over its upper edge (F13).
 - Four 9 × 9 screw pillars outside the side walls, the body's whole depth so they stand on the
   bed: two at the floor, two just under the lid. Ø2.5 pilots, 12 deep, for the M3 screws to
   self-tap (`pilot_d` 4.0 for heat-set inserts).
@@ -450,6 +457,12 @@ number.
   the plate bending away. The 0.05 play comes off the 0.113 preload: tune `wedge_back_clear`
   with `ramp_rise`. It prints standing on the rear wall, like the rest of the body. `fits.py`
   measures the 0.05.
+- **The film rests on the film slots' floors (F13).** The user asked for it. The slots were 37
+  tall, 1 clear of the 35 film each side, so the strip hung in the air between the two ledges. Each
+  floor now starts at the film's lower edge (`film_slot_y0`, axis − 17.5), so the strip rests on
+  it, and the roof is 0.2 (`film_slot_clear`) over the upper edge so the strip still slides. The
+  film hasn't moved: it stays centred on the window. FDM tends to print a slot a little narrow, so
+  check the strip slides freely and open `film_slot_clear` if it doesn't.
 
 ## Mockup differences to republish
 

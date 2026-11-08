@@ -117,11 +117,11 @@ def _floor(p: Params) -> cq.Workplane:
 def _side_wall(p: Params, sign: int) -> cq.Workplane:
     """From the reference plane to the rear wall, from the floor up to the lid, with the film slot: a notch film_slot_w
     along x from film_slot_x0 (the reference plane, so the notch is open toward the gate front, which closes it),
-    film_slot_h along y centred on the axis."""
+    film_slot_h along y from film_slot_y0, the film's lower edge, so the film rests on the notch's floor (F13)."""
     z0 = p.gw / 2 - p.wall if sign > 0 else -p.gw / 2
     wall = _slab("XY", (0, 0, z0), (p.x_ref, p.x_gate + p.gate_d - p.wall, p.wall, p.gh - p.wall), None, p.wall)
-    notch = _box(p.film_slot_x0 - 1, p.film_slot_x0 + p.film_slot_w, p.axis - p.film_slot_h / 2,
-                 p.axis + p.film_slot_h / 2, z0 - 1, z0 + p.wall + 1)
+    notch = _box(p.film_slot_x0 - 1, p.film_slot_x0 + p.film_slot_w, p.film_slot_y0,
+                 p.film_slot_y0 + p.film_slot_h, z0 - 1, z0 + p.wall + 1)
     return wall.cut(notch)
 
 

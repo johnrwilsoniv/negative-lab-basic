@@ -74,7 +74,7 @@ input[type=range].v {
 
 /* the assembly's part picker: one checkbox per part, a parent checkbox per subassembly */
 .tree {
-  position: absolute; right: max(14px, env(safe-area-inset-right, 0px)); top: 16px; width: 236px;
+  position: absolute; right: max(14px, env(safe-area-inset-right, 0px)); top: 16px; width: 264px;
   max-height: calc(100% - 84px); overflow-y: auto;
   background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--line); border-radius: 6px;
   padding: 10px 10px 8px; font-size: 13.5px;
@@ -99,6 +99,22 @@ input[type=range].v {
 .tree ul { list-style: none; margin: 0; padding: 0 0 2px 22px; }
 .tree .sw { flex: none; }
 .tree .all { font-weight: 600; }
+/* per part, a see-through switch beside its checkbox */
+.tree .row, .tree li { display: flex; align-items: center; gap: 6px; }
+.tree .row > label, .tree li > label { flex: 1; min-width: 0; }
+.tree .row small { font: 11px var(--f-ui); color: var(--muted); padding-right: 2px; }
+.tree .pill {
+  flex: none; position: relative; width: 26px; height: 15px; padding: 0; margin-right: 2px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: color-mix(in srgb, var(--muted) 22%, transparent); transition: background 0.15s, border-color 0.15s;
+}
+.tree .pill::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--muted); transition: transform 0.15s, background 0.15s;
+}
+.tree .pill:hover { border-color: var(--muted); }
+.tree .pill[aria-pressed="true"] { background: color-mix(in srgb, var(--print) 30%, transparent); border-color: var(--print); }
+.tree .pill[aria-pressed="true"]::after { transform: translateX(11px); background: var(--print); }
+.tree .pill:focus-visible { outline: 2px solid var(--print); outline-offset: 2px; }
 
 .toolbar { position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px)); right: 120px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .toolbar button, .toolbar .seg {
@@ -335,6 +351,8 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   // ---- the assembly: every printed solid in place at SLIDE, on the table ----
   // One hue per part, in assembly order; the references (film, exposures, CS-Lite) bring their own colours.
   const ASM_COLOURS = ['#d4891f', '#3f7fb5', '#2f8a5c', '#7fbf6a', '#8f6fd0', '#c4473a', '#e0b23a', '#8a5a3b', '#c27a5a', '#4aa7a0'];
+  const SEE = 0.22;                                  // a see-through printed part's opacity, ...
+  const SEE_PART = { gate_front: 0.44, gate_body: 0.44 };   // ... but these big blocks read better a little more solid
   const PARTS = Object.fromEntries(DATA.parts.map((p) => [p.name, p]));
   const ASM = {
     name: 'assembly', num: 'all', label: 'Entire assembly',
@@ -363,11 +381,11 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
       g.computeBoundingBox(); box.union(g.boundingBox);
       const mat = new THREE.MeshStandardMaterial({ color: r.colour, roughness: 0.8, transparent: true, opacity: r.opacity,
                                                    depthWrite: false, side: THREE.DoubleSide });
-      return { name: r.name, label: r.label, colour: r.colour, g, mat };
+      return { name: r.name, label: r.label, group: r.group, colour: r.colour, g, mat, see: r.opacity };
     });
     const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2;
     for (const it of [...items, ...refs]) it.g.translate(-cx, 0, -cz);
-    for (const it of items) it.mat = new THREE.MeshStandardMaterial({ color: it.colour, roughness: 0.6 });
+    for (const it of items) { it.mat = new THREE.MeshStandardMaterial({ color: it.colour, roughness: 0.6 }); it.see = SEE_PART[it.name] ?? SEE; }
     const size = box.getSize(new THREE.Vector3());
     return { items, refs, size, vol: items.reduce((t, it) => t + it.vol, 0) };
   }
@@ -375,8 +393,9 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   const group = new THREE.Group();
   scene.add(group);
   let cur = null;
-  const state = { ghost: true, over: true, playing: false, hidden: new Set() };
+  const state = { ghost: true, over: true, playing: false, hidden: new Set(), clear: new Set() };   // clear: parts drawn see-through
   const isAsm = () => cur === ASM;
+  const DEFAULT_CLEAR = DATA.assembly.refs.map((r) => r.name);
 
   function show(part) {
     cur = part;
@@ -418,6 +437,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
     if (asm) {
       buildTree();
       applyVisible();
+      applyClear();
     } else {
       setLayers(true);
     }
@@ -429,7 +449,8 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   function hash() {
     if (isAsm()) {
       const off = [...state.hidden].join(',');
-      history.replaceState(null, '', `#part=${ASM.name}` + (off ? `&hide=${off}` : ''));
+      const clear = [...state.clear].sort().join(','), dflt = DEFAULT_CLEAR.slice().sort().join(',');
+      history.replaceState(null, '', `#part=${ASM.name}` + (off ? `&hide=${off}` : '') + (clear !== dflt ? `&clear=${clear}` : ''));
       return;
     }
     const s = $('layer');
@@ -437,17 +458,18 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   }
 
   // ---- the assembly's part picker ----
-  // Subassemblies in assembly order, each the parts the page groups under it; then the bought references.
+  // Subassemblies in assembly order, each the parts the page groups under it, then the references it holds
+  // (the film under the gate, the CS-Lite under the dock).
   function treeGroups() {
     const c = ASM.cache, groups = [];
-    for (const it of c.items) {
-      const label = PARTS[it.name].group;
+    const add = (label, part) => {
       let g = groups.find((x) => x.label === label);
       if (!g) groups.push(g = { label, parts: [] });
-      g.parts.push({ name: it.name, label: PARTS[it.name].label, colour: it.colour });
-    }
+      g.parts.push(part);
+    };
+    for (const it of c.items) add(PARTS[it.name].group, { name: it.name, label: PARTS[it.name].label, colour: it.colour });
+    for (const r of c.refs) add(r.group, { name: r.name, label: r.label, colour: r.colour });
     groups.sort((a, b) => parseFloat(a.label) - parseFloat(b.label));     // by subassembly number: "4 · …" before "5 · …"
-    groups.push({ label: 'Bought (reference)', parts: c.refs.map((r) => ({ name: r.name, label: r.label, colour: r.colour })) });
     return groups;
   }
   function buildTree() {
@@ -457,9 +479,10 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
     tree.innerHTML = `<button type="button" class="top" id="tToggle" aria-controls="tBody">
         <svg class="chev" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <b>Show</b><small id="tCount"></small></button>
-      <label class="all"><input type="checkbox" id="tAll">All parts</label><div class="body" id="tBody">` +
+      <div class="row"><label class="all"><input type="checkbox" id="tAll">All parts</label><small>See-through</small></div><div class="body" id="tBody">` +
       groups.map((g, i) => `<div class="grp"><label><input type="checkbox" data-group="${i}">${g.label}</label><ul>` +
-        g.parts.map((p) => `<li><label><input type="checkbox" data-part="${p.name}"><i class="sw" style="background:${p.colour}"></i>${p.label}</label></li>`).join('') +
+        g.parts.map((p) => `<li><label><input type="checkbox" data-part="${p.name}"><i class="sw" style="background:${p.colour}"></i>${p.label}</label>` +
+          `<button type="button" class="pill" data-clear="${p.name}" aria-pressed="false" title="See-through" aria-label="See-through: ${p.label}"></button></li>`).join('') +
         '</ul></div>').join('') + '</div>';
     tree.dataset.built = '1';
     // collapsible to its header and "All parts": starts folded where it would cover most of the model (phones)
@@ -478,6 +501,13 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
     for (const box of tree.querySelectorAll('input[data-part]')) {
       box.addEventListener('change', () => set([box.dataset.part], box.checked));
     }
+    for (const pill of tree.querySelectorAll('button[data-clear]')) {
+      pill.addEventListener('click', () => {
+        const n = pill.dataset.clear;
+        state.clear.has(n) ? state.clear.delete(n) : state.clear.add(n);
+        applyClear(); hash();
+      });
+    }
     tree._groups = groups;
     syncTree();
   }
@@ -490,6 +520,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
       box.indeterminate = on > 0 && on < names.length;
     };
     for (const box of tree.querySelectorAll('input[data-part]')) box.checked = !state.hidden.has(box.dataset.part);
+    for (const pill of tree.querySelectorAll('button[data-clear]')) pill.setAttribute('aria-pressed', String(state.clear.has(pill.dataset.clear)));
     for (const box of tree.querySelectorAll('input[data-group]')) mark(box, groups[+box.dataset.group].parts.map((p) => p.name));
     const all = groups.flatMap((g) => g.parts.map((p) => p.name));
     mark($('tAll'), all);
@@ -497,6 +528,17 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   }
   function applyVisible() {
     for (const m of group.children) if (m.userData.part) m.visible = !state.hidden.has(m.userData.part);
+    if ($('tree').dataset.built) syncTree();
+  }
+  // see-through: a printed part at SEE, a reference at its own opacity; otherwise opaque
+  function applyClear() {
+    const c = ASM.cache;
+    if (!c) return;
+    for (const it of [...c.items, ...c.refs]) {
+      const op = state.clear.has(it.name) ? it.see : 1;
+      Object.assign(it.mat, { opacity: op, transparent: op < 1, depthWrite: op === 1 });
+      it.mat.needsUpdate = true;
+    }
     if ($('tree').dataset.built) syncTree();
   }
 
@@ -663,6 +705,8 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   paint();
   const q = new URLSearchParams(location.hash.slice(1));
   for (const n of (q.get('hide') || '').split(',')) if (n) state.hidden.add(n);
+  // the references (film, CS-Lite) start see-through, the printed parts solid
+  for (const n of q.has('clear') ? q.get('clear').split(',') : DEFAULT_CLEAR) if (n) state.clear.add(n);
   const first = byName[q.get('part')] || ASM;          // no part in the link: the whole rig
   sel.value = first.name;
   show(first);

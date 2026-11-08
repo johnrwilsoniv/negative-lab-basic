@@ -34,6 +34,7 @@ MARK = "/*__PRINT_DATA__*/null"
 ASM_LINEAR_TOL = 0.05         # coarser than the print STLs (0.01): the assembly is for looking at, and it halves the page
 ASM_ANGULAR_TOL = 0.2
 REF_GREY = "#9aa3a0"
+FILM_GROUP, DOCK_GROUP = "3 · Film gate", "4 · Light dock"     # the picker lists each reference under these
 REF_MESHES = (                  # name, label, colour, opacity: the film's base is clear orange, its exposures dark
     ("film", "Film strip (perforated)", "#b39466", 0.55),
     ("film_frames", "Exposures, 36 × 24", "#2b2622", 0.85),
@@ -173,9 +174,9 @@ def assembled(p: Params) -> dict:
                 str(path), tolerance=ASM_LINEAR_TOL, angularTolerance=ASM_ANGULAR_TOL, relative=False
             ):
                 raise RuntimeError(f"STL export of {name} failed")
-            refs.append({"name": name, "label": label, "colour": colour, "opacity": opacity,
+            refs.append({"name": name, "label": label, "group": FILM_GROUP, "colour": colour, "opacity": opacity,
                          "stl": base64.b64encode(path.read_bytes()).decode()})
-    refs.append({"name": "cs_lite", "label": "CS-Lite", "colour": REF_GREY, "opacity": 0.35,
+    refs.append({"name": "cs_lite", "label": "CS-Lite", "group": DOCK_GROUP, "colour": REF_GREY, "opacity": 0.35,
                  "box": [round(v, 4) for v in cadutil.bounds(placed["cs_lite"])]})
     return {"solids": solids, "refs": refs}
 

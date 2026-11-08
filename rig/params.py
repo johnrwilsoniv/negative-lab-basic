@@ -81,7 +81,8 @@ class Params:
     plate_t: float = 1.8          # front plate and pressure plate thickness
     wedge_gap: float = 0.9        # pressure plate back face to wedge plate
     film_slot_w: float = 3.2      # side walls' film slot, along x
-    film_slot_clear: float = 1    # ... and the film's width plus this much each side, along y
+    film_slot_clear: float = 0.2  # ... and along y: its floor is flush under the film's lower edge, which rests on it, and
+                                  # its roof this far above the upper edge, so the strip slides (F13)
     rear_win_w: float = 46        # rear wall window, toward the light
     rear_win_h: float = 34
     tab_t: float = 2              # lock switch tab thickness, x
@@ -252,8 +253,12 @@ class Params:
         return self.x_wedge + 1
 
     @property
-    def film_slot_h(self) -> float:     # side walls' film slot, along y: 37
-        return self.film_w + 2 * self.film_slot_clear
+    def film_slot_h(self) -> float:     # side walls' film slot, along y: 35.2
+        return self.film_w + self.film_slot_clear
+
+    @property
+    def film_slot_y0(self) -> float:    # ... from the film's lower edge, so the film stays centred on the window
+        return self.axis - self.film_w / 2
 
     @property
     def frame_pitch(self) -> float:     # frame to frame along the film: 38, so 2 of unexposed film between frames

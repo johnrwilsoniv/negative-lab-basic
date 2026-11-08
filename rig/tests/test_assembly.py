@@ -159,6 +159,18 @@ def test_film_lies_against_the_gate_fronts_rear_face(slide):
     assert cadutil.bounds(slide["film"])[0] == pytest.approx(plate[1], abs=EPS)
 
 
+def test_film_rests_on_the_film_slots_floors(slide):
+    """F13: each side wall's film slot has its floor flush under the film's lower edge, and the film is still centred on
+    the window."""
+    film, body = slide["film"], slide["gate_body"]
+    x0, x1, y0, y1, _, _ = cadutil.bounds(film)
+    assert (y0 + y1) / 2 == pytest.approx(p.axis, abs=EPS)
+    assert cadutil.common_volume(film, body) < 1e-6
+    for z in (-(p.gw - p.wall) / 2, (p.gw - p.wall) / 2):                # mid-wall
+        under = cadutil.probe(x0, x1, y0 - 0.05, y0, z - 1, z + 1)
+        assert cadutil.common_volume(body, under) == pytest.approx(cadutil.volume(under), rel=1e-6)
+
+
 def test_cs_lite_is_165_by_112_by_20_standing_on_the_docks_floor(slide):
     x0, x1, y0, y1, z0, z1 = cadutil.bounds(slide["cs_lite"])
     assert (x0, x1) == pytest.approx((p.x_light, p.x_light + 20), abs=EPS)

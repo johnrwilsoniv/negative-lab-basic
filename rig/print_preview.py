@@ -106,20 +106,14 @@ SOLIDS = {
         ],
     ),
     "wedge_plate": (
-        "5a", "Wedge plate", "5 · Lock switch", 0.12,
-        "Slides ±5 along z; four ramps push the pressure plate onto the film at LOCK.",
+        "5", "Wedge plate", "5 · Lock switch", 0.12,
+        "Slides ±5 along z; four ramps push the pressure plate onto the film at LOCK. Its tab sticks 12.7 (½ in) "
+        "out of the lid: push it toward LOCK or SLIDE (no knob).",
         [
             "Flat, back face on the bed, ramps up (F9). No bridges, no supports, no brim needed.",
+            "The tab is 2 × 4: print it solid (100% infill there) so it doesn't snap when you push it.",
             "The ramps' 1:17 slopes are now the top layers, so they print stepped, like the pressure plate's pads. "
             "Use 0.12 or finer layers and ironing; tune <code>ramp_rise</code> against the print.",
-        ],
-    ),
-    "knob": (
-        "5b", "Knob", "5 · Lock switch", 0.2,
-        "Sits on the tab above the lid, open and shut padlocks on top for SLIDE and LOCK. Printed separately.",
-        [
-            "Top up: the icons are the last layers.",
-            "The snap onto the tab isn't designed yet.",
         ],
     ),
     "light_dock": (
@@ -134,7 +128,7 @@ SOLIDS = {
 }
 ORDER = [
     "thread_coupon", "adapter", "tube", "gate_front", "gate_body", "gate_lid", "pressure_plate", "light_dock",
-    "wedge_plate", "knob",
+    "wedge_plate",
 ]
 
 

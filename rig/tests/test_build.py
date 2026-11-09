@@ -294,7 +294,7 @@ def test_a_full_build_passes_and_writes_the_assembly_step(real_run):
     assert "FAIL" not in out
     path = out_dir / "step" / "nlb-scan-rig-assembly.step"
     assert path.stat().st_size > 0
-    assert len(cadutil.step_assembly(path)) == 17         # 9 printed, the film, its 6 frames, the CS-Lite
+    assert len(cadutil.step_assembly(path)) == 16         # 8 printed, the film, its 6 frames, the CS-Lite
 
 
 def test_a_full_build_reports_the_assembly_in_order(real_run):

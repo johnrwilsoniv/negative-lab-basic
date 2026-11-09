@@ -98,17 +98,8 @@ class Params:
     wedge_back_clear: float = 0.05  # ... and to the backer behind it, a block on the gate body's floor (F12): the clamp
                                     # pushes the plate back onto it, so this much of the preload is lost
     tab_w: float = 4              # lock switch tab width, z (thickness is tab_t)
-    knob_w: float = 10            # lock switch knob: along x, ...
-    knob_h: float = 5             # ... up from the lid top (the lock icons not counted), ...
-    knob_l: float = 12            # ... and along z
-    icon_h: float = 0.6           # lock icons, raised on the knob's top (F14): open padlock at the SLIDE end (-z), shut
-                                  # at the LOCK end (+z), shackles toward +x. Raised this much, ...
-    icon_z: float = 3             # ... centred this far either side of the knob's middle, along z, ...
-    icon_w: float = 4             # ... each body this wide (z) ...
-    icon_body_h: float = 3        # ... and this long (x), ...
-    icon_stroke: float = 0.8      # ... the shackle's stroke (two 0.4 lines), its outside icon_w - 0.8 across, ...
-    icon_leg: float = 1           # ... its legs this long above the body when shut, ...
-    icon_lift: float = 1.2        # ... and lifted this far when open, its -z leg still in the body
+    tab_reach: float = 12.7       # ... and it sticks this far (1/2 inch) up out of the lid top: the grip that slides the
+                                  # switch, in place of a knob (F15)
     dock_extra_w: float = 16      # light dock: floor width beyond the CS-Lite's length, 8 each side
     dock_tail: float = 6          # ... floor length past the slot's back edge (the back lip's front face)
     floor_t: float = 4            # ... floor thickness
@@ -246,10 +237,6 @@ class Params:
         return self.x_pp + self.wedge_gap
 
     @property
-    def x_knob(self) -> float:          # [xKnob]
-        return self.x_wedge + 1
-
-    @property
     def film_slot_h(self) -> float:     # side walls' film slot, along y: 35.2
         return self.film_w + self.film_slot_clear
 
@@ -305,7 +292,7 @@ class Params:
     def ramp_t(self, u: float) -> float:        # [rampT] ramp thickness at u along the ramp
         return self.ramp_min + self.ramp_rise * (self.ramp_len / 2 - u) / self.ramp_len
 
-    def clamp_shift(self, s: float) -> float:   # [clampShift] pressure plate travel, knob at s
+    def clamp_shift(self, s: float) -> float:   # [clampShift] pressure plate travel, switch at s
         return min(self.ramp_t(-s) - self.ramp_t(self.sw_travel / 2), self.channel - self.film_t)
 
     @property

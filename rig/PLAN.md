@@ -178,7 +178,7 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
   first layer, so the film lies on bed-flat plastic, across the whole width, including where the
   film leaves through the side walls.
 - Four Ø3.4 holes for M3 × 20 screws, counterbored Ø6.5 × 3.5 from the front.
-- Its top is plain: the lock icons are on the knob (F14).
+- Its top is plain (F14).
 
 **Gate body** (prints rear wall down):
 - Floor (3), side walls (3) and the rear wall (3, with a 46 × 34 window toward the light),
@@ -252,10 +252,9 @@ the film plane.
 
 ### 5 · Lock switch (`parts/lock_switch/`)
 
-**Knob:** 10 (x) × 12 (z) × 5, with two padlock icons raised 0.6 on top (F14): open toward −z
-(SLIDE), shut toward +z (LOCK), shackles toward +x.
-
-**Tab:** 2 × 4, running down through the lid slot.
+**Tab:** 2 (x) × 4 (z), up from the plate's top through the lid slot and 12.7 (½ inch,
+`tab_reach`) out of the lid top. It is the grip: push it toward +z for LOCK, −z for SLIDE.
+There's no knob (F15).
 
 **Wedge plate:**
 - 2 thick, 70 wide (z), and as tall as the gate interior (about 70).
@@ -264,18 +263,16 @@ the film plane.
   from 0.8 thick at the −z end to 0.1 at the +z end.
 
 **How it works:**
-- Travel is ±5 along z. At SLIDE (knob at −z) each pad sits on the thin end of its ramp.
+- Travel is ±5 along z. At SLIDE (tab at −z) each pad sits on the thin end of its ramp.
 - At LOCK, the pressure plate moves forward by
   `min(rampT(−s) − rampT(SW_TRAVEL/2), CHANNEL − FILM_T)`.
 - The ramp slope (about 1:17) should be self-locking. Still add a detent bump at each end
   of the slot. Not designed yet: a working detent needs a compliant member, and the tab is
-  rigid with 0.5 play, so design it with the knob snap. The detents are what hold LOCK; the
+  rigid with 0.5 play. The detents are what hold LOCK; the
   leaf springs are what return the plate to SLIDE.
 
-**Assembly:** the knob can't go through the lid slot already attached. Make it a separate
-print that snaps onto the tab after the wedge plate is in place. The snap feature is not
-designed yet. The tab ends flush with the lid top today, so the snap needs the tab
-lengthened above the lid.
+**Assembly:** drop the wedge plate in, then lower the lid over it so the tab comes up through
+the slot. Nothing to snap on.
 
 **Tuning:** if the grip is wrong after a test print, change the ramp rise (about 0.6–0.8
 only: see "Tuning and print notes"). Don't change `CHANNEL`.
@@ -302,7 +299,7 @@ rig/
 │   ├── tube/               model.py
 │   ├── film_gate/          model.py: gate_front, gate_body, gate_lid, pressure_plate
 │   ├── light_dock/         model.py: light_dock
-│   └── lock_switch/        model.py: knob, wedge_plate
+│   └── lock_switch/        model.py: wedge_plate
 ├── tests/                  pytest on the built solids
 └── exports/
     ├── step/               one STEP per printed solid + nlb-scan-rig-assembly.step (for Onshape)
@@ -369,8 +366,8 @@ Write these as pytest checks against the built solids:
 Each was a ruling made during the build (numbers at the defaults). The code cites them by
 number.
 
-- **Not modelled yet (R3):** leaf springs, pressure-plate guides, wedge-plate grooves, knob
-  snap, gate/dock joint, lid-slot detents. The surfaces where they'd attach are left plain.
+- **Not modelled yet (R3):** leaf springs, pressure-plate guides, wedge-plate grooves,
+  gate/dock joint, lid-slot detents. The surfaces where they'd attach are left plain.
 - **Open-top box with a separate lid (R4).** The lid sits between the gate front and the rear
   wall, on the side walls. A closed box can't take the plates in or print without an 86 bridge.
 - **Front plate is part of the box (R5).** Superseded by F5: the front plate is the rear end
@@ -470,6 +467,13 @@ number.
   the −z end, the way to SLIDE, and shut at the +z end, the way to LOCK. Each body is 4 × 3, the
   shackle stroke is 0.8 (two 0.4 lines), and the shackles point +x, so they read upright from the
   camera end. The knob prints top up, so the icons are its last layers and nothing overhangs.
+  Superseded by F15: the knob, and its icons with it, are gone.
+- **No knob: the tab is the grip (F15).** The user asked for it. The wedge plate's tab now runs
+  12.7 (½ inch, `tab_reach`) above the lid top instead of ending flush with it, and you push it
+  directly. The knob, its `knob_*` and `icon_*` params, and `x_knob` are gone, and there's no snap
+  to design. The rig has 8 printed parts. The tab is still 2 × 4, so it fits the existing lid slot;
+  the wedge plate prints flat as before, now 87.7 tall on the bed, with the tab in the first
+  layers. Print the tab solid. Nothing marks SLIDE and LOCK any more.
 
 ## Mockup differences to republish
 
@@ -484,7 +488,8 @@ it is the user's call.
 | Tube | plain ring | baffle ribs inside |
 | Film slots | centred on the film plane, x 252.5–257.5 | notches from the reference plane, x 254.7–257.9 |
 | Gate | one box with a thin front plate and a chamber in front of it | gate front (solid, flared light passage) + gate body, M3 screws through side pillars, 110 wide |
-| Lettering | on the lid | on the gate front's top |
+| Lettering | on the lid | none |
+| Knob | 10 × 12 on the tab, grip ridges | none: the tab sticks 12.7 out of the lid and is the grip |
 | Shroud | part of the dock | none: the gate body (39 deep) stands in a notch in the dock, flush on the lit face |
 | CS-Lite slot | 20, dock 35 long | 20.5; the dock runs forward under the gate to a front wall, 69.7 long |
 | `axis` | slider 30–60 | 39 at least |
@@ -536,7 +541,7 @@ it is the user's call.
 ## Suggested skills
 
 - `superpowers:brainstorming`: before designing the open mechanisms (leaf springs, guides,
-  gate/dock joint, knob snap). These are design decisions for the user.
+  gate/dock joint). These are design decisions for the user.
 - `superpowers:test-driven-development`: write the geometry checks before each `model.py`.
 - `superpowers:verification-before-completion`: run `build.py` and the tests and quote the
   output before saying a part is done.

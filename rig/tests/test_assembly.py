@@ -18,7 +18,7 @@ from params import DEFAULT, Params
 
 p = DEFAULT
 Q = Params(wd=150, axis=50)        # not the defaults, so nothing is right by coincidence
-PRINTED = ["adapter", "tube", "gate_front", "gate_body", "gate_lid", "pressure_plate", "wedge_plate", "knob",
+PRINTED = ["adapter", "tube", "gate_front", "gate_body", "gate_lid", "pressure_plate", "wedge_plate",
            "light_dock"]
 FRAMES = [f"film_frame_{i}" for i in range(1, 7)]
 REFERENCES = ["film", *FRAMES, "cs_lite"]
@@ -212,7 +212,7 @@ def test_slide_nothing_intersects(found_slide):
 
 def test_every_printed_pair_and_every_printed_against_a_reference_is_checked(slide):
     pairs = assembly.pairs(slide)
-    assert len(pairs) == 36 + 72                     # 9 printed: 36 pairs; each against the 8 references: 72
+    assert len(pairs) == 28 + 64                     # 8 printed: 28 pairs; each against the 8 references: 64
     assert len({frozenset(pair) for pair in pairs}) == len(pairs)
     assert not any(a in REFERENCES and b in REFERENCES for a, b in pairs)
 
@@ -463,7 +463,7 @@ def test_assembly_step_has_no_overlaps_when_read_back(step):
 def test_check_step_passes_the_file_it_wrote(slide, step):
     check = assembly.check_step(step, slide)
     assert check.problems == []
-    assert check.count == len(PRINTED + REFERENCES)       # 17
+    assert check.count == len(PRINTED + REFERENCES)       # 16
     assert check.volume == pytest.approx(sum(cadutil.volume(wp) for wp in slide.values()), rel=cadutil.STEP_VOLUME_RTOL)
     assert check.error < cadutil.STEP_VOLUME_RTOL
 
@@ -475,9 +475,9 @@ def test_check_step_flags_a_solid_missing_from_the_file(slide, step):
 
 
 def test_check_step_flags_a_solid_that_is_not_what_was_written(slide, step):
-    changed = {**slide, "knob": box(0, 1, 0, 1, 0, 1)}
+    changed = {**slide, "wedge_plate": box(0, 1, 0, 1, 0, 1)}
     messages = assembly.check_step(step, changed).problems
-    assert any("knob" in m and "volume" in m for m in messages)
+    assert any("wedge_plate" in m and "volume" in m for m in messages)
     assert any("total" in m for m in messages)
 
 

@@ -78,7 +78,6 @@ def test_lock_mechanism_x_stations():
     p = DEFAULT
     assert p.x_pp == pytest.approx(257.1)
     assert p.x_wedge == pytest.approx(258.0)
-    assert p.x_knob == pytest.approx(259.0)
 
 
 def test_ramp_thickness():
@@ -93,7 +92,7 @@ def test_lock_shift_and_preload():
     # unclamped travel is 0.5833, so the film limit (channel - film_t = 0.47) governs
     assert p.clamp_shift(5) == pytest.approx(0.47)
     assert p.lock_shift == pytest.approx(0.47)
-    assert p.clamp_shift(-5) == pytest.approx(0.0)  # knob at SLIDE: the plate has not moved
+    assert p.clamp_shift(-5) == pytest.approx(0.0)  # switch at SLIDE: the plate has not moved
     assert p.preload == pytest.approx(0.1133333, abs=1e-6)
 
 

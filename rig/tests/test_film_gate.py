@@ -261,7 +261,7 @@ def test_front_volume(front):
 
 
 def test_front_top_is_plain_behind_the_socket(front):
-    # F14: no lettering. The lock icons are on the knob; the top is solid from the socket's notch to x_ref.
+    # F14: no lettering; the top is solid from the socket's notch to x_ref.
     assert_full(front, 245, REF, 78, 78.5, -55, 55)
 
 

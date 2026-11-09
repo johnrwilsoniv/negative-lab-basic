@@ -183,7 +183,7 @@ td.c { text-align: right; width: 1%; }
         <li>Print <code>thread_coupon</code> first: the adapter's M67 × 0.75 thread on a 2mm grip ring. It tells us if the thread fits before anything bigger is printed.</li>
         <li>Print the adapter flat, thread axis vertical, at 0.12–0.16mm layers.</li>
         <li>The pressure plate and wedge plate print on their bottom edges, so the pad and ramp slopes are traced in each layer, not stepped.</li>
-        <li>Not in the CAD yet: leaf springs, plate guides, wedge plate grooves, detent bumps, the knob's snap, and how the lid and dock fasten.</li>
+        <li>Not in the CAD yet: leaf springs, plate guides, wedge plate grooves, detent bumps, and how the lid and dock fasten.</li>
         <li id="bedNote"></li>
       </ol>
     </section>
@@ -212,10 +212,9 @@ const RIG = /*__RIG_DATA__*/null;
     gate_lid: ['3', 'Gate lid', 'Rests on the side walls, between the gate front and the rear wall. Slot for the switch tab.', 'gate'],
     pressure_plate: ['3', 'Pressure plate', 'Floats 0.25 inside the body, 0.6 channel behind the reference plane. Four sloped pads on its back.', 'gate'],
     light_dock: ['4', 'Light dock', 'Holds the CS-Lite on its edge. The gate stands in a notch between its front wall and the lit face, which hold the gate front and body together.', 'dock'],
-    wedge_plate: ['5', 'Wedge plate', 'Slides 10mm along z. Its four ramps push the pressure plate onto the film at LOCK.', 'gate'],
-    knob: ['5', 'Knob', 'Sits on the tab above the lid, lock and unlock icons on top. Printed separately.', 'gate'],
+    wedge_plate: ['5', 'Wedge plate', 'Slides 10mm along z. Its four ramps push the pressure plate onto the film at LOCK. Its tab sticks ½ in out of the lid: the grip.', 'gate'],
   };
-  const ORDER = ['adapter', 'tube', 'gate_front', 'gate_body', 'gate_lid', 'pressure_plate', 'light_dock', 'wedge_plate', 'knob'];
+  const ORDER = ['adapter', 'tube', 'gate_front', 'gate_body', 'gate_lid', 'pressure_plate', 'light_dock', 'wedge_plate'];
   const CUT = new Set(['adapter', 'tube', 'gate_front', 'gate_body', 'gate_lid', 'light_dock']);   // sectioned in cutaway
 
   const P = { exploded: true, cut: false, ref: true, lock: false };
@@ -303,12 +302,12 @@ const RIG = /*__RIG_DATA__*/null;
   const bb = name => meshes[name].geometry.boundingBox;
   const at = (name, x, y, z) => [meshes[name], new THREE.Vector3(x, y, z)];
   {
-    const a = bb('adapter'), t = bb('tube'), lid = bb('gate_lid'), k = bb('knob'), d = bb('light_dock');
+    const a = bb('adapter'), t = bb('tube'), lid = bb('gate_lid'), k = bb('wedge_plate'), d = bb('light_dock');
     anchors.adapter = at('adapter', (a.min.x + a.max.x) / 2, a.max.y, 0);
     anchors.thread = at('adapter', a.min.x + 2, p.axis, 0);
     anchors.tube = at('tube', (t.min.x + t.max.x) / 2, t.max.y, 0);
     anchors.gate = at('gate_lid', lid.min.x + 3, lid.max.y, -28);
-    anchors.lock = at('knob', (k.min.x + k.max.x) / 2, k.max.y, 0);
+    anchors.lock = at('wedge_plate', k.max.x - 1, k.max.y, (k.min.z + k.max.z) / 2);   // the tab's top
     anchors.dock = at('light_dock', (d.min.x + d.max.x) / 2, 62, (p.csl_l / 2 + d.max.z) / 2);
     for (const name of ORDER) { const b = bb(name); anchors[name] = at(name, (b.min.x + b.max.x) / 2, b.max.y, (b.min.z + b.max.z) / 2); }
   }
@@ -545,7 +544,7 @@ const RIG = /*__RIG_DATA__*/null;
     else flyTo(target, pos);
   }
   controls.addEventListener('start', () => { userMoved = true; fly = null; });
-  const SMALL = new Set(['knob', 'lock', 'pressure_plate', 'wedge_plate', 'gate_lid']);
+  const SMALL = new Set(['lock', 'pressure_plate', 'wedge_plate', 'gate_lid']);
   function focus(k) {
     const target = worldAnchor(k === 'adapter' ? 'thread' : k).clone();
     if (['gate', 'dock', 'tube', 'gate_front', 'gate_body', 'light_dock', 'pressure_plate', 'wedge_plate'].includes(k)) target.y = p.axis;

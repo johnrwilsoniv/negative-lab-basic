@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">
 <style>
-/* Template for print_preview.py, which embeds the print-pose STLs from exports/stl. */
+/* Template for print_preview.py, which embeds the print-pose STLs from exports/stl (viewed, and offered for download at the bottom). */
 :root {
   --bg: #e8ebe9; --panel: #f5f7f6; --stage: #dde2df; --fg: #1a1f1d; --muted: #5a6460; --line: #cbd3cf;
   --print: #d4891f; --cut: #8a5512; --layer: #f2c14e; --over: #c2362b; --bed: #b9c2be;
@@ -24,8 +24,10 @@
   }
 }
 * { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; }
-body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--f-ui); display: flex; flex-direction: column; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--f-ui); }
+/* the viewer fills the window; the STL downloads sit below it */
+.view { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
 
 header {
   display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
@@ -151,9 +153,29 @@ ul.asm .v { font: 12px var(--f-num); color: var(--muted); font-variant-numeric: 
 button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
 .foot code { font: 11.5px var(--f-num); }
 
+/* STL downloads, below the viewer: one column per subassembly */
+.dl { border-top: 1px solid var(--line); background: var(--panel); padding: 22px max(18px, env(safe-area-inset-left, 0px)) max(28px, env(safe-area-inset-bottom, 0px)); }
+.dl h2 { font: 600 11.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin: 0 0 6px; }
+.dl > p { margin: 0 0 16px; color: var(--muted); font-size: 13.5px; }
+.dl > p code { font: 12.5px var(--f-num); }
+.dl .cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px 24px; }
+.dl h3 { font: 600 13.5px/1.2 var(--f-ui); margin: 0 0 6px; }
+.dl ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.dl a {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 0 9px; align-items: baseline; padding: 6px 8px; margin: 0 -8px;
+  border-radius: 4px; color: inherit; text-decoration: none;
+}
+.dl a:hover { background: color-mix(in srgb, var(--print) 12%, transparent); }
+.dl a:focus-visible { outline: 2px solid var(--print); outline-offset: 0; }
+.dl .n { font: 500 12px var(--f-num); color: var(--print); min-width: 2.2em; }
+.dl .t { font-weight: 600; font-size: 14px; }
+.dl .t small { display: block; font: 11.5px var(--f-num); color: var(--muted); font-weight: 400; }
+.dl .v { font: 12px var(--f-num); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dl .v::after { content: " ↓"; color: var(--print); }
+
 @media (max-width: 820px) {
   .app { grid-template-columns: 1fr; grid-template-rows: 68vh auto; }
-  body { height: auto; display: block; }
+  .view { height: auto; display: block; }
   .rail { border-left: 0; border-top: 1px solid var(--line); }
   select { min-width: 200px; }
   .meta, .hint { display: none; }
@@ -162,6 +184,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
 </style>
 </head>
 <body>
+<div class="view">
 <header>
   <h1>NLB scan rig <span>· print direction</span></h1>
   <div class="pick">
@@ -218,6 +241,12 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
     <p class="foot" id="foot"></p>
   </aside>
 </div>
+</div>
+<section class="dl" aria-labelledby="dlH">
+  <h2 id="dlH">Download STL</h2>
+  <p>One file per printed solid, in print pose (Z up, the bed at Z = 0), as <code>build.py</code> wrote them to <code>rig/exports/stl/</code>.</p>
+  <div class="cols" id="dl"></div>
+</section>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
@@ -699,6 +728,34 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   }
   new ResizeObserver(resize).observe(stage);
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paint);
+
+  // ---- STL downloads: the embedded print-pose STLs, each turned into a file on first use ----
+  {
+    const kb = (b64) => Math.round((b64.length * 3 / 4 - (b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0)) / 1024);
+    const cols = {};
+    for (const p of DATA.parts) {
+      let ul = cols[p.group];
+      if (!ul) {
+        const col = document.createElement('div');
+        col.innerHTML = `<h3>${p.group}</h3><ul></ul>`;
+        $('dl').append(col);
+        ul = cols[p.group] = col.querySelector('ul');
+      }
+      const li = document.createElement('li');
+      li.innerHTML = `<a href="#" download="${p.name}.stl"><span class="n">${p.num}</span>` +
+        `<span class="t">${p.label}<small>${p.name}.stl</small></span><span class="v">${kb(p.stl)} KB</span></a>`;
+      const a = li.firstChild;
+      const ready = () => {
+        if (a.dataset.ready) return;
+        a.href = URL.createObjectURL(new Blob([decode(p.stl)], { type: 'model/stl' }));
+        a.dataset.ready = '1';
+      };
+      a.addEventListener('pointerdown', ready);
+      a.addEventListener('focus', ready);
+      a.addEventListener('click', ready);      // still in time: the link follows its href after the handlers
+      ul.append(li);
+    }
+  }
 
   $('meta').textContent = DATA.built;
   $('foot').innerHTML = DATA.foot;

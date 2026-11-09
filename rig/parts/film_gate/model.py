@@ -19,8 +19,7 @@ so it drops in and floats; it prints with the face that meets the film on the be
 
 The walls are slabs with rectangular windows extruded in one go, so the booleans are the tube socket
 (it breaks through the top edge, ruling R8), the light passage, the screw holes, the pads joined to the
-pressure plate, and the unions that make the body. The gate front's top is plain: the lock icons are on the
-knob (F14).
+pressure plate, and the unions that make the body. The gate front's top is plain (F14).
 
 Not modelled (ruling R3): leaf springs, pressure plate guides, wedge plate z-grooves, the
 lid-slot detent bumps, and how the lid is fastened.

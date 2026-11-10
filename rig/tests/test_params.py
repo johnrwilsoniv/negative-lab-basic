@@ -28,7 +28,7 @@ def test_plan_constants():
     assert (p.thread_major, p.thread_pitch, p.thread_len) == (67, 0.75, 4.5)
     assert p.thread_clear == 0.15
     assert (p.adapter_r, p.adapter_bore_r, p.socket_depth, p.flange) == (39, 31, 9, 3)
-    assert (p.tube_ro, p.tube_ri) == (36, 32)
+    assert (p.tube_ro, p.tube_ri) == (34, 32)
     assert (p.gw, p.gate_d, p.gate_front, p.wall) == (92, 39, 14, 3)     # gate_d = gate_front + gap (F10)
     assert (p.win_w, p.win_h, p.gap) == (38, 26, 25)
     assert (p.front_wall, p.fit_clear, p.plate_t, p.wedge_gap) == (4, 0.3, 1.8, 0.9)
@@ -67,7 +67,7 @@ def test_rail_values_at_defaults():
     assert p.tube_x0 == 128
     assert p.tube_x1 == 226
     assert p.tube_len == 98
-    assert p.fit_r == pytest.approx(36.3)
+    assert p.fit_r == pytest.approx(34.3)
     assert p.dock_w == 181
     assert p.dock_x0 == pytest.approx(217.8)          # the front wall's front face: 4.2 in front of the gate (F11)
     assert p.dock_x1 == 287.5

@@ -25,7 +25,7 @@ HW = p.dock_w / 2                                   # 90.5
 CHEEK_IN = p.csl_l / 2 + 0.5                        # 83: cheek inner faces
 X0 = 217.8                                          # the front wall's front face: x_gate (222) - 0.2 - 4
 NX = 221.8                                          # its rear face, where the notch starts: 0.2 in front of the gate front
-U_R = 37                                            # the tube's U: its 36 plus 1
+U_R = 35                                            # the tube's U: its 34 plus 1
 NOTCH = 55.2                                        # the notch's sides: the gate front's 110, plus 0.2 each side
 
 
@@ -215,7 +215,7 @@ def test_front_wall_has_a_u_for_the_tube_1_clear_of_it(dock):
     u = (cq.Workplane("YZ", origin=(X0, 0, 0)).center(p.axis, 0).circle(U_R).extrude(4)
          .union(probe(X0, NX, p.axis, 100, -U_R, U_R)))
     assert cadutil.common_volume(dock, u) < 1e-3
-    # 0.01 bigger all round and it takes material: the U is exactly 37 around the axis, open at the top
+    # 0.01 bigger all round and it takes material: the U is exactly 35 around the axis, open at the top
     assert cadutil.common_volume(dock, probe(X0, NX, p.axis - U_R - 0.01, p.axis, -1, 1)) > 1e-4
     assert cadutil.common_volume(dock, probe(X0, NX, p.axis, 62, U_R, U_R + 0.01)) > 1e-4
     assert_void(dock, X0, NX, p.axis, 100, -U_R + 0.001, U_R - 0.001)

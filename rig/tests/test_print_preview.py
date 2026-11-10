@@ -18,7 +18,7 @@ FIGURES = ("side", "lens", "cslite", "slot", "bed", "film", "screw")      # the 
 def sizes_at(p: Params) -> dict[str, list[float]]:
     """Plausible print-pose sizes: the tube wd - 13 tall, the gate front gh tall on the bed, the rest as built."""
     sizes = {name: [50.0, 50.0, 10.0] for name in pp.ORDER}
-    sizes["tube"] = [72.0, 72.0, p.tube_len]
+    sizes["tube"] = [68.0, 68.0, p.tube_len]
     sizes["gate_front"] = [110.0, p.gh, 13.7]
     sizes["light_dock"] = [69.7, 181.0, 62.0]
     return sizes
@@ -130,7 +130,7 @@ def test_data_carries_the_checklist_for_the_stls_on_disk(tmp_path, monkeypatch):
     stl = write_stls(tmp_path, sizes_at(DEFAULT))
     d = pp.data(DEFAULT, stl)
     assert [part["name"] for part in d["parts"]] == pp.ORDER
-    assert d["check"]["sizes"]["tube"] == pytest.approx([72, 72, 98], abs=1e-3)
+    assert d["check"]["sizes"]["tube"] == pytest.approx([68, 68, 98], abs=1e-3)
     assert [it["id"] for it in d["check"]["items"]] == [it["id"] for it in pp.checks(DEFAULT, sizes_at(DEFAULT))["items"]]
 
 

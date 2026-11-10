@@ -18,7 +18,7 @@ rear wall. The pressure plate is `plate_clear` inside the floor, the lid and the
 so it drops in and floats; it prints with the face that meets the film on the bed (F7).
 
 The walls are slabs with rectangular windows extruded in one go, so the booleans are the tube socket
-(it breaks through the top edge, ruling R8), the light passage, the screw holes, the pads joined to the
+(1.7 under the top edge, ruling R8), the light passage, the screw holes, the pads joined to the
 pressure plate, and the unions that make the body. The gate front's top is plain (F14).
 
 Not modelled (ruling R3): leaf springs, pressure plate guides, wedge plate z-grooves, the

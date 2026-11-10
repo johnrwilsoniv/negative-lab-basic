@@ -132,7 +132,7 @@ size.
 | `WALL` | 3 | Wall thickness |
 | Window | 38 × 26 | Gate window |
 | `GAP` | 25 | Film to light face |
-| `TUBE_RO` / `TUBE_RI` | 36 / 32 | Tube outer / inner radius |
+| `TUBE_RO` / `TUBE_RI` | 34 / 32 | Tube outer / inner radius (was 36: R8) |
 | `FLANGE` | 3 | Adapter flange thickness |
 | `THREAD_LEN` | 4.5 | Thread length |
 | `CHANNEL` | 0.6 | Film channel in slide mode |
@@ -167,7 +167,7 @@ Screws into the Laowa's 67mm filter thread. The tube slides into the other end.
   - Give it about 0.1–0.2 radial clearance for FDM.
 - **Flange:** 3 thick, Ø78 OD, Ø62 bore. The bore must clear the lens front element; check
   it against the mockup's 31 inner radius.
-- **Socket:** 9 deep, Ø78 OD. Its ID is `2·TUBE_RO + 0.6` = 72.6, so the tube is a slip fit.
+- **Socket:** 9 deep, Ø78 OD. Its ID is `2·TUBE_RO + 0.6` = 68.6, so the tube is a slip fit.
 - **Overall:** Ø78 × 16.5.
 - **Printing:** flat, with the thread axis vertical, at 0.12–0.16 layers.
 - **Thread test coupon:** also export a short version (thread plus a thin grip ring) so the
@@ -176,9 +176,9 @@ Screws into the Laowa's 67mm filter thread. The tube slides into the other end.
 
 ### 2 · Tube (`parts/tube/`)
 
-- **Size:** Ø72 OD / Ø64 ID. Length is `wd − 13` (98 at the default), with 12 baffle ribs.
+- **Size:** Ø68 OD / Ø64 ID. Length is `wd − 13` (98 at the default), with 12 baffle ribs.
 - **Ends:** one end slides into the adapter socket and the other into the gate's front-wall
-  hole (Ø72.6, 4 deep).
+  hole (Ø68.6, 4 deep).
 - **Inside:** blocks room light and should cut flare. Consider internal baffle ribs or a
   matte texture.
 - **Printing:** upright.
@@ -191,7 +191,7 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
 
 **Gate front** (solid block, prints with its rear face on the bed):
 - x_gate .. `x_ref` (13.7 deep), 76.5 tall, 110 wide (`gw` plus a screw pillar's width each side).
-- Socket: Ø72.6, 4 deep, on the lens axis. The tube's end rests on its floor.
+- Socket: Ø68.6, 4 deep, on the lens axis. The tube's end rests on its floor.
 - Light passage: flares from the socket's floor (the frame window scaled until its corners reach
   the tube's Ø64 bore) down to the 38 × 26 frame window, which runs straight for 1.8 to the
   rear face. The passage only narrows toward the film, so it prints without support.
@@ -404,8 +404,9 @@ number.
   centre. At SLIDE pads and ramps just touch; at LOCK they overlap by the 0.113 preload.
 - **The clamp in a rigid model (R7).** At LOCK the only overlap allowed is the pads in the
   ramps, 0.113 deep. The film lies on the front plate and is only touched.
-- **Gate height kept at `axis + 36` (R8).** The Ø72.6 socket then breaks 0.3 through the top
-  of the gate front. `gate_above_axis` ≥ 39.3 closes it with 3 of wall over the hole.
+- **Gate height kept at `axis + 36` (R8).** The Ø72.6 socket broke 0.3 through the top of the
+  gate front, a slit in the top edge. Closed 2026-11-10 by thinning the tube instead: `tube_ro`
+  36 → 34 (2 wall, the bore unchanged), so the Ø68.6 socket leaves 1.7 over the hole.
 - **Shroud 67.5 tall (R9).** Superseded by F10: there's no shroud.
 - **Exports (R10).** Per-part STEP and STL are in print pose: `PRINT_UP` side up, on the bed,
   centred. The assembly STEP is in the Onshape frame (`assembly.to_onshape`): Z up, so the
@@ -616,7 +617,7 @@ sheet. These set most of the plastic, or decide whether it prints at all.
   tells too: its ring should seat on the rim. A thread shallower than 4.5 and the adapter bottoms out
   before its flange seats (crooked, or pressing on the glass's ring); a bore smaller than the glass's
   opening vignettes. **Changes:** adapter, thread coupon.
-- **C7 · Tube in its sockets: `fit_clear` 0.3 (Ø72 tube, Ø72.6 sockets). Before the tube.** A test
+- **C7 · Tube in its sockets: `fit_clear` 0.3 (Ø68 tube, Ø68.6 sockets). Before the tube.** A test
   print. Holes print small and outer walls a little big. Print the adapter, cut the tube to a 10 mm
   ring in the slicer and try it in the socket: it should slide in by hand without rattling. Tight and
   it won't go in or cracks the socket; loose and the gate and lens aren't on one axis, and light gets
@@ -682,7 +683,6 @@ After printing, tune `ramp_rise` and `wedge_back_clear` against the parts ("Tuni
 - **Measurements:** `wd` and `axis` are measured (C1, C2). The CS-Lite, the printer's bed and height,
   the thread and the rest: see "Check before printing" (C3–C12).
 - **Camera:** A7 or A7 IV? No part depends on it; with its base, it decides `axis` (C1).
-- **Gate height (R8):** keep `gate_above_axis` at 36, or raise it to 39.3 to close the hole?
 - **Mockup:** republish it with the differences above?
 
 ## Conventions from this session

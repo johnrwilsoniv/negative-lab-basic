@@ -54,7 +54,7 @@ class Params:
     win_w: float = 38         # gate window
     win_h: float = 26
     gap: float = 25           # film to light face
-    tube_ro: float = 36
+    tube_ro: float = 34        # 2 wall: the Ø68.6 socket stays 1.7 under the gate front's top (R8, closed)
     tube_ri: float = 32
     flange: float = 3         # adapter flange thickness
     thread_len: float = 4.5

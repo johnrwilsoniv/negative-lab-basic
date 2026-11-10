@@ -186,18 +186,18 @@ def test_the_film_stays_put_at_lock(slide, lock):
 
 
 def test_tube_starts_on_the_adapters_socket_floor(slide):
-    # the socket is radius 36.3, so material of the adapter at radius 33..35 ends at the floor
+    # the socket is radius 34.3, so material of the adapter at radius 32..34 ends at the floor
     floor = cadutil.common_bounds(
-        slide["adapter"], cadutil.probe(p.x_front, p.x_front + 20, p.axis + 33, p.axis + 35, -0.1, 0.1)
+        slide["adapter"], cadutil.probe(p.x_front, p.x_front + 20, p.axis + 32, p.axis + 34, -0.1, 0.1)
     )[1]
     assert cadutil.bounds(slide["tube"])[0] == pytest.approx(floor, abs=EPS)
 
 
 def test_tube_ends_on_the_gate_fronts_socket_floor(slide):
-    # the socket is radius 36.3, so material of the gate front at radius 33..35 (inside it, beyond the light
+    # the socket is radius 34.3, so material of the gate front at radius 32.5..34 (inside it, beyond the light
     # passage's corners at 32) starts at the socket's floor
     floor = cadutil.common_bounds(
-        slide["gate_front"], cadutil.probe(p.x_gate, p.x_gate + 10, p.axis - 35, p.axis - 33, -0.1, 0.1)
+        slide["gate_front"], cadutil.probe(p.x_gate, p.x_gate + 10, p.axis - 34, p.axis - 32.5, -0.1, 0.1)
     )[0]
     assert cadutil.bounds(slide["gate_front"])[0] == pytest.approx(p.x_gate, abs=EPS)
     assert cadutil.bounds(slide["tube"])[1] == pytest.approx(floor, abs=EPS)
@@ -543,9 +543,10 @@ def test_the_measured_numbers_are_the_designs(report):
     assert got["tube / dock front wall, radial clearance"] == pytest.approx(1.0, abs=1e-5)
 
 
-def test_the_gate_holes_open_top_is_noted(report):
+def test_the_gate_hole_is_closed_all_round(report):
+    # R8 closed: the r34.3 socket stays 1.7 under the gate front's top, so no side is noted open
     (hole,) = [f for f in report if f.label == "tube / gate front socket, radial clearance"]
-    assert "top" in hole.note
+    assert hole.note == ""
 
 
 def test_a_fit_that_is_off_is_not_ok():

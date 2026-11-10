@@ -192,25 +192,24 @@ def test_socket_is_the_tube_slip_fit_and_on_the_axis(front):
     assert sorted(arc.arcCenter().x for arc in arcs) == pytest.approx([222, 226], abs=EPS)
 
 
-def test_socket_is_clear_to_r36_3_and_solid_beyond(front):
-    assert cadutil.common_volume(front, rod(222, 4, 36.3 - T)) < 1e-3
-    assert cadutil.common_volume(front, rod(222, 4, 36.3 + T)) > 1.0
+def test_socket_is_clear_to_r34_3_and_solid_beyond(front):
+    assert cadutil.common_volume(front, rod(222, 4, 34.3 - T)) < 1e-3
+    assert cadutil.common_volume(front, rod(222, 4, 34.3 + T)) > 1.0
 
 
-def test_socket_breaks_through_the_top_edge(front):
-    # R8: gate height kept at axis + 36, so the r36.3 socket opens a notch in the top
-    assert p.axis + p.fit_r > p.gh
-    assert_void(front, 222, 226, 76.4, 76.5, -4.5, 4.5)
-    assert_full(front, 222, 226, 76.4, 76.5, 5.5, 8)
-    assert_full(front, 222, 226, 76.4, 76.5, -8, -5.5)
+def test_socket_stays_under_the_top_edge(front):
+    # R8 closed: the r34.3 socket tops out at 74.8, leaving 1.7 of the gate front over it, no notch in the top
+    assert p.axis + p.fit_r == pytest.approx(74.8)
+    assert_void(front, 222, 226, 74.7, 74.79, -0.5, 0.5)
+    assert_full(front, 222, 226, 74.81, 76.5, -8, 8)
 
 
 def test_tube_light_end_rests_on_the_socket_floor_all_round(front):
     tube = tube_model.build(p)["tube"]
     assert cadutil.bounds(tube)[1] == pytest.approx(226, abs=EPS)       # ends on the socket's floor
     assert cadutil.common_volume(front, tube) < 1e-3
-    # the floor is solid under the whole tube wall (r 32 .. 36): the light passage's corners reach r 32, no further
-    ring = rod(226, 0.5, 36).cut(rod(226, 0.5, 32 + 1e-4))
+    # the floor is solid under the whole tube wall (r 32 .. 34): the light passage's corners reach r 32, no further
+    ring = rod(226, 0.5, 34).cut(rod(226, 0.5, 32 + 1e-4))
     assert cadutil.common_volume(front, ring) == pytest.approx(cadutil.volume(ring), rel=1e-6)
     assert p.flare_scale * math.hypot(38, 26) / 2 == pytest.approx(32, abs=EPS)
 
@@ -255,14 +254,14 @@ def test_front_volume(front):
     a1, k = 38 * 26, p.flare_scale
     a2 = k * k * a1
     flare = 7.9 / 3 * (a1 + a2 + math.sqrt(a1 * a2))
-    socket = 4 * (math.pi * 36.3**2 - segment_area(36.3, 36.0))         # breaks 0.3 through the top
+    socket = 4 * math.pi * 34.3**2                                      # whole: 1.7 under the top
     holes = 4 * (13.7 * math.pi * 1.7**2 + 3.5 * math.pi * (3.25**2 - 1.7**2))
     assert cadutil.volume(front) == pytest.approx(13.7 * 76.5 * 110 - socket - 1.8 * a1 - flare - holes, rel=1e-6)
 
 
 def test_front_top_is_plain_behind_the_socket(front):
-    # F14: no lettering; the top is solid from the socket's notch to x_ref.
-    assert_full(front, 226, REF, 76, 76.5, -55, 55)
+    # F14: no lettering; the top is solid from the front face to x_ref.
+    assert_full(front, 222, REF, 76, 76.5, -55, 55)
 
 
 # ---- gate body -----------------------------------------------------------------------

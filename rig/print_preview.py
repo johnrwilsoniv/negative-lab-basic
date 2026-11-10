@@ -67,7 +67,7 @@ SOLIDS = {
     ),
     "tube": (
         "2", "Tube", "2 · Tube", 0.2,
-        "Ø72 / Ø64, <code>wd − 13</code> long, with sawtooth baffle ribs inside.",
+        "Ø68 / Ø64, <code>wd − 13</code> long, with sawtooth baffle ribs inside.",
         [
             "Upright. The baffles' lower flanks are 45°, so no supports.",
         ],

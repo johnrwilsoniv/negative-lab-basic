@@ -94,21 +94,21 @@ def test_one_valid_closed_solid(tube):
 def test_bounds_at_default(tube):
     r = p.tube_ro
     assert cadutil.bounds(tube) == pytest.approx((128, 226, p.axis - r, p.axis + r, -r, r), abs=0.05)
-    assert cadutil.size(tube) == pytest.approx((98, 72, 72), abs=0.05)
+    assert cadutil.size(tube) == pytest.approx((98, 68, 68), abs=0.05)
     assert (p.tube_x0, p.tube_x1, p.tube_len) == (128, 226, 98)
 
 
 def test_length_follows_wd():
     q = Params(wd=150)
     tube = model.build(q)["tube"]
-    assert cadutil.size(tube) == pytest.approx((137, 72, 72), abs=0.05)
+    assert cadutil.size(tube) == pytest.approx((137, 68, 68), abs=0.05)
     assert cadutil.bounds(tube)[:2] == pytest.approx((q.tube_x0, q.tube_x1), abs=0.05)
 
 
 def test_prints_upright_and_fits_the_bed(tube):
     posed = cadutil.print_pose(tube, model.PRINT_UP["tube"])
     assert cadutil.fits_bed(posed, p)
-    assert cadutil.size(posed) == pytest.approx((72, 72, 98), abs=0.05)
+    assert cadutil.size(posed) == pytest.approx((68, 68, 98), abs=0.05)
 
 
 # ---- fits ----------------------------------------------------------------------------
@@ -190,7 +190,7 @@ def test_no_baffles_gives_the_plain_tube():
     q = Params(baffle_h=0)
     tube = model.build(q)["tube"]
     assert cadutil.is_valid(tube)
-    assert cadutil.volume(tube) == pytest.approx(math.pi * (36**2 - 32**2) * 98, rel=1e-3)
+    assert cadutil.volume(tube) == pytest.approx(math.pi * (34**2 - 32**2) * 98, rel=1e-3)
     assert ribs(tube, q) == []
     assert min(e.radius() for e in circles(tube)) == pytest.approx(q.tube_ri, abs=EDGE_TOL)
 

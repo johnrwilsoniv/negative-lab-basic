@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>NLB Scan Rig · Print Direction Preview</title>
+<title>NLB Scan Rig · Print Preview</title>
+<meta name="description" content="Every printed part of the NLB scan rig on the bed, layer by layer, with the dimensions to confirm before printing and the STL and STEP files.">
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">
@@ -36,6 +38,15 @@ header {
 }
 header h1 { font: 700 19px/1.1 var(--f-ui); margin: 0; letter-spacing: -0.01em; }
 header h1 span { color: var(--muted); font-weight: 500; }
+header h1 a { color: inherit; text-decoration: none; }
+header h1 a:hover { color: var(--print); }
+/* the site's links, the same on every page; a preview slot (not main) says so */
+nav.site { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font: 500 13px/1.2 var(--f-ui); }
+nav.site a { color: var(--muted); text-decoration: none; }
+nav.site a:hover { color: var(--fg); }
+nav.site a[aria-current] { color: var(--fg); box-shadow: inset 0 -2px 0 var(--print); }
+nav.site a:focus-visible, header h1 a:focus-visible { outline: 2px solid var(--print); outline-offset: 2px; }
+nav.site .slot { font: 500 11.5px/1 var(--f-num); color: var(--print); border: 1px solid; border-radius: 3px; padding: 3px 5px; }
 .pick { display: flex; align-items: center; gap: 8px; }
 .pick label { font: 600 11.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); }
 select {
@@ -173,6 +184,11 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
 .dl .t small { display: block; font: 11.5px var(--f-num); color: var(--muted); font-weight: 400; }
 .dl .v { font: 12px var(--f-num); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .dl .v::after { content: " ↓"; color: var(--print); }
+.dl li { display: flex; align-items: baseline; gap: 4px; }
+.dl li > a:first-child { flex: 1; min-width: 0; }
+.dl a.alt { display: block; margin: 0; font: 12px var(--f-num); color: var(--muted); white-space: nowrap; }
+.dl a.alt::after { content: " ↓"; color: var(--print); }
+.dl > p a { color: inherit; }
 
 /* two views: the print preview (viewer + downloads) and "Dimensions to confirm" */
 .tabs { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
@@ -328,7 +344,7 @@ body.tab-dims .dims { display: block; }
 <body>
 <div class="view">
 <header>
-  <h1>NLB scan rig <span>· print direction</span></h1>
+  <h1><a id="homeLink" href="nlb-scan-rig.html">NLB scan rig</a> <span>· print direction</span></h1>
   <nav class="tabs" role="tablist" aria-label="View">
     <button type="button" role="tab" id="tabPrint" aria-selected="true" aria-controls="printView">Print preview</button>
     <button type="button" role="tab" id="tabDims" aria-selected="false" aria-controls="dims">Dimensions to confirm<span class="c" id="tabCount"></span></button>
@@ -338,6 +354,7 @@ body.tab-dims .dims { display: block; }
     <select id="part"></select>
   </div>
   <div class="meta" id="meta"></div>
+  <nav class="site" id="siteNav" aria-label="Site"></nav>
 </header>
 <div class="app" id="printView" role="tabpanel" aria-labelledby="tabPrint">
   <div class="stage" id="stage">
@@ -407,7 +424,7 @@ body.tab-dims .dims { display: block; }
 </section>
 <section class="dl" aria-labelledby="dlH">
   <h2 id="dlH">Download STL</h2>
-  <p>One file per printed solid, in print pose (Z up, the bed at Z = 0), as <code>build.py</code> wrote them to <code>rig/exports/stl/</code>.</p>
+  <p id="dlNote">One file per printed solid, in print pose (Z up, the bed at Z = 0), as <code>build.py</code> wrote them to <code>rig/exports/stl/</code>.</p>
   <div class="cols" id="dl"></div>
 </section>
 
@@ -415,9 +432,34 @@ body.tab-dims .dims { display: block; }
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/STLLoader.js"></script>
 <script>
-(() => {
+(async () => {
   const DATA = /*__PRINT_DATA__*/null;
   const $ = (id) => document.getElementById(id);
+  // The site's links; opened from exports/ instead, the two pages link to each other there.
+  {
+    const L = Object.assign({ home: 'nlb-scan-rig.html', print_preview: 'nlb-rig-print-preview.html',
+                              repo: 'https://github.com/johnrwilsoniv/negative-lab-basic' }, (DATA && DATA.site) || {});
+    const items = [['home', 'Model'], ['print_preview', 'Print preview']].concat(L.files ? [['files', 'Files']] : [], [['repo', 'Source']]);
+    $('siteNav').innerHTML = items.map(([k, t]) => `<a href="${L[k]}"${k === 'print_preview' ? ' aria-current="page"' : ''}>${t}</a>`).join('') +
+      (L.slot && L.slot !== 'main' ? `<span class="slot" title="A design branch, not the current rig">preview: ${L.slot}</span>` : '');
+    $('homeLink').href = L.home;
+  }
+  // On nlb.jrwiv.com (website.py) each STL is a mesh file instead of embedded: fetch them all before drawing.
+  try {
+    const todo = [];
+    (function walk(o) {
+      if (Array.isArray(o)) o.forEach(walk);
+      else if (o && typeof o === 'object') { if (typeof o.mesh === 'string') todo.push(o); Object.values(o).forEach(walk); }
+    })(DATA);
+    await Promise.all(todo.map(async (o) => {
+      const r = await fetch(o.mesh);
+      if (!r.ok) throw new Error(`${o.mesh}: ${r.status}`);
+      o.buf = await r.arrayBuffer();
+    }));
+  } catch (err) {
+    $('loading').textContent = `Couldn't load the CAD (${err.message}). Reload to try again.`;
+    return;
+  }
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
   const f2 = (v) => v.toFixed(2);
 
@@ -489,6 +531,7 @@ body.tab-dims .dims { display: block; }
   // ---- meshes ----
   const loader = new THREE.STLLoader();
   const COS45 = Math.cos(Math.PI / 4);
+  function stlBytes(o) { return o.buf || decode(o.stl); }     // fetched from the site, or embedded
   function decode(b64) {
     const s = atob(b64), u = new Uint8Array(s.length);
     for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
@@ -504,7 +547,7 @@ body.tab-dims .dims { display: block; }
     return Math.abs(vol);
   }
   function prepare(part) {
-    const g = loader.parse(decode(part.stl));
+    const g = loader.parse(stlBytes(part));
     g.rotateX(-Math.PI / 2);                  // STL is Z up (print pose); three is Y up
     g.computeBoundingBox();
     const bb = g.boundingBox;
@@ -553,7 +596,7 @@ body.tab-dims .dims { display: block; }
   };
   function prepareAsm() {
     const items = DATA.assembly.solids.map((s, i) => {
-      const g = loader.parse(decode(s.stl));          // mockup coordinates already: y up, the table at y = 0
+      const g = loader.parse(stlBytes(s));          // mockup coordinates already: y up, the table at y = 0
       g.computeVertexNormals();
       return { name: s.name, g, colour: ASM_COLOURS[i % ASM_COLOURS.length], vol: volumeOf(g.attributes.position.array) };
     });
@@ -562,8 +605,8 @@ body.tab-dims .dims { display: block; }
     // references: a mesh (the perforated film, its exposures) or a box (the CS-Lite), each its own colour
     const refs = DATA.assembly.refs.map((r) => {
       let g;
-      if (r.stl) {
-        g = loader.parse(decode(r.stl));
+      if (r.stl || r.buf) {
+        g = loader.parse(stlBytes(r));
         g.computeVertexNormals();
       } else {
         const [x0, x1, y0, y1, z0, z1] = r.box;
@@ -893,7 +936,12 @@ body.tab-dims .dims { display: block; }
   new ResizeObserver(resize).observe(stage);
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paint);
 
-  // ---- STL downloads: the embedded print-pose STLs, each turned into a file on first use ----
+  // ---- downloads: on the site, links to its STL and STEP files; standalone, the embedded STLs as files on first use ----
+  if (DATA.site) {
+    $('dlH').textContent = 'Download STL and STEP';
+    $('dlNote').innerHTML = 'One STL (for the slicer) and one STEP (for Onshape) per printed solid, in print pose (Z up, the bed at ' +
+      `Z = 0). The assembly STEP and every file are in <a href="${DATA.site.files}">files/</a>.`;
+  }
   {
     const kb = (b64) => Math.round((b64.length * 3 / 4 - (b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0)) / 1024);
     const cols = {};
@@ -906,8 +954,14 @@ body.tab-dims .dims { display: block; }
         ul = cols[p.group] = col.querySelector('ul');
       }
       const li = document.createElement('li');
-      li.innerHTML = `<a href="#" download="${p.name}.stl"><span class="n">${p.num}</span>` +
-        `<span class="t">${p.label}<small>${p.name}.stl</small></span><span class="v">${kb(p.stl)} KB</span></a>`;
+      const href = p.download ? p.download.stl : '#';
+      li.innerHTML = `<a href="${href}" download="${p.name}.stl"><span class="n">${p.num}</span>` +
+        `<span class="t">${p.label}<small>${p.name}.stl</small></span><span class="v">${p.download ? Math.round(p.bytes / 1024) : kb(p.stl)} KB</span></a>`;
+      if (p.download) {
+        li.insertAdjacentHTML('beforeend', `<a class="alt" href="${p.download.step}" download="${p.name}.step">STEP</a>`);
+        ul.append(li);
+        continue;
+      }
       const a = li.firstChild;
       const ready = () => {
         if (a.dataset.ready) return;

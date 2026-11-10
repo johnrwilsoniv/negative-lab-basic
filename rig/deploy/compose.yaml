@@ -1,0 +1,24 @@
+# nlb.jrwiv.com: nginx serving ./site (website.py's output, rsynced by publish.sh) read-only.
+# Lives in ~/dev/docker/nlb-site on bunbun; NPM on eggo proxies nlb.jrwiv.com to bunbun's WireGuard address, port 8960.
+services:
+  web:
+    image: nginxinc/nginx-unprivileged:stable-alpine
+    ports:
+      - "${NLB_BIND:-0.0.0.0}:8960:8080"
+    volumes:
+      - ./site:/usr/share/nginx/html:ro
+      - ./conf.d:/etc/nginx/conf.d:ro   # a folder, not the file: rsync replaces files, and a file mount keeps the old one
+    read_only: true
+    tmpfs: [/tmp]                     # the unprivileged image keeps its pid and temp files there
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped

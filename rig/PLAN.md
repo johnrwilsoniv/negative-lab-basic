@@ -31,12 +31,21 @@ Run it from `rig/`:
 - `uv run python build.py [--wd W] [--axis A]`: builds every part, writes `exports/`, and prints
   the sizes and volumes, the interference check at SLIDE and LOCK, the fit numbers and the bed
   margins. It exits non-zero if a check fails. An axis below 39 is refused with a one-line message.
-- `uv run python print_preview.py [--wd W] [--axis A]`: writes `exports/nlb-rig-print-preview.html`.
-  Give it the same `--wd` and `--axis` as `build.py`: it refuses STLs built at other values. **Whenever the
-  print preview changes** (the template, `print_preview.py`, or the parts it shows), rebuild it and
-  republish the webpage with `../../tmp-artifacts/bin/tmp-push exports/nlb-rig-print-preview.html`.
-  Keep the filename: re-pushing the same name replaces the page and keeps its URL
-  (https://tmp.jrwiv.com/a/nlb-rig-print-preview-a5yj677u).
+- `uv run python viewer.py` and `uv run python print_preview.py [--wd W] [--axis A]`: write the two pages
+  as standalone files, `exports/nlb-scan-rig.html` and `exports/nlb-rig-print-preview.html`, every STL
+  embedded. Give them the same `--wd` and `--axis` as `build.py`: the print preview refuses STLs built at
+  other values.
+- `./publish.sh [slot] [--wd W] [--axis A]`: runs `build.py`, then `website.py`, and puts the pages on
+  **https://nlb.jrwiv.com**: the viewer as the home page, the print preview at `/main/print-preview/`, and
+  every STL and STEP under `/main/files/`. `main` is published only from a clean `main` branch; any other
+  slot (by default the current branch) is a preview at `nlb.jrwiv.com/<slot>/`. **Whenever a page changes**
+  (a template, `viewer.py`, `print_preview.py`, or the parts they show), publish again. The site is nginx
+  in `~/dev/docker/nlb-site` on bunbun (`deploy/`), proxied by NPM on eggo; `publish.sh` syncs its config
+  too. The pages used to live on tmp.jrwiv.com (`nlb-scan-rig-zh2mb48s`, `nlb-rig-print-preview-a5yj677u`);
+  don't push them there any more.
+- `uv run make_icons.py`: scales `icon-source.png` (the film canister) to every icon format (`icons/`:
+  favicon.ico, favicon-96x96.png, the iPhone's apple-touch-icon, the PWA icons and `site.webmanifest`), the
+  repo's `favicon.ico`, and the pages' inline icon. `website.py` serves `icons/` from the site root with `main`.
 
 `exports/step/` and `exports/stl/` hold one STEP and one STL per printed solid, plus the thread
 coupon, in print pose. `exports/step/nlb-scan-rig-assembly.step` has every part in place at
@@ -44,7 +53,7 @@ SLIDE, in the Onshape frame (R10), with the film and the CS-Lite as grey referen
 
 ## What the rig is
 
-A light-tight path for scanning 35mm B&W strips with a camera:
+A light-tight path for scanning 35mm film strips with a camera:
 
     Sony A7 + Laowa 90mm f/2.8 2X ── 1 lens adapter ── 2 tube ── 3 film gate ── 4 light dock + CineStill CS-Lite
                                                                      └ 5 lock switch on the gate lid
@@ -58,8 +67,9 @@ A light-tight path for scanning 35mm B&W strips with a camera:
 
 ## Source of truth
 
-`rig/mockup/nlb-scan-rig.html` is a copy of the live mockup at
-https://tmp.jrwiv.com/a/nlb-scan-rig-zh2mb48s. Every dimension below comes from its script.
+`rig/mockup/nlb-scan-rig.html` is a copy of the three.js mockup that was published at
+https://tmp.jrwiv.com/a/nlb-scan-rig-zh2mb48s; that URL has since held the CAD viewer, so this copy
+is the only one. Every dimension below comes from its script.
 
 | Lines | What |
 |---|---|
@@ -77,8 +87,8 @@ Read `rebuild()` before modelling a part: the CAD should reproduce it. When CAD 
 disagree on purpose, change the mockup too and republish it. The differences the build made
 are listed under "Mockup differences to republish"; they wait for the user.
 
-**Republishing:** use the `jta` skill and keep the same filename (`nlb-scan-rig.html`) so
-the URL stays the same. The skill pushes with `tmp-push`; it's not a claude.ai Artifact.
+**Republishing:** the mockup isn't published anywhere now. To show it again, add it to `website.py` as
+another page on nlb.jrwiv.com; don't push it to tmp.jrwiv.com.
 
 **Mockup coordinates:**
 - `x`: the optical axis, running from the camera (−) to the light (+). `x = 0` is the
@@ -305,6 +315,9 @@ rig/
 ├── viewer.py               writes exports/nlb-scan-rig.html (the assembly)
 ├── print_preview.py        writes exports/nlb-rig-print-preview.html (print direction per part, and the
 │                           "Dimensions to confirm" checklist)
+├── website.py              writes site-out/<slot>/: both pages for nlb.jrwiv.com, the STLs as files
+├── publish.sh              build.py + website.py, then rsync to bunbun (nlb.jrwiv.com)
+├── deploy/                 the site's compose.yaml and nginx.conf, as they run on bunbun
 ├── mockup/
 │   ├── nlb-scan-rig.html   copy of the published mockup (source of the numbers)
 │   ├── viewer.html         template for viewer.py: the assembled CAD in three.js
@@ -512,8 +525,8 @@ number.
 ## Mockup differences to republish
 
 The CAD differs from the mockup on purpose here. The mockup's shapes haven't been changed (the local
-copy's `wd` and `axis` sliders now start at the measured 111 and 40.5; the published page still
-starts at 130 and 42.5): republishing it is the user's call.
+copy's `wd` and `axis` sliders now start at the measured 111 and 40.5; the copy once published started
+at 130 and 42.5): republishing it is the user's call.
 
 | What | Mockup | CAD |
 |---|---|---|

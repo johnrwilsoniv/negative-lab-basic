@@ -392,7 +392,7 @@ def checks(p: Params, sizes: dict[str, list[float]]) -> dict:
 def _commit() -> str:
     try:
         return subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True
+            ["git", "describe", "--always", "--dirty", "--abbrev=7"], cwd=ROOT, capture_output=True, text=True, check=True
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return "?"

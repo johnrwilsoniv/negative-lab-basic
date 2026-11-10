@@ -9,7 +9,7 @@ from params import DEFAULT, Params
 
 def test_default_is_a_params_with_the_user_inputs():
     assert isinstance(DEFAULT, Params)
-    assert (DEFAULT.wd, DEFAULT.axis) == (130, 42.5)
+    assert (DEFAULT.wd, DEFAULT.axis) == (111, 40.5)
 
 
 def test_params_is_immutable():
@@ -20,7 +20,7 @@ def test_params_is_immutable():
 def test_callers_vary_inputs_by_constructing():
     p = Params(wd=150, axis=40)
     assert (p.wd, p.axis) == (150, 40)
-    assert DEFAULT.wd == 130
+    assert DEFAULT.wd == 111
 
 
 def test_plan_constants():
@@ -60,24 +60,24 @@ def test_thread_profile():
 def test_rail_values_at_defaults():
     p = DEFAULT
     assert p.x_front == 125
-    assert p.x_film == 255
-    assert p.x_gate == 241
-    assert p.x_light == 280
-    assert p.gh == pytest.approx(78.5)
+    assert p.x_film == 236
+    assert p.x_gate == 222
+    assert p.x_light == 261
+    assert p.gh == pytest.approx(76.5)
     assert p.tube_x0 == 128
-    assert p.tube_x1 == 245
-    assert p.tube_len == 117
+    assert p.tube_x1 == 226
+    assert p.tube_len == 98
     assert p.fit_r == pytest.approx(36.3)
     assert p.dock_w == 181
-    assert p.dock_x0 == pytest.approx(236.8)          # the front wall's front face: 4.2 in front of the gate (F11)
-    assert p.dock_x1 == 306.5
+    assert p.dock_x0 == pytest.approx(217.8)          # the front wall's front face: 4.2 in front of the gate (F11)
+    assert p.dock_x1 == 287.5
     assert p.dock_x1 - p.dock_x0 == pytest.approx(69.7)
 
 
 def test_lock_mechanism_x_stations():
     p = DEFAULT
-    assert p.x_pp == pytest.approx(257.1)
-    assert p.x_wedge == pytest.approx(258.0)
+    assert p.x_pp == pytest.approx(238.1)
+    assert p.x_wedge == pytest.approx(239.0)
 
 
 def test_ramp_thickness():
@@ -111,7 +111,7 @@ def test_baffles():
     p = DEFAULT
     assert (p.baffle_h, p.baffle_pitch, p.baffle_margin) == (1, 8, 2)
     assert p.tube_ri - p.baffle_h == p.adapter_bore_r     # the ribs never close in past the adapter bore
-    assert p.baffle_count == 15                           # (117 - 2*2 - 1) / 8 -> 14 pitches, 15 ribs
+    assert p.baffle_count == 12                           # (98 - 2*2 - 1) / 8 = 11.6 -> 11 pitches, 12 ribs
     assert Params(wd=150).baffle_count == 17              # (137 - 4 - 1) / 8 = 16.5 -> 16 pitches
     assert Params(baffle_h=0).baffle_count == 0
 
@@ -142,16 +142,16 @@ def test_an_axis_too_low_for_the_adapter_is_refused_naming_the_minimum(axis):
 
 def test_a_bigger_adapter_raises_the_minimum():
     with pytest.raises(ValueError, match="adapter"):
-        Params(adapter_r=45)                          # the default axis 42.5 is now too low
+        Params(adapter_r=45)                          # the default axis 40.5 is now too low
 
 
 def test_the_film_slot_starts_at_the_front_plates_rear_face():
     # Flush with the front face, the side wall and the plate met only along an edge: a non-manifold solid
     # Onshape rejects. From the rear face, the side wall covers the plate's end.
     p = DEFAULT
-    assert p.x_front_plate == pytest.approx(p.x_film - p.channel / 2 - p.plate_t) == pytest.approx(252.9)
-    assert p.film_slot_x0 == pytest.approx(p.x_front_plate + p.plate_t) == pytest.approx(254.7)
-    assert p.film_slot_x0 + p.film_slot_w == pytest.approx(257.9)     # the slot's far edge has not moved
+    assert p.x_front_plate == pytest.approx(p.x_film - p.channel / 2 - p.plate_t) == pytest.approx(233.9)
+    assert p.film_slot_x0 == pytest.approx(p.x_front_plate + p.plate_t) == pytest.approx(235.7)
+    assert p.film_slot_x0 + p.film_slot_w == pytest.approx(238.9)     # the slot's far edge has not moved
 
 
 def test_ks_perforations_and_frame_pitch():

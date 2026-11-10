@@ -15,14 +15,14 @@ from dataclasses import dataclass
 class Params:
     """The rig's dimensions.
 
-    User inputs `wd` and `axis`: the mockup still tags them "guess", and PLAN.md says to ask
-    the user whether they were measured. Constructing one with `axis` below `axis_min` raises
-    ValueError: the lens adapter would go through the table.
+    User inputs `wd` and `axis`: measured by the user on 2026-11-09, with the dimensions and the framing
+    checked (C1, C2). Constructing one with `axis` below `axis_min` raises ValueError: the lens adapter
+    would go through the table.
     """
 
     # ---- user inputs ----
-    wd: float = 130           # lens front to film plane
-    axis: float = 42.5        # table to lens centre
+    wd: float = 111           # lens front to film plane (measured)
+    axis: float = 40.5        # table to lens centre (measured)
 
     # ---- known (datasheets) ----
     thread_major: float = 67        # Laowa filter thread M67 x 0.75: major diameter

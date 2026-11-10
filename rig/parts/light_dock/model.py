@@ -9,8 +9,10 @@ One solid, the union of:
   - the floor, from the front wall's front face (dock_x0) to `dock_tail` past the slot's back edge;
   - the front wall (F11), `dock_front_t` thick, `dock_gate_clear` in front of the gate front, full width and up
     to `cheek_top`, with a U for the tube: a half circle `dock_tube_clear` around it below the axis, straight
-    up from there, so it prints with no overhang. The gate front and the gate body are held between it and
-    the panel, so they can't come apart by more than dock_gate_clear;
+    up from there, so it prints with no overhang. The half circle goes on down through the floor under the wall
+    (F17): at a low axis it reaches below the floor's top, leaving a shallow trough under the tube. The gate
+    front and the gate body are held between it and the panel, so they can't come apart by more than
+    dock_gate_clear;
   - a front and a back lip, full width, `lip_t` thick, with the panel's slot (`csl_slot`) between them;
   - a side cheek at each end of the slot, from `cheek_clear` outside the panel's end to the floor's
     edge, up to `cheek_top`;
@@ -57,14 +59,21 @@ def _cheeks(p: Params) -> list[cq.Workplane]:
     return [_box(x0, x1, p.floor_t, p.cheek_top, inner, outer), _box(x0, x1, p.floor_t, p.cheek_top, -outer, -inner)]
 
 
+def _u_round(p: Params) -> cq.Workplane:
+    """The round of the tube's U, dock_tube_clear around the tube, through the front wall's whole thickness."""
+    x0, x1 = p.dock_x0, p.x_gate - p.dock_gate_clear
+    r = p.tube_ro + p.dock_tube_clear
+    return cq.Workplane("YZ", origin=(x0 - 1, 0, 0)).center(p.axis, 0).circle(r).extrude(x1 - x0 + 2)
+
+
 def _front_wall(p: Params) -> cq.Workplane:
-    """In front of the gate front, full width, up to cheek_top, less the U the tube passes through."""
+    """In front of the gate front, full width, up to cheek_top, less the U's straight part above the axis. Its round
+    is cut in `light_dock`, from the floor under the wall too."""
     x0, x1 = p.dock_x0, p.x_gate - p.dock_gate_clear
     wall = _box(x0, x1, 0, p.cheek_top, -p.dock_w / 2, p.dock_w / 2)
     r = p.tube_ro + p.dock_tube_clear
-    round_ = cq.Workplane("YZ", origin=(x0 - 1, 0, 0)).center(p.axis, 0).circle(r).extrude(x1 - x0 + 2)
     straight = _box(x0 - 1, x1 + 1, p.axis, p.cheek_top + 1, -r, r)
-    return wall.cut(round_).cut(straight)
+    return wall.cut(straight)
 
 
 def _gate_notch(p: Params) -> cq.Workplane:
@@ -78,7 +87,9 @@ def light_dock(p: Params = DEFAULT) -> cq.Workplane:
     dock = _floor(p)
     for part in (*_lips(p), *_cheeks(p)):
         dock = dock.union(part)
-    return dock.cut(_gate_notch(p)).union(_front_wall(p))
+    # The U's round is cut from the floor under the front wall too (F17): below axis 41 it reaches below the floor's
+    # top, and the floor would come within dock_tube_clear of the tube (into it below axis 40). Above, it cuts nothing.
+    return dock.cut(_gate_notch(p)).union(_front_wall(p)).cut(_u_round(p))
 
 
 def build(p: Params = DEFAULT, lock: bool = False) -> dict[str, cq.Workplane]:

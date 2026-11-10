@@ -8,10 +8,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">
 <style>
-/* Template for print_preview.py, which embeds the print-pose STLs from exports/stl (viewed, and offered for download at the bottom). */
+/* Template for print_preview.py, which embeds the print-pose STLs from exports/stl (viewed, and offered for download at the bottom),
+   and the checklist of dimensions to confirm before printing, drawn from the same Params (the second tab). */
 :root {
   --bg: #e8ebe9; --panel: #f5f7f6; --stage: #dde2df; --fg: #1a1f1d; --muted: #5a6460; --line: #cbd3cf;
-  --print: #d4891f; --cut: #8a5512; --layer: #f2c14e; --over: #c2362b; --bed: #b9c2be;
+  --print: #d4891f; --cut: #8a5512; --layer: #f2c14e; --over: #c2362b; --bed: #b9c2be; --ok: #2f8a5c;
   --f-ui: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
   --f-num: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
   color-scheme: light;
@@ -19,7 +20,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #111413; --panel: #171b1a; --stage: #0d100f; --fg: #e3e8e5; --muted: #95a19c; --line: #2a312e;
-    --print: #e9a23b; --cut: #7a4a10; --layer: #ffd36b; --over: #f2665a; --bed: #2b322f;
+    --print: #e9a23b; --cut: #7a4a10; --layer: #ffd36b; --over: #f2665a; --bed: #2b322f; --ok: #5cc28d;
     color-scheme: dark;
   }
 }
@@ -173,6 +174,137 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
 .dl .v { font: 12px var(--f-num); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .dl .v::after { content: " ↓"; color: var(--print); }
 
+/* two views: the print preview (viewer + downloads) and "Dimensions to confirm" */
+.tabs { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+.tabs button {
+  font: 600 13.5px/1 var(--f-ui); color: var(--muted); background: none; border: 0; border-radius: 4px;
+  padding: 8px 11px; cursor: pointer; white-space: nowrap;
+}
+.tabs button:hover { color: var(--fg); }
+.tabs button[aria-selected="true"] { background: var(--panel); color: var(--fg); box-shadow: inset 0 -2px 0 var(--print); }
+.tabs .c { font: 500 11.5px var(--f-num); color: var(--print); margin-left: 5px; font-variant-numeric: tabular-nums; }
+.tabs .c.done { color: var(--ok); }
+.dims { display: none; }
+body.tab-dims .view { height: auto; display: block; }
+body.tab-dims .app, body.tab-dims .dl, body.tab-dims .pick { display: none; }
+body.tab-dims .dims { display: block; }
+
+.dims { padding: 22px max(18px, env(safe-area-inset-left, 0px)) max(36px, env(safe-area-inset-bottom, 0px)); max-width: 1500px; margin: 0 auto; }
+.dims h2 { font: 600 11.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin: 0 0 8px; }
+.dims code { font: 12.5px var(--f-num); }
+.dhead { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: flex-end; justify-content: space-between; margin-bottom: 18px; }
+.dhead p { margin: 0; max-width: 760px; color: var(--muted); font-size: 14px; }
+.dhead p b { color: var(--fg); font-weight: 600; }
+.prog { display: grid; grid-template-columns: auto auto; gap: 6px 12px; align-items: center; min-width: 230px; }
+.prog .num { font: 500 13px var(--f-num); font-variant-numeric: tabular-nums; }
+.prog .num b { font-size: 20px; font-weight: 500; color: var(--print); }
+.prog .num.done b { color: var(--ok); }
+.prog .bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.prog .bar i { display: block; height: 100%; width: 0; background: var(--ok); transition: width 0.2s; }
+.prog button, .item .jump {
+  font: 500 12.5px/1 var(--f-ui); color: var(--fg); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 4px; padding: 6px 9px; cursor: pointer; justify-self: end;
+}
+.prog button:hover, .item .jump:hover { border-color: var(--muted); }
+
+/* the drawings */
+.figs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 16px; margin-bottom: 30px; }
+.fig { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 12px 10px; min-width: 0; scroll-margin-top: 12px; }
+.fig figcaption { display: flex; gap: 8px; align-items: baseline; margin-bottom: 6px; }
+.fig figcaption .k { font: 500 12.5px var(--f-num); color: var(--print); }
+.fig figcaption b { font-size: 15px; font-weight: 600; }
+.fig .svgbox { width: 100%; min-height: 60px; overflow-x: auto; overscroll-behavior-x: contain; }
+.fig.wide { grid-column: 1 / -1; }
+@media (max-width: 700px) { .fig.wide .note::before { content: "Scroll the drawing sideways. "; color: var(--fg); } }
+.fig svg { display: block; overflow: visible; }
+.fig .note { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
+.fig ol { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.fig ol li { display: grid; grid-template-columns: 20px 1fr; gap: 6px; padding: 3px 4px; border-radius: 4px; cursor: pointer; }
+.fig ol li:hover { background: color-mix(in srgb, var(--print) 10%, transparent); }
+.fig ol li .m { font: 600 11px/18px var(--f-num); width: 18px; height: 18px; border-radius: 50%; text-align: center; color: var(--panel); background: var(--print); }
+.fig ol li.ok .m { background: var(--ok); }
+.fig.flash, .item.flash { animation: flash 1.4s ease-out; }
+@keyframes flash { from { box-shadow: 0 0 0 3px var(--print); } to { box-shadow: 0 0 0 3px transparent; } }
+
+/* SVG: printed parts orange-tinted, references dashed, dimensions orange until ticked, then green */
+.fig svg text { font: 500 11.5px var(--f-num); fill: var(--fg); }
+.fig svg .tag { font: 600 11px var(--f-ui); fill: var(--muted); }
+.fig svg .pr { fill: color-mix(in srgb, var(--print) 22%, var(--panel)); stroke: var(--print); stroke-width: 1.2; }
+.fig svg .pr2 { fill: color-mix(in srgb, var(--print) 12%, var(--panel)); stroke: color-mix(in srgb, var(--print) 70%, var(--muted)); stroke-width: 1; }
+.fig svg .see { fill: color-mix(in srgb, var(--print) 22%, transparent); stroke: var(--print); stroke-width: 1.2; }
+.fig svg .ref { fill: color-mix(in srgb, var(--muted) 10%, transparent); stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; }
+.fig svg .csl { fill: color-mix(in srgb, #9aa3a0 30%, var(--panel)); stroke: var(--muted); stroke-width: 1; }
+.fig svg .lit { fill: color-mix(in srgb, var(--layer) 55%, transparent); stroke: none; }
+.fig svg .litln { stroke: var(--layer); stroke-width: 4; }
+.fig svg .film { fill: color-mix(in srgb, #b39466 60%, transparent); stroke: #b39466; stroke-width: 1; }
+.fig svg .filmln { stroke: #b39466; stroke-width: 3; }
+.fig svg .hole { fill: var(--stage); stroke: var(--print); stroke-width: 1; }
+.fig svg .win { fill: var(--stage); stroke: var(--print); stroke-width: 1; }
+.fig svg .metal { fill: color-mix(in srgb, var(--muted) 55%, var(--panel)); stroke: var(--fg); stroke-width: 0.8; }
+.fig svg .bed { fill: color-mix(in srgb, var(--bed) 70%, transparent); stroke: var(--muted); stroke-width: 1; }
+.fig svg .grid { stroke: var(--muted); stroke-width: 0.5; opacity: 0.25; }
+.fig svg .table { stroke: var(--fg); stroke-width: 1.6; }
+.fig svg .axisln { stroke: var(--muted); stroke-width: 0.8; stroke-dasharray: 10 3 2 3; }
+.fig svg .lim { stroke: var(--over); stroke-width: 1.2; stroke-dasharray: 5 3; }
+.fig svg .ext { stroke: var(--muted); stroke-width: 0.7; stroke-dasharray: 2 2; }
+.fig svg .d { color: var(--print); cursor: pointer; }
+.fig svg .d.ok { color: var(--ok); }
+.fig svg .d .ln { stroke: currentColor; stroke-width: 1.3; fill: none; }
+.fig svg .d .ah { fill: currentColor; }
+.fig svg .d rect { fill: var(--panel); stroke: currentColor; stroke-width: 1.2; }
+.fig svg .d circle { fill: currentColor; }
+.fig svg .d circle + text { fill: var(--panel); font-weight: 600; font-size: 11px; }
+.fig svg .d:hover rect, .fig svg .d:focus-visible rect, .fig svg .d.hl rect { fill: color-mix(in srgb, currentColor 18%, var(--panel)); stroke-width: 2; }
+.fig svg .d.hl .ln { stroke-width: 2.4; }
+.fig svg .d:focus-visible { outline: none; }
+
+/* the checklist */
+.grp + .grp { margin-top: 28px; }
+.grp > header { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; margin-bottom: 10px; }
+.grp > header h3 { font: 700 20px/1.15 var(--f-ui); margin: 0; letter-spacing: -0.01em; }
+.grp > header .c { font: 500 12.5px var(--f-num); color: var(--muted); font-variant-numeric: tabular-nums; }
+.grp > header p { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 14px; }
+.items { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); gap: 14px; align-items: start; }
+.item { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--print); border-radius: 6px; padding: 12px 14px 12px; scroll-margin-top: 12px; min-width: 0; }
+.item.ok { border-left-color: var(--ok); }
+.item > header { display: flex; gap: 10px; align-items: flex-start; }
+.item .tick { display: flex; gap: 10px; align-items: flex-start; flex: 1; cursor: pointer; min-width: 0; }
+.item .tick input { margin: 2px 0 0; width: 20px; height: 20px; accent-color: var(--ok); flex: none; cursor: pointer; }
+.item .tick .t { font: 600 16px/1.25 var(--f-ui); }
+.item .tick .t .cn { font: 500 12.5px var(--f-num); color: var(--print); margin-right: 7px; }
+.item.ok .tick .t .cn { color: var(--ok); }
+.item .tick .t small { display: block; font: 500 12px var(--f-ui); color: var(--muted); margin-top: 2px; }
+.item.ok .tick .t { color: var(--muted); }
+.item .meth { flex: none; font: 600 10.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 8px; margin-top: 1px; white-space: nowrap; }
+.item .meth.coupon, .item .meth.test { color: var(--print); border-color: color-mix(in srgb, var(--print) 50%, var(--line)); }
+.item .vals { list-style: none; margin: 10px 0 8px 30px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.item .vals li { display: inline-flex; gap: 6px; align-items: baseline; padding: 4px 8px; border-radius: 4px; background: var(--bg); font-size: 12px; }
+.item .vals b { font: 500 13.5px var(--f-num); font-variant-numeric: tabular-nums; }
+.item .vals i { font: 600 10px/1 var(--f-ui); font-style: normal; text-transform: uppercase; letter-spacing: 0.07em; color: var(--over); }
+.item .vals i.assumed { color: var(--print); }
+.item .vals i.measured { color: var(--ok); }
+.item .vals i.derived, .item .vals i.fixed { color: var(--muted); }
+.item .vals small { color: var(--muted); font-size: 11.5px; }
+.item dl { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 0 10px; margin: 0 0 0 30px; }
+.item dt, .item dd { border-top: 1px solid var(--line); padding: 6px 0; margin: 0; font: 13.5px/1.4 var(--f-ui); text-align: left; }
+.item dt { font: 600 11px/1.7 var(--f-ui); text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.item dd code { font: 12px var(--f-num); }
+.item .chip {
+  display: inline-block; font: 500 12.5px/1 var(--f-ui); color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px 8px; margin: 0 4px 4px 0; cursor: pointer;
+}
+.item .chip:hover { border-color: var(--print); }
+.item .chip .n { font: 500 11px var(--f-num); color: var(--print); margin-right: 4px; }
+.item .none { color: var(--muted); }
+.item .ifoot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 0 30px; }
+.item .ifoot label { display: flex; gap: 8px; align-items: center; font: 600 11px var(--f-ui); text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); flex: 1; min-width: 200px; }
+.item .ifoot input {
+  flex: 1; min-width: 0; font: 13.5px var(--f-num); color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 4px; padding: 7px 8px; text-transform: none; letter-spacing: 0;
+}
+.item .ifoot input::placeholder { color: var(--muted); opacity: 0.7; }
+.item .jump .k { font: 500 11.5px var(--f-num); color: var(--print); margin-right: 3px; }
+
 @media (max-width: 820px) {
   .app { grid-template-columns: 1fr; grid-template-rows: 68vh auto; }
   .view { height: auto; display: block; }
@@ -181,19 +313,33 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   .meta, .hint { display: none; }
   .toolbar { right: 110px; }
 }
+@media (max-width: 520px) {
+  header { gap: 10px 14px; }
+  .tabs { order: 1; width: 100%; }
+  .pick { order: 2; }
+  .tabs button { flex: 1; padding: 9px 6px; }
+  .item dl, .item .vals, .item .ifoot { margin-left: 0; }
+  .item dl { grid-template-columns: 1fr; }
+  .item dt { border-top: 1px solid var(--line); padding-bottom: 0; }
+  .item dd { border-top: 0; padding-top: 2px; }
+}
 </style>
 </head>
 <body>
 <div class="view">
 <header>
   <h1>NLB scan rig <span>· print direction</span></h1>
+  <nav class="tabs" role="tablist" aria-label="View">
+    <button type="button" role="tab" id="tabPrint" aria-selected="true" aria-controls="printView">Print preview</button>
+    <button type="button" role="tab" id="tabDims" aria-selected="false" aria-controls="dims">Dimensions to confirm<span class="c" id="tabCount"></span></button>
+  </nav>
   <div class="pick">
     <label for="part">Part</label>
     <select id="part"></select>
   </div>
   <div class="meta" id="meta"></div>
 </header>
-<div class="app">
+<div class="app" id="printView" role="tabpanel" aria-labelledby="tabPrint">
   <div class="stage" id="stage">
     <div class="loading" id="loading">loading CAD…</div>
     <div class="tree" id="tree" hidden role="group" aria-label="Parts shown in the assembly"></div>
@@ -242,6 +388,23 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   </aside>
 </div>
 </div>
+<section class="dims" id="dims" role="tabpanel" aria-labelledby="tabDims">
+  <div class="dhead">
+    <div>
+      <h2>Dimensions to confirm before printing</h2>
+      <p>Every size here that comes from the outside world: the camera, the lens, the CS-Lite, the film, the screws and the
+        printer. The drawings are dimensioned from the build (<b id="dBuilt"></b>); tap a dimension for its check, tick it
+        when you've measured it. <span id="dKeep"></span>one tick per value: rebuild with a new value and its tick clears.</p>
+    </div>
+    <div class="prog" aria-live="polite">
+      <span class="num" id="dNum"></span>
+      <button type="button" id="dReset">Clear ticks</button>
+      <div class="bar"><i id="dBar"></i></div>
+    </div>
+  </div>
+  <div class="figs" id="figs"></div>
+  <div id="checks"></div>
+</section>
 <section class="dl" aria-labelledby="dlH">
   <h2 id="dlH">Download STL</h2>
   <p>One file per printed solid, in print pose (Z up, the bed at Z = 0), as <code>build.py</code> wrote them to <code>rig/exports/stl/</code>.</p>
@@ -709,7 +872,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
     }
   }
   addEventListener('keydown', (e) => {
-    if (isAsm() || e.target === sel || e.target.closest('ul.asm')) return;
+    if (document.body.classList.contains('tab-dims') || isAsm() || e.target === sel || e.target.closest('ul.asm')) return;
     const s = $('layer');
     const d = { ArrowUp: 1, ArrowDown: -1, PageUp: 10, PageDown: -10 }[e.key];
     if (d && e.target !== s) { e.preventDefault(); stop(); s.value = +s.value + d; cut(); hash(); }
@@ -718,6 +881,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
 
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
+    if (!w || !h) return;                    // hidden: the other tab is showing
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     // with the part picker open, centre the model in the space to its left
@@ -757,6 +921,479 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
     }
   }
 
+  // ---- "Dimensions to confirm": drawings dimensioned from the build's Params, and a checklist ticked in localStorage ----
+  const CK = DATA.check, P = CK.p;
+  const ITEMS = Object.fromEntries(CK.items.map((it) => [it.id, it]));
+  const num = (v) => String(+(+v).toFixed(3));
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const STORE = 'nlb-rig-dims';
+  // Ticks and readings live in localStorage, and in the link (#tab=dims&ok=…&m=…) too: a sandboxed host (tmp.jrwiv.com
+  // serves pages with an opaque origin) has no storage at all, so there the link is what keeps them.
+  let canStore = true;
+  const store = (() => { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch { canStore = false; return {}; } })();
+  store.ticks = store.ticks || {}; store.notes = store.notes || {};
+  // a tick belongs to the values it confirmed: rebuild with another value and it no longer counts
+  const tickKey = (it) => it.id + '@' + it.params.map((q) => `${q.name}=${q.value}`).join(',');
+  const ticked = (id) => !!store.ticks[tickKey(ITEMS[id])];
+  const short = (k) => { let h = 5381; for (const c of k) h = (h * 33 + c.charCodeAt(0)) >>> 0; return h.toString(36).slice(0, 5); };
+  const dimsHash = () => {
+    const ok = CK.items.filter((it) => ticked(it.id)).map((it) => `${it.id}.${short(tickKey(it))}`).join(',');
+    const m = Object.entries(store.notes).map(([id, v]) => `${id}:${v.replace(/[|]/g, ' ')}`).join('|');
+    const q = new URLSearchParams({ tab: 'dims' });
+    if (ok) q.set('ok', ok);
+    if (m) q.set('m', m);
+    return '#' + q.toString();
+  };
+  {
+    const h = new URLSearchParams(location.hash.slice(1));
+    for (const t of (h.get('ok') || '').split(',')) {
+      const [id, sig] = t.split('.'), it = ITEMS[id];
+      if (it && sig === short(tickKey(it))) store.ticks[tickKey(it)] = store.ticks[tickKey(it)] || 'link';
+    }
+    for (const pair of (h.get('m') || '').split('|')) {
+      const i = pair.indexOf(':');
+      if (i > 0 && ITEMS[pair.slice(0, i)]) store.notes[pair.slice(0, i)] = pair.slice(i + 1);
+    }
+  }
+  const save = () => {
+    try { localStorage.setItem(STORE, JSON.stringify(store)); } catch { /* sandboxed or private: the link keeps them */ }
+    if (document.body.classList.contains('tab-dims')) history.replaceState(null, '', dimsHash());
+  };
+
+  // ---- a little SVG kit: mm in, px out (y up), redrawn to the box's width so text stays 11.5 px ----
+  const NS = 'http://www.w3.org/2000/svg';
+  const CH = 6.9;                                     // IBM Plex Mono at 11.5 px: 0.6 em per character
+  function mk(tag, attrs, parent) {
+    const e = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) if (v !== undefined && v !== null) e.setAttribute(k, v);
+    if (parent) parent.append(e);
+    return e;
+  }
+  function kit(svg, X, Y, s) {
+    const g0 = mk('g', {}, svg), g1 = mk('g', {}, svg), g2 = mk('g', {}, svg);   // shapes, extension lines, dimensions
+    const pts = (a) => a.map(([x, y]) => `${X(x).toFixed(1)},${Y(y).toFixed(1)}`).join(' ');
+    const arrow = (g, x, y, dx, dy) => {             // a filled arrowhead at (x, y) px pointing along (dx, dy)
+      const L = 7, W = 3, ux = dx, uy = dy, px = -uy, py = ux;
+      mk('path', { class: 'ah', d: `M${x},${y} L${x - ux * L + px * W},${y - uy * L + py * W} L${x - ux * L - px * W},${y - uy * L - py * W}Z` }, g);
+    };
+    const label = (g, x, y, text, anchor = 'middle') => {   // a boxed label centred (or anchored) on (x, y) px
+      const w = text.length * CH + 10, h = 18;
+      const x0 = anchor === 'start' ? x : anchor === 'end' ? x - w : x - w / 2;
+      mk('rect', { x: x0, y: y - h / 2, width: w, height: h, rx: 3 }, g);
+      mk('text', { x: x0 + w / 2, y: y + 4, 'text-anchor': 'middle' }, g).textContent = text;
+    };
+    const group = (id) => {
+      const g = mk('g', { class: 'd' + (ticked(id) ? ' ok' : ''), 'data-id': id, tabindex: 0, role: 'button',
+                          'aria-label': `${ITEMS[id].title}: show the check` }, g2);
+      return g;
+    };
+    const ext = (x0, y0, x1, y1) => mk('line', { class: 'ext', x1: x0, y1: y0, x2: x1, y2: y1 }, g1);
+    return {
+      s, X, Y,
+      rect(x0, y0, x1, y1, cls) {
+        mk('rect', { class: cls, x: X(Math.min(x0, x1)), y: Y(Math.max(y0, y1)), width: Math.abs(x1 - x0) * s, height: Math.abs(y1 - y0) * s }, g0);
+      },
+      poly(a, cls, closed = true) { mk(closed ? 'polygon' : 'polyline', { class: cls, points: pts(a) }, g0); },
+      line(x0, y0, x1, y1, cls) { mk('line', { class: cls, x1: X(x0), y1: Y(y0), x2: X(x1), y2: Y(y1) }, g0); },
+      text(x, y, t, { cls = 'tag', anchor = 'middle', dx = 0, dy = 0 } = {}) {
+        mk('text', { class: cls, x: X(x) + dx, y: Y(y) + dy, 'text-anchor': anchor }, g0).textContent = t;
+      },
+      // horizontal dimension from x0 to x1, its line `off` px below (+) or above (-) height y; extension lines from ya, yb
+      hdim(id, x0, x1, y, off, text, { ya = y, yb = y, pos = 'mid' } = {}) {
+        const g = group(id), ly = Y(y) + off, a = X(x0), b = X(x1);
+        ext(a, Y(ya), a, ly + Math.sign(off) * 4); ext(b, Y(yb), b, ly + Math.sign(off) * 4);
+        mk('line', { class: 'ln', x1: a, y1: ly, x2: b, y2: ly }, g);
+        arrow(g, a, ly, -1, 0); arrow(g, b, ly, 1, 0);
+        if (pos === 'mid') label(g, (a + b) / 2, ly, text);
+        else label(g, pos === 'start' ? a : b, ly + (off < 0 ? -14 : 14), text, pos);
+      },
+      // vertical dimension from y0 to y1 at x, `off` px right (+) or left (-); the label beside it (l / r) or past an end (t / b)
+      vdim(id, y0, y1, x, off, text, { xa = x, xb = x, pos = off < 0 ? 'l' : 'r' } = {}) {
+        const g = group(id), lx = X(x) + off, a = Y(y0), b = Y(y1);
+        if (off) { ext(X(xa), a, lx + Math.sign(off) * 4, a); ext(X(xb), b, lx + Math.sign(off) * 4, b); }
+        mk('line', { class: 'ln', x1: lx, y1: a, x2: lx, y2: b }, g);
+        arrow(g, lx, a, 0, 1); arrow(g, lx, b, 0, -1);
+        const mid = (a + b) / 2;
+        if (pos === 'l') label(g, lx - 6, mid, text, 'end');
+        else if (pos === 'r') label(g, lx + 6, mid, text, 'start');
+        else if (pos === 't') label(g, lx, b - 14, text);
+        else label(g, lx, a + 14, text);
+      },
+      // a lettered marker at (mx, my) mm + (dx, dy) px, with a leader to the target (tx, ty) mm
+      call(id, key, [tx, ty], [mx, my, dx = 0, dy = 0]) {
+        const g = group(id), x = X(mx) + dx, y = Y(my) + dy;
+        mk('line', { class: 'ln', x1: X(tx), y1: Y(ty), x2: x, y2: y, 'stroke-dasharray': '3 2' }, g);
+        mk('circle', { cx: X(tx), cy: Y(ty), r: 2.2 }, g);
+        mk('circle', { cx: x, cy: y, r: 9 }, g);
+        mk('text', { x, y: y + 4, 'text-anchor': 'middle' }, g).textContent = key;
+      },
+    };
+  }
+
+  const zig = (x0, x1, pitch, yA, yB) => {          // a thread profile: yA at x0, yB half a pitch on, and so on
+    const out = [];
+    for (let i = 0, x = x0; x <= x1 + 1e-9; i++, x = x0 + i * pitch / 2) out.push([Math.min(x, x1), i % 2 ? yB : yA]);
+    return out;
+  };
+
+  // Each drawing: its bounds in mm, padding in px (may depend on the scale s), and what to draw. Letters key the callouts.
+  const FIGS = [
+    {
+      id: 'side', title: 'Side view: the optical path', wide: true, minW: 660, maxH: 520,
+      note: () => `Dashed: the camera and the lens, not printed. Orange: printed, 1 adapter, 2 tube, 3 gate front and body, ` +
+                  `4 light dock. Grey: the CS-Lite, its lit face yellow. Brown: the film.`,
+      bounds: () => {
+        const top = Math.max(P.axis + P.lens_r, P.axis + P.adapter_r, P.gh);
+        return { x0: -56, x1: P.dock_x1 + 2, y0: -1, y1: Math.max(P.floor_t + P.csl_h, top) + 1,
+                 pad: (s) => ({ l: 84, r: 8, t: Math.max(8, 54 - (Math.max(P.floor_t + P.csl_h, top) + 1 - top) * s), b: 36 }) };
+      },
+      draw(d) {
+        const top = Math.max(P.axis + P.lens_r, P.axis + P.adapter_r, P.gh);
+        const camBot = Math.max(6, P.axis - 40);
+        d.rect(-48, 0, -2, camBot, 'ref');                                   // the camera's base
+        d.rect(-46, camBot, -2, P.axis + 46, 'ref');                         // the body
+        d.rect(0, P.axis - P.lens_r, P.lens_len, P.axis + P.lens_r, 'ref');  // the lens, a guess
+        d.rect(P.tube_x0, P.axis - P.tube_ro, P.tube_x1, P.axis + P.tube_ro, 'pr');
+        d.line(P.tube_x0, P.axis + P.tube_ri, P.tube_x1, P.axis + P.tube_ri, 'ext');
+        d.line(P.tube_x0, P.axis - P.tube_ri, P.tube_x1, P.axis - P.tube_ri, 'ext');
+        d.rect(P.x_front - P.thread_len, P.axis - P.adapter_r, P.x_front + P.flange + P.socket_depth, P.axis + P.adapter_r, 'pr');
+        d.rect(P.dock_x0, 0, P.dock_x1, P.floor_t, 'pr2');
+        d.rect(P.dock_x0, 0, P.x_gate - P.dock_gate_clear, P.cheek_top, 'pr2');
+        d.rect(P.x_light - P.lip_t, P.floor_t, P.x_light + P.csl_slot + P.lip_t, P.cheek_top, 'pr2');
+        d.rect(P.x_gate, 0, P.x_ref, P.gh, 'pr');
+        d.rect(P.x_ref, 0, P.x_light, P.gh, 'pr');
+        d.rect(P.x_light, P.floor_t, P.x_light + P.csl_t, P.floor_t + P.csl_h, 'csl');
+        const lit0 = P.floor_t + (P.csl_h - P.csl_lit_h) / 2;
+        d.line(P.x_light, lit0, P.x_light, lit0 + P.csl_lit_h, 'litln');
+        d.line(-50, P.axis, P.x_light, P.axis, 'axisln');
+        d.line(P.x_film, P.axis - P.film_w / 2, P.x_film, P.axis + P.film_w / 2, 'filmln');
+        d.line(-56, 0, P.dock_x1 + 2, 0, 'table');
+        d.text(P.x_front + P.flange / 2, P.axis + P.adapter_r - 8, '1', { dy: 4 });
+        d.text((P.tube_x0 + P.x_gate) / 2, P.axis + P.tube_ro / 2, '2', { dy: 4 });
+        d.text((P.x_gate + P.x_light) / 2, P.gh - 10, '3', { dy: 4 });
+        d.text(P.x_light + P.csl_slot + P.lip_t / 2, P.cheek_top - 8, '4', { dy: 4 });
+        d.text(P.lens_len * 0.62, P.axis + P.lens_r / 2, 'lens', { dy: 4 });
+        d.vdim('axis', 0, P.axis, -52, 0, `axis ${num(P.axis)}`, { pos: 'l' });
+        d.vdim('lens', P.axis, P.axis + P.lens_r, P.lens_len * 0.3, 0, `lens_r ${num(P.lens_r)}`, { pos: 'r' });
+        d.hdim('lens', 0, P.lens_len, 0, 20, `lens_len ${num(P.lens_len)}`, { ya: P.axis - P.lens_r, yb: P.axis - P.lens_r });
+        d.hdim('wd', P.tube_x0, P.tube_x1, top, -16, `tube_len ${num(P.tube_len)}`, { ya: P.axis + P.tube_ro, yb: P.axis + P.tube_ro });
+        d.hdim('wd', P.x_front, P.x_film, top, -40, `wd ${num(P.wd)}`, { ya: P.axis + P.adapter_r, yb: P.gh });
+      },
+    },
+    {
+      id: 'lens', title: 'The lens front and the adapter, half section', maxH: 320,
+      note: () => `The upper half, cut through the axis (${num(P.adapter_bore_r - 6)} below the bottom edge). ` +
+                  `The thread is drawn at its real ${num(P.thread_pitch)} pitch and clearance. The lens side is a guess: measure it.`,
+      bounds: () => ({ x0: P.x_front - 12, x1: P.x_front + P.flange + P.socket_depth + 5, y0: P.adapter_bore_r - 6,
+                       y1: P.adapter_r + 2, pad: () => ({ l: 8, r: 8, t: 34, b: 34 }) }),
+      draw(d) {
+        const xf = P.x_front, tl = P.thread_len, R = P.thread_major / 2, h = 0.45, depth = tl + 0.8, ring = P.adapter_bore_r - 1;
+        const x0 = xf - 12, x1 = xf + P.flange + P.socket_depth + 5, xs = xf + P.flange + P.socket_depth;
+        // the lens: barrel to its rim, the female thread, then a step (the front element's ring: unknown)
+        d.poly([[x0, P.lens_r], [xf, P.lens_r], [xf, R], ...zig(xf - depth, xf, P.thread_pitch, R - h, R).reverse(),
+                [xf - depth, ring], [x0, ring]], 'ref');
+        // the adapter: thread core with the male thread, flange, socket wall
+        d.poly([[xf - tl, P.adapter_bore_r], ...zig(xf - tl, xf, P.thread_pitch, P.thread_root_r, P.thread_crest_r),
+                [xf, P.adapter_r], [xs, P.adapter_r], [xs, P.fit_r], [xf + P.flange, P.fit_r], [xf + P.flange, P.adapter_bore_r]], 'pr');
+        d.rect(xf + P.flange, P.tube_ri, x1, P.tube_ro, 'pr2');             // the tube's end on the socket floor
+        d.text((xs + x1) / 2 + 1, (P.tube_ri + P.tube_ro) / 2, 'tube', { dy: 4 });
+        d.text(x0 + 3, (P.lens_r + R) / 2, 'lens', { dy: 4, anchor: 'start' });
+        d.hdim('thread_depth', xf - tl, xf, P.adapter_bore_r - 6, 18, `thread_len ${num(tl)}`, { ya: P.thread_root_r, yb: P.adapter_bore_r });
+        d.call('thread', 'a', [xf - tl / 2, R - h / 2], [xf - tl / 2 - 2, P.adapter_r + 2, 0, -18]);
+        d.call('thread_depth', 'b', [xf - depth, ring + 0.6], [x0 + 3, P.adapter_bore_r - 3.5]);
+        d.call('thread_depth', 'c', [xf + P.flange / 2, P.adapter_bore_r], [xf + P.flange / 2, P.adapter_bore_r - 3.5]);
+        d.call('wd', 'd', [xf, P.lens_r - 0.5], [xf + 2.5, P.adapter_r + 2, 0, -18]);
+        d.call('tube_fit', 'e', [xs - 2, P.fit_r], [xs - 2, P.tube_ri - 3]);
+      },
+      calls: () => [
+        ['a', 'thread', `M${num(P.thread_major)} × ${num(P.thread_pitch)}, moved in thread_clear ${num(P.thread_clear)}: print the coupon`],
+        ['b', 'thread_depth', `How deep the lens's thread runs, and what stands inside it: drawn as a guess`],
+        ['c', 'thread_depth', `Bore Ø${num(2 * P.adapter_bore_r)} (adapter_bore_r ${num(P.adapter_bore_r)}) must clear the front element`],
+        ['d', 'wd', 'The flange seats on the lens rim: wd is measured from this face'],
+        ['e', 'tube_fit', `Socket Ø${num(2 * P.fit_r)} on the Ø${num(2 * P.tube_ro)} tube: fit_clear ${num(P.fit_clear)}`],
+      ],
+    },
+    {
+      id: 'cslite', title: 'The CS-Lite in the dock, from the camera', maxH: 400,
+      note: () => `The dock's front wall and the gate front left out; the gate's rear face drawn see-through, its window dark. ` +
+                  `The lit area is drawn centred, as the build assumes.`,
+      bounds: () => ({ x0: -P.dock_w / 2 - 1, x1: P.dock_w / 2 + 1, y0: -1, y1: P.floor_t + P.csl_h + 1,
+                       pad: () => ({ l: 8, r: 98, t: 34, b: 8 }) }),
+      draw(d) {
+        const hw = P.dock_w / 2, notch = P.gate_front_w / 2 + P.dock_gate_clear, cin = P.csl_l / 2 + P.cheek_clear;
+        const lit0 = P.floor_t + (P.csl_h - P.csl_lit_h) / 2, top = P.floor_t + P.csl_h;
+        for (const k of [-1, 1]) {
+          d.rect(k * notch, 0, k * hw, P.floor_t, 'pr2');
+          d.rect(k * cin, P.floor_t, k * hw, P.cheek_top, 'pr2');
+        }
+        d.rect(-P.csl_l / 2, P.floor_t, P.csl_l / 2, top, 'csl');
+        d.rect(-P.csl_lit_w / 2, lit0, P.csl_lit_w / 2, lit0 + P.csl_lit_h, 'lit');
+        for (const k of [-1, 1]) d.rect(k * notch, P.floor_t, k * cin, P.floor_t + P.lip_h, 'pr2');
+        d.rect(-P.gate_front_w / 2, 0, P.gate_front_w / 2, P.gh, 'see');
+        d.rect(-P.rear_win_w / 2, P.axis - P.rear_win_h / 2, P.rear_win_w / 2, P.axis + P.rear_win_h / 2, 'win');
+        d.line(-P.rear_win_w / 2 - 4, P.axis, P.rear_win_w / 2 + 4, P.axis, 'axisln');
+        d.line(-hw - 1, 0, hw + 1, 0, 'table');
+        d.hdim('cslite', -P.csl_l / 2, P.csl_l / 2, top, -16, `csl_l ${num(P.csl_l)}`);
+        d.vdim('cslite', P.floor_t, top, hw, 12, `csl_h ${num(P.csl_h)}`, { xa: P.csl_l / 2, xb: P.csl_l / 2 });
+        d.hdim('cslite', -P.csl_lit_w / 2, P.csl_lit_w / 2, lit0 + P.csl_lit_h - 8, 0, `csl_lit_w ${num(P.csl_lit_w)}`);
+        d.vdim('cslite', lit0, lit0 + P.csl_lit_h, -P.csl_lit_w / 2 + 6, 0, `csl_lit_h ${num(P.csl_lit_h)}`, { pos: 'r' });
+        d.vdim('axis', 0, P.axis, P.rear_win_w / 2 + 5, 0, `axis ${num(P.axis)}`, { pos: 'r' });
+        d.call('cslite', 'a', [-P.csl_l / 2, P.floor_t + P.csl_h * 0.82], [-P.csl_l / 2 + 10, P.floor_t + P.csl_h * 0.72]);
+        d.call('cslite', 'b', [-P.gate_front_w / 2 + 4, (P.floor_t + lit0) / 2], [-P.gate_front_w / 2 + 22, lit0 + 4]);
+      },
+      calls: () => [
+        ['a', 'cslite', `Where are the USB-C port and the button? The cheeks cover the ends up to ${num(P.cheek_top)}.`],
+        ['b', 'cslite', `The gate's rear face lies on the panel from its bottom edge to ${num(P.gh)}, across the bezel: the face must be flat`],
+      ],
+    },
+    {
+      id: 'slot', title: "The CS-Lite's slot, section on the axis", maxH: 300,
+      note: () => `The gate body stands on the table in the dock's notch; the front lip (dashed) is only at the panel's ends.`,
+      bounds: () => ({ x0: P.x_light - P.wall - 9, x1: P.dock_x1 + 1, y0: -1, y1: 34, pad: () => ({ l: 8, r: 8, t: 8, b: 74 }) }),
+      draw(d) {
+        const xl = P.x_light, x0 = xl - P.wall - 9;
+        d.rect(x0, 0, xl - P.wall, P.wall, 'pr');                           // the gate body's floor ...
+        d.rect(xl - P.wall, 0, xl, 34, 'pr');                               // ... and rear wall
+        d.rect(xl - P.lip_t, P.floor_t, xl, P.floor_t + P.lip_h, 'ref');    // the front lip, beyond the section
+        d.rect(xl, 0, P.dock_x1, P.floor_t, 'pr2');
+        d.rect(xl + P.csl_slot, P.floor_t, xl + P.csl_slot + P.lip_t, P.floor_t + P.lip_h, 'pr2');
+        d.rect(xl, P.floor_t, xl + P.csl_t, 34, 'csl');
+        d.line(xl, P.floor_t + (P.csl_h - P.csl_lit_h) / 2, xl, 34, 'litln');
+        d.line(x0, 0, P.dock_x1 + 1, 0, 'table');
+        d.text(xl + P.csl_t / 2, 22, 'CS-Lite', { dy: 4 });
+        d.text(x0 + 4, P.wall + 6, 'gate', { anchor: 'start' });
+        d.hdim('cslite', xl, xl + P.csl_t, 0, 20, `csl_t ${num(P.csl_t)}`);
+        d.hdim('cslite', xl, xl + P.csl_slot, 0, 44, `slot ${num(P.csl_slot)}`, { pos: 'start' });
+        d.call('cslite', 'a', [xl, 26], [xl - P.wall - 5, 28]);
+      },
+      calls: () => [
+        ['a', 'cslite', `Lit face flat on the gate's rear face. The panel has ${num(P.csl_clear)} of play behind it (csl_clear): ` +
+                        `anything that pushes it off the gate leaks light`],
+      ],
+    },
+    {
+      id: 'bed', title: 'The bed from above, and the build height', maxH: 360,
+      note: () => `The light dock, the biggest footprint, in print pose; to the right the tube, the tallest print, upright. ` +
+                  `The bed is ${num(P.bed_x)} × ${num(P.bed_y)} until the printer is confirmed.`,
+      bounds: () => {
+        const ex = P.bed_x + 36, t = CK.sizes.tube;
+        return { x0: -2, x1: ex + t[0] + 6, y0: -2, y1: Math.max(P.bed_y, P.tube_max_len, t[2]) + 2,
+                 pad: () => ({ l: 100, r: 84, t: 30, b: 34 }) };
+      },
+      draw(d) {
+        const [dx, dy] = CK.sizes.light_dock, t = CK.sizes.tube, ex = P.bed_x + 36;
+        d.rect(0, 0, P.bed_x, P.bed_y, 'bed');
+        for (let x = 20; x < P.bed_x; x += 20) d.line(x, 0, x, P.bed_y, 'grid');
+        for (let y = 20; y < P.bed_y; y += 20) d.line(0, y, P.bed_x, y, 'grid');
+        const x0 = (P.bed_x - dx) / 2, y0 = (P.bed_y - dy) / 2;
+        d.rect(x0, y0, x0 + dx, y0 + dy, 'pr');
+        d.text(P.bed_x / 2, P.bed_y / 2, 'dock', { dy: 4 });
+        d.line(ex - 8, 0, ex + t[0] + 6, 0, 'table');
+        d.rect(ex, 0, ex + t[0], t[2], 'pr');
+        d.text(ex + t[0] / 2, t[2] / 2, 'tube', { dy: 4 });
+        d.line(ex - 8, P.tube_max_len, ex + t[0] + 6, P.tube_max_len, 'lim');
+        d.hdim('bed', 0, P.bed_x, 0, 18, `bed_x ${num(P.bed_x)}`);
+        d.vdim('bed', 0, P.bed_y, 0, -10, `bed_y ${num(P.bed_y)}`, { pos: 'l' });
+        d.vdim('bed', y0, y0 + dy, x0 + dx, 10, `${num(dy)}`, { pos: 'r' });
+        d.hdim('bed', x0, x0 + dx, y0 + dy, -12, `${num(dx)}`);
+        d.vdim('bed', 0, t[2], ex + t[0], 10, `${num(t[2])}`, { pos: 'r' });
+        d.vdim('bed', 0, P.tube_max_len, ex + t[0], 34, `max ${num(P.tube_max_len)}?`, { pos: 't' });
+      },
+    },
+    {
+      id: 'film', title: "The film's path: a side-wall slot, and the channel", maxH: 340,
+      note: () => `Left, to scale, seen along the axis: the strip rests on the slot's floor and passes through the side wall (the gate's inside to the right). ` +
+                  `Right, a section beside the frame window, stretched ×12 across so the ${num(P.channel)} shows.`,
+      bounds: () => ({ x0: -12, x1: 64, y0: -6, y1: P.film_slot_h + 6, pad: () => ({ l: 8, r: 8, t: 40, b: 40 }) }),
+      draw(d) {
+        const H = P.film_slot_h, k = 12, bx = 44;
+        // A: the side wall (outside to the left), its slot, the strip through it
+        d.rect(0, -6, P.wall, 0, 'pr');
+        d.rect(0, H, P.wall, H + 6, 'pr');
+        d.rect(-10, 0, 14, P.film_w, 'film');
+        d.vdim('film_slot', 0, P.film_w, 14, 6, `film_w ${num(P.film_w)}`, { pos: 'b' });
+        d.vdim('film_slot', 0, H, P.wall + 6, 0, `film_slot_h ${num(H)}`, { pos: 't' });
+        d.call('film_slot', 'a', [P.wall / 2, H - 0.1], [P.wall + 13, H - 6]);
+        // B: the gate front's rear face, the film on it, the pressure plate a channel away
+        d.rect(bx - 8, -4, bx, H + 4, 'pr');
+        d.rect(bx, 0, bx + k * P.film_t, P.film_w, 'film');
+        d.rect(bx + k * P.channel, -4, bx + k * P.channel + 5, H + 4, 'pr');
+        d.text(bx - 4, H / 2, 'gate', { dy: 4 });
+        d.text(bx + k * P.channel + 2.5, H / 2 - 9, 'plate', { dy: 4 });
+        d.hdim('channel', bx, bx + k * P.channel, H + 4, -14, `channel ${num(P.channel)}`, { pos: 'end' });
+        d.hdim('channel', bx, bx + k * P.film_t, -4, 14, `film_t ${num(P.film_t)}`, { pos: 'end' });
+      },
+      calls: () => [
+        ['a', 'film_slot', `${num(P.film_slot_clear)} over the strip's top edge (film_slot_clear). FDM tends to print it narrow.`],
+      ],
+    },
+    {
+      id: 'screw', title: 'A gate joint screw, section through a pillar', maxH: 260,
+      note: () => `M3 × ${CK.screw_len}, socket head drawn. Left, the gate front, ${num(P.x_ref - P.x_gate)} thick; ` +
+                  `right, the gate body's pillar.`,
+      bounds: () => ({ x0: -1, x1: P.x_light - P.x_gate + 1, y0: -P.ear_h / 2 - 1, y1: P.ear_h / 2 + 1,
+                       pad: () => ({ l: 112, r: 8, t: 46, b: 62 }) }),
+      draw(d) {
+        const gf = P.x_ref - P.x_gate, end = P.x_light - P.x_gate, e = P.ear_h / 2, L = CK.screw_len, cb = P.cbore_depth;
+        d.rect(0, -e - 1, gf, e + 1, 'pr');
+        d.rect(gf, -e, end, e, 'pr');
+        d.rect(0, -P.cbore_d / 2, cb, P.cbore_d / 2, 'hole');
+        d.rect(cb, -P.joint_hole_d / 2, gf, P.joint_hole_d / 2, 'hole');
+        d.rect(gf, -P.pilot_d / 2, gf + P.pilot_depth, P.pilot_d / 2, 'hole');
+        d.rect(cb - 3, -2.75, cb, 2.75, 'metal');
+        d.rect(cb, -1.5, cb + L, 1.5, 'metal');
+        d.vdim('screws', -P.cbore_d / 2, P.cbore_d / 2, 0, -10, `cbore_d ${num(P.cbore_d)}`, { pos: 'l' });
+        d.hdim('screws', 0, cb, e + 1, -14, `${num(cb)}`, { pos: 'end' });
+        d.hdim('screws', gf, gf + P.pilot_depth, e, -14, `pilot_depth ${num(P.pilot_depth)}`);
+        d.hdim('screws', cb, cb + L, -e - 1, 18, `M3 × ${L}`);
+        d.hdim('screws', cb, gf + P.pilot_depth, -e - 1, 44, `longest ${num(gf - cb + P.pilot_depth)}`);
+        d.call('screws', 'a', [gf + P.pilot_depth - 1, P.pilot_d / 2], [gf + P.pilot_depth + 5, e + 1, 0, -16]);
+      },
+      calls: () => [
+        ['a', 'screws', `Pilot Ø${num(P.pilot_d)} (pilot_d) to self-tap; 4.0 for M3 heat-set inserts`],
+      ],
+    },
+  ];
+
+  // ---- the page: figures, then the checklist by group ----
+  const FIG_KEY = Object.fromEntries(FIGS.map((f, i) => [f.id, String.fromCharCode(65 + i)]));
+  const figsEl = $('figs');
+  for (const f of FIGS) {
+    const el = document.createElement('figure');
+    el.className = 'fig' + (f.wide ? ' wide' : ''); el.id = `fig-${f.id}`;
+    el.innerHTML = `<figcaption><span class="k">${FIG_KEY[f.id]}</span><b>${esc(f.title)}</b></figcaption><div class="svgbox"></div>` +
+      `<p class="note">${esc(f.note())}</p>` +
+      (f.calls ? `<ol>${f.calls().map(([k, id, t]) => `<li data-id="${id}"><span class="m">${k}</span><span>${esc(t)}</span></li>`).join('')}</ol>` : '');
+    f.el = el; f.box = el.querySelector('.svgbox');
+    figsEl.append(el);
+  }
+  function drawFig(f) {
+    if (!f.box.clientWidth) return;
+    const W = Math.max(f.box.clientWidth, f.minW || 0);       // narrower than minW: draw at minW, the box scrolls sideways
+    const b = f.bounds(), pl = b.pad(1);
+    let s = (W - pl.l - pl.r) / (b.x1 - b.x0);
+    let pad = b.pad(s);
+    const maxH = f.maxH || 440;
+    if ((b.y1 - b.y0) * s + pad.t + pad.b > maxH) { s = (maxH - pad.t - pad.b) / (b.y1 - b.y0); pad = b.pad(s); }
+    const H = Math.ceil((b.y1 - b.y0) * s + pad.t + pad.b);
+    const ox = pad.l + (W - pad.l - pad.r - (b.x1 - b.x0) * s) / 2;
+    const svg = mk('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'aria-label': f.title });
+    f.draw(kit(svg, (x) => ox + (x - b.x0) * s, (y) => pad.t + (b.y1 - y) * s, s));
+    f.box.replaceChildren(svg);
+  }
+  const drawAll = () => { if (document.body.classList.contains('tab-dims')) for (const f of FIGS) drawFig(f); };
+  new ResizeObserver(drawAll).observe(figsEl);
+
+  const PART_BY = Object.fromEntries(DATA.parts.map((p) => [p.name, p]));
+  const METHOD = { ruler: 'Ruler', calipers: 'Calipers', coupon: 'Test print: coupon', 'test print': 'Test print', spec: 'Spec sheet' };
+  const chips = (names) => names.map((n) => `<button type="button" class="chip" data-part="${n}"><span class="n">${PART_BY[n].num}</span>${esc(PART_BY[n].label)}</button>`).join('');
+  $('checks').innerHTML = CK.groups.map((g) => {
+    const items = CK.items.filter((it) => it.group === g.id);
+    return `<section class="grp" data-group="${g.id}"><header><h3>${esc(g.title)}</h3><span class="c" data-count="${g.id}"></span>` +
+      `<p>${esc(g.blurb)}</p></header><div class="items">` + items.map((it) => {
+        const vals = it.params.map((q) => `<li><code>${q.name}</code><b>${num(q.value)}</b>` +
+          (q.tag ? `<i class="${q.tag}">${q.tag}</i>` : '') + (q.note ? `<small>${esc(q.note)}</small>` : '') + '</li>').join('');
+        const changes = it.parts.length ? chips(it.parts)
+          : `<span class="none">No printed shape changes.</span>` + (it.watch ? ` It matters to ${chips(it.watch)}` : '');
+        const figs = it.figs.map((id) => `<button type="button" class="jump" data-fig="${id}"><span class="k">${FIG_KEY[id]}</span>${esc(FIGS.find((f) => f.id === id).title.split(':')[0].split(',')[0])}</button>`).join('');
+        return `<article class="item" id="chk-${it.id}" data-id="${it.id}"><header>` +
+          `<label class="tick"><input type="checkbox" data-tick="${it.id}"><span class="t"><span class="cn">${it.num}</span>${esc(it.title)}` +
+          (it.when ? `<small>Before the ${esc(it.when)}</small>` : '') + `</span></label>` +
+          `<span class="meth ${it.method.split(' ')[0]}">${METHOD[it.method]}</span></header>` +
+          `<ul class="vals" aria-label="Values in the build, mm">${vals}</ul>` +
+          `<dl><dt>What</dt><dd>${it.what}</dd><dt>Measure</dt><dd>${it.how}</dd><dt>If it's off</dt><dd>${it.wrong}</dd>` +
+          `<dt>Changes</dt><dd>${changes}</dd><dt>Fix</dt><dd>${it.fix.startsWith('uv ') ? `<code>${esc(it.fix)}</code>` : it.fix}</dd></dl>` +
+          `<div class="ifoot"><label>Measured <input type="text" data-note="${it.id}" placeholder="your reading" autocomplete="off"></label>${figs}</div>` +
+          `</article>`;
+      }).join('') + '</div></section>';
+  }).join('');
+
+  function sync() {
+    let done = 0;
+    for (const it of CK.items) {
+      const on = ticked(it.id);
+      done += on;
+      $(`chk-${it.id}`).classList.toggle('ok', on);
+      $(`chk-${it.id}`).querySelector('input[data-tick]').checked = on;
+    }
+    for (const g of document.querySelectorAll('.fig svg .d, .fig ol li')) g.classList.toggle('ok', ticked(g.dataset.id));
+    for (const c of document.querySelectorAll('[data-count]')) {
+      const its = CK.items.filter((it) => it.group === c.dataset.count);
+      c.textContent = `${its.filter((it) => ticked(it.id)).length} / ${its.length}`;
+    }
+    const n = CK.items.length, all = done === n;
+    $('dNum').innerHTML = `<b>${done}</b> / ${n} confirmed`;
+    $('dNum').classList.toggle('done', all);
+    $('dBar').style.width = `${100 * done / n}%`;
+    $('tabCount').textContent = `${done}/${n}`;
+    $('tabCount').classList.toggle('done', all);
+  }
+  for (const box of document.querySelectorAll('input[data-tick]')) {
+    box.addEventListener('change', () => {
+      const k = tickKey(ITEMS[box.dataset.tick]);
+      box.checked ? (store.ticks[k] = new Date().toISOString().slice(0, 10)) : delete store.ticks[k];
+      save(); sync();
+    });
+  }
+  for (const inp of document.querySelectorAll('input[data-note]')) {
+    inp.value = store.notes[inp.dataset.note] || '';
+    inp.addEventListener('input', () => { inp.value ? (store.notes[inp.dataset.note] = inp.value) : delete store.notes[inp.dataset.note]; save(); });
+  }
+  $('dReset').addEventListener('click', () => {
+    if (!confirm('Clear every tick on this page? Your readings stay.')) return;
+    for (const it of CK.items) delete store.ticks[tickKey(it)];
+    save(); sync();
+  });
+  const flash = (el) => { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); };
+  function toItem(id) {
+    const el = $(`chk-${id}`);
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    flash(el);
+  }
+  function toFig(fig, id) {
+    const f = FIGS.find((x) => x.id === fig);
+    f.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    flash(f.el);
+    for (const g of f.el.querySelectorAll('svg .d')) g.classList.toggle('hl', g.dataset.id === id);
+    setTimeout(() => { for (const g of f.el.querySelectorAll('svg .d.hl')) g.classList.remove('hl'); }, 2400);
+  }
+  figsEl.addEventListener('click', (e) => { const g = e.target.closest('[data-id]'); if (g) toItem(g.dataset.id); });
+  figsEl.addEventListener('keydown', (e) => {
+    const g = e.target.closest('svg .d');
+    if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toItem(g.dataset.id); }
+  });
+  $('checks').addEventListener('click', (e) => {
+    const j = e.target.closest('.jump');
+    if (j) return toFig(j.dataset.fig, j.closest('.item').dataset.id);
+    const c = e.target.closest('.chip');
+    if (c) { setTab('print'); stop(); sel.value = c.dataset.part; show(PARTS[c.dataset.part]); scrollTo(0, 0); }
+  });
+  $('dBuilt').textContent = DATA.built;
+  $('dKeep').textContent = canStore
+    ? 'Ticks and readings stay in this browser, and in the link: '
+    : 'This browser won\'t keep them here, so ticks and readings live in the link: bookmark it. ';
+  sync();
+
+  // ---- the two views ----
+  function setTab(tab) {
+    const dims = tab === 'dims';
+    document.body.classList.toggle('tab-dims', dims);
+    $('tabPrint').setAttribute('aria-selected', String(!dims));
+    $('tabDims').setAttribute('aria-selected', String(dims));
+    if (dims) {
+      stop();
+      renderer.setAnimationLoop(null);
+      drawAll(); sync();
+      history.replaceState(null, '', dimsHash());
+    } else {
+      resize();
+      renderer.setAnimationLoop(loop);
+      if (cur) hash();
+    }
+  }
+  $('tabPrint').addEventListener('click', () => setTab('print'));
+  $('tabDims').addEventListener('click', () => setTab('dims'));
+
   $('meta').textContent = DATA.built;
   $('foot').innerHTML = DATA.foot;
   paint();
@@ -772,7 +1409,9 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   hash();
   resize();
   $('loading').remove();
-  renderer.setAnimationLoop((now) => { step(now); controls.update(); renderer.render(scene, camera); });
+  function loop(now) { step(now); controls.update(); renderer.render(scene, camera); }
+  renderer.setAnimationLoop(loop);
+  if (q.get('tab') === 'dims') setTab('dims');
 })();
 </script>
 </body>

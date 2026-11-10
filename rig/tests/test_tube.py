@@ -93,9 +93,9 @@ def test_one_valid_closed_solid(tube):
 
 def test_bounds_at_default(tube):
     r = p.tube_ro
-    assert cadutil.bounds(tube) == pytest.approx((128, 245, p.axis - r, p.axis + r, -r, r), abs=0.05)
-    assert cadutil.size(tube) == pytest.approx((117, 72, 72), abs=0.05)
-    assert (p.tube_x0, p.tube_x1, p.tube_len) == (128, 245, 117)
+    assert cadutil.bounds(tube) == pytest.approx((128, 226, p.axis - r, p.axis + r, -r, r), abs=0.05)
+    assert cadutil.size(tube) == pytest.approx((98, 72, 72), abs=0.05)
+    assert (p.tube_x0, p.tube_x1, p.tube_len) == (128, 226, 98)
 
 
 def test_length_follows_wd():
@@ -108,7 +108,7 @@ def test_length_follows_wd():
 def test_prints_upright_and_fits_the_bed(tube):
     posed = cadutil.print_pose(tube, model.PRINT_UP["tube"])
     assert cadutil.fits_bed(posed, p)
-    assert cadutil.size(posed) == pytest.approx((72, 72, 117), abs=0.05)
+    assert cadutil.size(posed) == pytest.approx((72, 72, 98), abs=0.05)
 
 
 # ---- fits ----------------------------------------------------------------------------
@@ -157,7 +157,7 @@ def test_bore_between_ribs_is_r32(tube):
         assert cadutil.common_volume(tube, disc(x, p.tube_ri + 0.01, width / 2)) > 1.0
 
 
-@pytest.mark.parametrize("wd, count", [(p.wd, 15), (150, 17)])
+@pytest.mark.parametrize("wd, count", [(p.wd, 12), (150, 17)])
 def test_rib_layout(wd, count):
     q = Params(wd=wd)
     tube = model.build(q)["tube"]
@@ -183,14 +183,14 @@ def test_volume_is_the_plain_tube_plus_the_triangular_ribs(tube):
     plain = math.pi * (p.tube_ro**2 - p.tube_ri**2) * p.tube_len
     h = p.baffle_h
     one_rib = 2 * math.pi * (p.tube_ri - h / 3) * h * h / 2       # Pappus: triangle area h^2/2, centroid r_i - h/3
-    assert cadutil.volume(tube) == pytest.approx(plain + 15 * one_rib, rel=1e-9)
+    assert cadutil.volume(tube) == pytest.approx(plain + 12 * one_rib, rel=1e-9)
 
 
 def test_no_baffles_gives_the_plain_tube():
     q = Params(baffle_h=0)
     tube = model.build(q)["tube"]
     assert cadutil.is_valid(tube)
-    assert cadutil.volume(tube) == pytest.approx(math.pi * (36**2 - 32**2) * 117, rel=1e-3)
+    assert cadutil.volume(tube) == pytest.approx(math.pi * (36**2 - 32**2) * 98, rel=1e-3)
     assert ribs(tube, q) == []
     assert min(e.radius() for e in circles(tube)) == pytest.approx(q.tube_ri, abs=EDGE_TOL)
 

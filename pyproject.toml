@@ -1,7 +1,7 @@
 [project]
 name = "nlb"
 version = "0.1.0"
-description = "Negative Lab Basic: invert phone and camera photos of B&W and C-41 film negatives"
+description = "Negative Lab Basic: invert phone and camera photos of 35mm film negatives"
 license = "MIT"
 requires-python = ">=3.12"
 dependencies = [

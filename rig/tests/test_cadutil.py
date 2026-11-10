@@ -319,3 +319,27 @@ def test_overhangs_samples_curved_faces():
     standing = cq.Workplane("XY").circle(5).extrude(20)
     assert len(cadutil.overhangs(lying)) >= 1
     assert cadutil.overhangs(standing) == []
+
+
+def test_box_is_a_box_over_the_ranges():
+    assert cadutil.bounds(cadutil.box(1, 2, 3, 5, 6, 9)) == pytest.approx((1, 2, 3, 5, 6, 9))
+
+
+def test_cylinder_y_runs_along_y_on_its_line():
+    wp = cadutil.cylinder_y(10, -4, 2, 1, 7)
+    assert cadutil.bounds(wp) == pytest.approx((8, 12, 1, 7, -6, -2))
+    assert cadutil.volume(wp) == pytest.approx(math.pi * 4 * 6)
+
+
+@pytest.mark.parametrize("point, up", [("-x", "-x"), ("+x", "+x")])
+def test_teardrop_points_45_degrees_and_prints_without_overhangs(point, up):
+    r = 3
+    wp = cadutil.teardrop_y(0, 0, r, 0, 10, point)
+    x0, x1, _, _, z0, z1 = cadutil.bounds(wp)
+    tip = r * math.sqrt(2)
+    assert (x0, x1) == pytest.approx((-tip, r) if point == "-x" else (-r, tip))
+    assert (z0, z1) == pytest.approx((-r, r))
+    # a hole of it in a block that prints with the point up has no roof hanging flat
+    block = cadutil.box(-8, 8, 0, 10, -8, 8).cut(wp)
+    assert cadutil.overhangs(cadutil.print_pose(block, up)) == []
+    assert cadutil.overhangs(cadutil.print_pose(cadutil.box(-8, 8, 0, 10, -8, 8).cut(cadutil.cylinder_y(0, 0, r, 0, 10)), up))

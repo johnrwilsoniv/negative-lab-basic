@@ -377,15 +377,15 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
     c.g.attributes.color.needsUpdate = true;
   }
 
-  // ---- the assembly: every printed solid in place at SLIDE, on the table ----
-  // One hue per part, in assembly order; the references (film, exposures, CS-Lite) bring their own colours.
+  // ---- the assembly: every printed solid in place with a frame in the window, on the table ----
+  // One hue per part, in assembly order; the references (film, exposures, rolls, CS-Lite) bring their own colours.
   const ASM_COLOURS = ['#d4891f', '#3f7fb5', '#2f8a5c', '#7fbf6a', '#8f6fd0', '#c4473a', '#e0b23a', '#8a5a3b', '#c27a5a', '#4aa7a0'];
   const SEE = 0.22;                                  // a see-through printed part's opacity, ...
   const SEE_PART = { gate_front: 0.44, gate_body: 0.44 };   // ... but these big blocks read better a little more solid
   const PARTS = Object.fromEntries(DATA.parts.map((p) => [p.name, p]));
   const ASM = {
     name: 'assembly', num: 'all', label: 'Entire assembly',
-    desc: 'Every printed part in place at SLIDE, standing on the table, with the film strip and the CS-Lite. ' +
+    desc: 'Every printed part in place with a frame in the window, standing on the table, with the film, the rolls and the CS-Lite. ' +
           'Tick parts or whole subassemblies on and off with the picker.',
   };
   function prepareAsm() {

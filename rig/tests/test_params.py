@@ -1,6 +1,7 @@
-"""Derived values at the defaults match PLAN.md "Derived values" and the mockup's rail."""
+"""Derived values at the defaults match PLAN.md "Derived values", the mockup's rail, and the film transport (D1-D5)."""
 
 import dataclasses
+import math
 
 import pytest
 
@@ -29,21 +30,28 @@ def test_plan_constants():
     assert p.thread_clear == 0.15
     assert (p.adapter_r, p.adapter_bore_r, p.socket_depth, p.flange) == (39, 31, 9, 3)
     assert (p.tube_ro, p.tube_ri) == (36, 32)
-    assert (p.gw, p.gate_d, p.gate_front, p.wall) == (92, 39, 14, 3)     # gate_d = gate_front + gap (F10)
-    assert (p.win_w, p.win_h, p.gap) == (38, 26, 25)
-    assert (p.front_wall, p.fit_clear, p.plate_t, p.wedge_gap) == (4, 0.3, 1.8, 0.9)
-    assert p.gate_above_axis == 36
-    assert (p.channel, p.sw_travel) == (0.6, 10)
-    assert (p.ramp_len, p.ramp_min, p.ramp_rise) == (12, 0.1, 0.7)
+    assert (p.gw, p.gate_d, p.gate_front) == (92, 39, 14)     # gate_d = gate_front + gap (F10)
+    assert (p.win_w, p.win_h, p.win_depth, p.gap) == (38, 26, 1.8, 25)
+    assert (p.front_wall, p.fit_clear, p.gate_above_axis) == (4, 0.3, 36)
     assert (p.film_w, p.film_t, p.frame_w, p.frame_h) == (35, 0.13, 36, 24)
     assert (p.lens_len, p.lens_r) == (125, 37)
     assert (p.csl_l, p.csl_h, p.csl_t, p.csl_lit_w, p.csl_lit_h) == (165, 112, 20, 149, 95)
     assert (p.bed_x, p.bed_y) == (220, 220)
 
 
-def test_fit_clearances_for_the_drop_in_and_sliding_parts():
+def test_the_channel_is_fixed_and_the_film_runs_in_its_middle():
     p = DEFAULT
-    assert (p.plate_clear, p.lid_clear, p.csl_clear) == (0.25, 0.2, 0.5)
+    assert (p.channel, p.channel_clear) == (0.3, 0.2)
+    assert p.x_ref == pytest.approx(254.85)                # the gate front's rear face and the gate body's front face
+    assert p.x_ref + p.channel / 2 == pytest.approx(p.x_film)
+    assert p.channel_h == pytest.approx(35.2)
+    assert p.channel - p.film_t == pytest.approx(0.17)      # the film's play front to back
+
+
+def test_fit_clearances():
+    p = DEFAULT
+    assert (p.bearing_clear, p.flat_clear, p.pocket_clear, p.ring_clear) == (0.2, 0.1, 0.4, 0.05)
+    assert (p.peg_fit, p.spool_clear, p.csl_clear, p.dock_gate_clear) == (0, 0.5, 0.5, 0.2)
     assert p.csl_slot == 20.5                         # the CS-Lite's slot between the dock's lips
 
 
@@ -68,43 +76,76 @@ def test_rail_values_at_defaults():
     assert p.tube_x1 == 245
     assert p.tube_len == 117
     assert p.fit_r == pytest.approx(36.3)
-    assert p.dock_w == 181
-    assert p.dock_x0 == pytest.approx(236.8)          # the front wall's front face: 4.2 in front of the gate (F11)
+    assert p.dock_w == 191                            # 13 each side of the panel, for the spools
     assert p.dock_x1 == 306.5
-    assert p.dock_x1 - p.dock_x0 == pytest.approx(69.7)
-
-
-def test_lock_mechanism_x_stations():
-    p = DEFAULT
-    assert p.x_pp == pytest.approx(257.1)
-    assert p.x_wedge == pytest.approx(258.0)
-
-
-def test_ramp_thickness():
-    p = DEFAULT
-    assert p.ramp_t(-6) == pytest.approx(0.8)
-    assert p.ramp_t(6) == pytest.approx(0.1)
-    assert p.ramp_t(0) == pytest.approx(0.45)
-
-
-def test_lock_shift_and_preload():
-    p = DEFAULT
-    # unclamped travel is 0.5833, so the film limit (channel - film_t = 0.47) governs
-    assert p.clamp_shift(5) == pytest.approx(0.47)
-    assert p.lock_shift == pytest.approx(0.47)
-    assert p.clamp_shift(-5) == pytest.approx(0.0)  # switch at SLIDE: the plate has not moved
-    assert p.preload == pytest.approx(0.1133333, abs=1e-6)
-
-
-def test_pad_thickness():
-    assert DEFAULT.pad_t == pytest.approx(0.7416667, abs=1e-6)
 
 
 def test_tube_len_tracks_wd():
     p = Params(wd=150)
     assert p.tube_len == p.wd - 13 == 137
     assert p.x_film == 275
-    assert p.dock_x1 - p.dock_x0 == pytest.approx(69.7)
+    assert p.dock_x1 - p.dock_x0 == pytest.approx(DEFAULT.dock_x1 - DEFAULT.dock_x0)     # the dock moves, whole
+
+
+def test_the_sprocket_is_a_pinion_on_the_film_one_turn_a_frame():
+    p = DEFAULT
+    assert p.sprocket_teeth == p.perfs_per_frame == 8
+    assert 2 * math.pi * p.r_pitch == pytest.approx(p.frame_pitch)
+    assert p.r_pitch == pytest.approx(6.0479, abs=1e-4)
+    assert p.x_sprocket == pytest.approx(p.x_film + p.r_pitch)
+    assert p.r_ring == pytest.approx(p.r_pitch - p.film_t / 2 - p.ring_clear)
+    assert p.r_tip == pytest.approx(p.r_pitch + 1)
+    assert p.r_pocket == pytest.approx(p.r_tip + 0.4)
+
+
+def test_each_sprocket_sits_over_a_perforation_outside_the_light():
+    p = DEFAULT
+    assert p.sprocket_z == pytest.approx(30.875)
+    assert p.sprocket_z in p.perf_zs
+    # its pocket stays outside the body's light passage, which widens from 20 to 23 half-width front to back
+    widest = p.body_win_w / 2 + (p.rear_win_w - p.body_win_w) / 2 * (p.r_pitch / p.gap)
+    assert p.sprocket_z - p.r_pocket > widest + 2
+    assert p.perf_dy == pytest.approx(14.095)
+
+
+def test_three_equal_gears_in_a_row_between_the_sprockets():
+    p = DEFAULT
+    assert p.gear_teeth == 30 and p.gear_teeth % 2 == 0      # even: the idler shows each gear a gap (D4)
+    assert p.gear_module * p.gear_teeth == pytest.approx(p.sprocket_z)
+    assert 2 * p.gear_r == pytest.approx(p.sprocket_z)       # two pitch radii, centre to centre
+    assert p.gear_tip_r == pytest.approx(p.gear_r + p.gear_module)
+    assert p.gear_root_r == pytest.approx(p.gear_r - 1.25 * p.gear_module)
+    assert p.x_sprocket + p.gear_tip_r < p.x_light - 2      # clear of the CS-Lite, which stands 112 tall
+
+
+def test_the_drive_stack_on_the_gate():
+    p = DEFAULT
+    assert (p.y_deck, p.y_gear, p.y_shaft_top) == pytest.approx((78.5, 82.5, 87.5))
+    assert p.y_ring_lo == pytest.approx((25, 29.9)) and p.y_ring_hi == pytest.approx((55.1, 60))
+    assert p.y_ring_lo[1] - p.axis == pytest.approx(-p.ring_dy) and p.ring_dy < p.perf_inner     # just inside the perforations,
+    assert p.ring_dy > p.frame_h / 2                                                # outside the frame
+    assert p.y_pocket == pytest.approx(25 - (p.r_ring - 3) - 0.4)
+
+
+def test_the_tooth_grooves_in_the_gate_front():
+    p = DEFAULT
+    assert p.relief_depth == pytest.approx(p.x_ref - (p.x_sprocket - p.r_tip) + 0.35)
+    assert p.relief_depth == pytest.approx(1.2, abs=1e-3)
+    assert p.tooth_sweep == pytest.approx(math.sqrt(p.r_tip ** 2 - (p.x_sprocket - p.x_ref) ** 2))
+    assert p.relief_z - p.relief_depth > p.win_w / 2       # the grooves' ramps end outside the frame window
+
+
+def test_the_rolls_and_the_spools():
+    p = DEFAULT
+    assert p.roll_r_full == pytest.approx(math.sqrt(15 ** 2 + 1600 * 0.13 * 1.15 / math.pi))
+    assert p.roll_r_full < p.spool_flange_r - 3            # a whole roll fits with room to spare
+    assert p.roll_r_half ** 2 - 15 ** 2 == pytest.approx((p.roll_r_full ** 2 - 15 ** 2) / 2)
+    assert p.x_spool == pytest.approx(p.x_film - (p.spool_core_r + p.roll_r_full) / 2)
+    assert p.spool_z == pytest.approx(70)                  # flanges 3 clear of the gate's sides
+    assert p.y_spool == pytest.approx(p.axis - 17.5 - 0.5) and p.spool_core_h == pytest.approx(36)
+    assert p.y_pedestal == pytest.approx(p.y_spool - p.spool_flange_t)
+    assert p.dock_x0 == pytest.approx(p.x_spool - p.spool_flange_r - p.dock_margin)
+    assert p.spool_z + p.spool_flange_r < p.dock_w / 2     # the spools stand on the dock
 
 
 def test_baffles():
@@ -145,13 +186,12 @@ def test_a_bigger_adapter_raises_the_minimum():
         Params(adapter_r=45)                          # the default axis 42.5 is now too low
 
 
-def test_the_film_slot_starts_at_the_front_plates_rear_face():
-    # Flush with the front face, the side wall and the plate met only along an edge: a non-manifold solid
-    # Onshape rejects. From the rear face, the side wall covers the plate's end.
+def test_the_peg_points_are_outside_the_channel_and_the_pockets():
     p = DEFAULT
-    assert p.x_front_plate == pytest.approx(p.x_film - p.channel / 2 - p.plate_t) == pytest.approx(252.9)
-    assert p.film_slot_x0 == pytest.approx(p.x_front_plate + p.plate_t) == pytest.approx(254.7)
-    assert p.film_slot_x0 + p.film_slot_w == pytest.approx(257.9)     # the slot's far edge has not moved
+    assert p.peg_points == [(10, -41), (10, 41), (pytest.approx(70.5), -41), (pytest.approx(70.5), 41)]
+    for y, z in p.peg_points:
+        assert not (p.axis - p.channel_h / 2 - p.peg_d / 2 < y < p.axis + p.channel_h / 2 + p.peg_d / 2)
+        assert abs(z) - p.peg_d / 2 > p.sprocket_z + p.r_pocket / math.sqrt(2)
 
 
 def test_ks_perforations_and_frame_pitch():
@@ -161,18 +201,17 @@ def test_ks_perforations_and_frame_pitch():
     assert p.perf_inner == pytest.approx(12.7)          # 0.7 clear of the 24 frame's edge
 
 
-def test_the_strip_holds_six_frames_one_centred_on_the_window():
+def test_the_strip_holds_three_frames_one_centred_on_the_window():
     p = Params()
-    assert p.frame_zs == pytest.approx([-76, -38, 0, 38, 76, 114])
+    assert p.frame_zs == pytest.approx([-38, 0, 38])
     zs = p.perf_zs
-    assert len(zs) == 48
-    assert zs[0] == pytest.approx(-95 + 2.375) and zs[-1] == pytest.approx(133 - 2.375)
+    assert len(zs) == 26
+    assert zs[0] == pytest.approx(-59.375) and zs[-1] == pytest.approx(59.375)
     assert all(b - a == pytest.approx(4.75) for a, b in zip(zs, zs[1:]))
     assert sum(1 for z in zs if -18 < z < 18) == 8      # 8 perforations a frame, symmetric about its centre
 
 
 def test_frames_and_perforations_stay_on_a_shorter_strip():
-    p = Params(film_strip_len=120, film_strip_z=0)
-    assert p.frame_zs == pytest.approx([-38, 0, 38])                # -56 to 56 on a -60 to 60 strip
-    assert Params(film_strip_len=100, film_strip_z=0).frame_zs == pytest.approx([0])
-    assert min(p.perf_zs) - p.perf_l / 2 >= -60 and max(p.perf_zs) + p.perf_l / 2 <= 60
+    p = Params(film_strip_len=100)
+    assert p.frame_zs == pytest.approx([0])
+    assert min(p.perf_zs) - p.perf_l / 2 >= -50 and max(p.perf_zs) + p.perf_l / 2 <= 50

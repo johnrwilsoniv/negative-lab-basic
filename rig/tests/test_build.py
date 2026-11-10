@@ -22,7 +22,7 @@ def box(dx, dy, dz):
 
 def fake_part(solids, up, extras=None):
     """A stand-in for a parts.<part>.model module."""
-    part = SimpleNamespace(build=lambda p=DEFAULT, lock=False: solids, PRINT_UP=up)
+    part = SimpleNamespace(build=lambda p=DEFAULT, turn=0.0: solids, PRINT_UP=up)
     if extras is not None:
         part.extras = lambda p=DEFAULT: extras
     return part
@@ -48,7 +48,7 @@ def test_discover_finds_models_in_build_order_and_skips_missing(tmp_path, monkey
 
 
 def test_build_order_is_the_plan_order():
-    assert build.PARTS == ("lens_adapter", "tube", "film_gate", "lock_switch", "light_dock")
+    assert build.PARTS == ("lens_adapter", "tube", "film_gate", "film_drive", "spools", "light_dock")
 
 
 # ---- checks and exports --------------------------------------------------------------
@@ -155,7 +155,7 @@ def test_main_returns_nonzero_when_a_check_fails(tmp_path, capsys):
 def test_wd_and_axis_reach_the_parts(tmp_path):
     seen = []
 
-    def build_part(p=DEFAULT, lock=False):
+    def build_part(p=DEFAULT, turn=0.0):
         seen.append((p.wd, p.axis))
         return {"slab": box(10, 10, 10)}
 
@@ -207,7 +207,7 @@ def test_main_leaves_the_assembly_out_until_every_part_exists(tmp_path, capsys):
 
 
 def test_main_returns_nonzero_when_the_assembly_checks_fail(tmp_path, capsys):
-    # every printed solid present, none touching another, but no clamp at LOCK and none of the fits to measure
+    # every printed solid present, none touching another, but none of the fits to measure
     names = list(assembly.PRINTED)
     solids = {name: stub(20 * i, 20 * i + 10) for i, name in enumerate(names)}
     part = fake_part(solids, {name: "+z" for name in names})
@@ -215,49 +215,41 @@ def test_main_returns_nonzero_when_the_assembly_checks_fail(tmp_path, capsys):
     assert build.main([], parts={"fake": part}, out_dir=tmp_path) == 1
 
     out = capsys.readouterr().out
-    assert "should overlap" in out and "FAIL" in out
+    assert "not measured" in out and "FAIL" in out
     assert (tmp_path / "step" / "nlb-scan-rig-assembly.step").exists()
 
 
-def test_interference_report_at_the_designed_result():
-    slide = {"pressure_plate": stub(0, 1), "wedge_plate": stub(1, 2)}      # touching
-    lock = {"pressure_plate": stub(0, 1.1133), "wedge_plate": stub(1, 2)}   # 0.1133 in
-    lock_p = DEFAULT
+def turned(solids):
+    return {name: solids for name in assembly.TURNS}
 
-    text, ok = build.format_interference(lock_p, slide, lock)
+
+def test_interference_report_when_nothing_intersects():
+    touching = {"gate_front": stub(0, 1), "gate_body": stub(1, 2)}
+
+    text, ok = build.format_interference(DEFAULT, turned(touching))
 
     assert ok
-    assert "SLIDE" in text and "none" in text
-    assert "pressure_plate x wedge_plate" in text and "x-thickness 0.1133" in text
+    assert all(position in text for position in assembly.TURNS) and "none" in text
     assert "FAIL" not in text
 
 
-def test_interference_report_fails_on_a_slide_overlap():
-    slide = {"pressure_plate": stub(0, 1.5), "wedge_plate": stub(1, 2)}
-    lock = {"pressure_plate": stub(0, 1.1133), "wedge_plate": stub(1, 2)}
+def test_interference_report_fails_on_an_overlap_at_any_knob_position():
+    touching = {"gate_front": stub(0, 1), "gate_body": stub(1, 2)}
+    overlap = {"gate_front": stub(0, 1.5), "gate_body": stub(1, 2)}
 
-    text, ok = build.format_interference(DEFAULT, slide, lock)
-
-    assert not ok
-    assert "FAIL" in text and "SLIDE" in text
-
-
-def test_interference_report_fails_on_a_lock_without_the_clamp():
-    touching = {"pressure_plate": stub(0, 1), "wedge_plate": stub(1, 2)}
-
-    text, ok = build.format_interference(DEFAULT, touching, touching)
+    text, ok = build.format_interference(DEFAULT, {"FRAME": touching, "HALF TOOTH": overlap})
 
     assert not ok
-    assert "FAIL" in text and "should overlap" in text
+    assert "FAIL HALF TOOTH" in text and "FAIL FRAME" not in text
 
 
 def test_interference_report_names_every_pair_that_intersects():
-    slide = {"tube": stub(0, 5), "adapter": stub(4, 9), "film": stub(4.5, 6)}
+    solids = {"tube": stub(0, 5), "adapter": stub(4, 9), "film": stub(4.5, 6)}
 
-    text, ok = build.format_interference(DEFAULT, slide, slide)
+    text, ok = build.format_interference(DEFAULT, turned(solids))
 
     assert not ok
-    assert "tube x adapter" in text and "tube x film" in text and "adapter x film" in text
+    assert "tube and adapter" in text and "tube and film" in text and "adapter and film" in text
 
 
 def test_bed_report_gives_every_solids_margin_on_each_side():
@@ -294,13 +286,11 @@ def test_a_full_build_passes_and_writes_the_assembly_step(real_run):
     assert "FAIL" not in out
     path = out_dir / "step" / "nlb-scan-rig-assembly.step"
     assert path.stat().st_size > 0
-    assert len(cadutil.step_assembly(path)) == 16         # 8 printed, the film, its 6 frames, the CS-Lite
+    assert len(cadutil.step_assembly(path)) == 23         # 16 printed, the film, its 3 frames, 2 rolls, the CS-Lite
 
 
 def test_a_full_build_reports_the_assembly_in_order(real_run):
     _, out, _ = real_run
     order = [out.index(text) for text in
-             ("thread_coupon", "Assembly STEP", "Interference", "pressure_plate x wedge_plate",
-              "radial clearance", "Bed margins")]
+             ("thread_coupon", "Assembly STEP", "Interference", "HALF TOOTH", "radial clearance", "Bed margins")]
     assert order == sorted(order)
-    assert out.count("pressure_plate x wedge_plate") == 1       # LOCK only

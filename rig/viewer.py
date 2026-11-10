@@ -2,10 +2,10 @@
 
     uv run python viewer.py [--wd W] [--axis A]
 
-Writes exports/viewer/<solid>.stl (the assembled pose, mockup coordinates, at SLIDE) and
+Writes exports/viewer/<solid>.stl (the assembled pose, mockup coordinates, a frame in the window) and
 exports/nlb-scan-rig.html, one self-contained page with those STLs embedded. The page template is
-mockup/viewer.html. The camera, lens, film and CS-Lite are still drawn by the page: they are bought,
-so there is no CAD for them.
+mockup/viewer.html. The camera, lens, film, rolls and CS-Lite are still drawn by the page: they are
+bought, so there is no CAD for them. The page turns the sprockets, gears and idler itself (its "Advance a frame").
 """
 
 import argparse
@@ -28,26 +28,17 @@ STL_DIR = build.EXPORTS / "viewer"
 MARK = "/*__RIG_DATA__*/null"
 
 
-def _offset(slide: cadutil.Bounds, lock: cadutil.Bounds) -> list[float]:
-    """How far a solid moves from SLIDE to LOCK; ValueError unless it only moves (the page only translates)."""
-    lo = [lock[i] - slide[i] for i in (0, 2, 4)]
-    hi = [lock[i] - slide[i] for i in (1, 3, 5)]
-    if any(abs(a - b) > 1e-6 for a, b in zip(lo, hi)):
-        raise ValueError("a solid changes shape between SLIDE and LOCK")
-    return [round(v + 0.0, 6) for v in lo]
-
-
 def data(p: Params, stl_dir: Path = STL_DIR) -> dict:
     """Everything the page needs: each printed solid's STL and numbers, the fits, the params."""
     modules = build.discover()
-    slide = assembly.placed(p, False, modules)
-    lock = assembly.placed(p, True, modules)
+    turned = {name: assembly.placed(p, turn, modules) for name, turn in assembly.TURNS.items()}
+    framed = turned["FRAME"]
     ups = {name: up for m in modules.values() for name, up in m.PRINT_UP.items()}
     stl_dir.mkdir(parents=True, exist_ok=True)
 
     solids = []
     for name in assembly.PRINTED:
-        wp = slide[name]
+        wp = framed[name]
         path = stl_dir / f"{name}.stl"
         ok = cadutil.solid(wp).exportStl(
             str(path), tolerance=cadutil.STL_LINEAR_TOL, angularTolerance=cadutil.STL_ANGULAR_TOL, relative=False
@@ -58,7 +49,6 @@ def data(p: Params, stl_dir: Path = STL_DIR) -> dict:
         solids.append({
             "name": name,
             "stl": base64.b64encode(path.read_bytes()).decode(),
-            "lock": _offset(cadutil.bounds(wp), cadutil.bounds(lock[name])),
             "volume": round(cadutil.volume(wp), 1),
             "size": [round(v, 2) for v in cadutil.size(wp)],
             "print": [round(v, 2) for v in cadutil.size(posed)],
@@ -66,23 +56,24 @@ def data(p: Params, stl_dir: Path = STL_DIR) -> dict:
             "bed": cadutil.fits_bed(posed, p),
         })
 
-    found = {pos: assembly.interference(p, is_lock, s) for pos, is_lock, s in (("SLIDE", False, slide), ("LOCK", True, lock))}
+    found = {pos: assembly.interference(p, assembly.TURNS[pos], s) for pos, s in turned.items()}
     return {
         "p": {
             k: getattr(p, k) for k in (
                 "wd", "axis", "lens_len", "lens_r", "thread_major", "thread_pitch", "x_front", "x_film",
-                "x_gate", "x_light", "gh", "gate_d", "channel", "film_t", "film_w", "film_strip_len",
-                "film_strip_z", "csl_l", "csl_h", "csl_t", "csl_lit_w", "csl_lit_h", "floor_t",
-                "sw_travel", "preload", "bed_x", "bed_y", "win_w", "win_h", "gap",
+                "x_gate", "x_light", "x_ref", "gh", "gate_d", "channel", "film_t", "film_w", "film_strip_len",
+                "csl_l", "csl_h", "csl_t", "csl_lit_w", "csl_lit_h", "floor_t",
+                "bed_x", "bed_y", "win_w", "win_h", "gap", "x_sprocket", "sprocket_z", "frame_pitch",
+                "x_spool", "spool_z", "roll_r_half",
                 "frame_w", "frame_h", "frame_zs", "perf_l", "perf_w", "perf_r", "perf_inner", "perf_zs",
             )
         },
         "solids": solids,
         "fits": [
             {"label": f.label, "measured": f.measured, "expected": f.expected, "ok": f.ok}
-            for f in fits.report(p, slide, lock)
+            for f in fits.report(p, framed)
         ],
-        "interference": {pos: assembly.problems(p, pos == "LOCK", f) for pos, f in found.items()},
+        "interference": {pos: assembly.problems(f) for pos, f in found.items()},
     }
 
 

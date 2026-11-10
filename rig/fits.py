@@ -1,6 +1,6 @@
 """The mating fits, measured on the assembled solids (not read from params.py).
 
-`report(p, slide, lock)` takes `assembly.placed(p, False)` and `assembly.placed(p, True)`, measures each
+`report(p, solids)` takes `assembly.placed(p)` (a frame centred), measures each
 fit with thin probes and the exact bounds of what they take from a solid (cadutil), and sets it
 against what the design intends, which params.py gives. A fit that cannot be measured, say because a
 solid is missing, is a failed fit, not an exception.
@@ -68,14 +68,6 @@ def _rays(wp: cq.Workplane, p: Params, x0: float, x1: float) -> dict[str, float 
     return out
 
 
-def _walled(rays: dict[str, float | None], what: str) -> dict[str, float]:
-    """`rays` with a distance on every side; LookupError if `what` has no wall toward one."""
-    gone = [side for side, distance in rays.items() if distance is None]
-    if gone:
-        raise LookupError(f"{what} has no wall toward {', '.join(gone)}")
-    return {side: distance for side, distance in rays.items() if distance is not None}
-
-
 def _outer_radii(wp: cq.Workplane, p: Params) -> dict[str, float]:
     """How far `wp` reaches from the lens axis along +y, -y, +z, -z."""
     _, _, ya, yb, za, zb = cadutil.bounds(wp)
@@ -101,78 +93,152 @@ def _radial_clearance(
     return min(gaps.values()), note
 
 
-def _face(wp: cq.Workplane, p: Params, back: bool) -> float:
-    """x of a plate's front (back=False) or back face, probed below the window where there is only plate."""
-    hit = _slice_bounds(wp, p.x_film - 6, p.x_film + 6, p.wall + 1, p.wall + 5, -10, 10)
-    return hit[1] if back else hit[0]
 
 
-def _window_z_edges(wp: cq.Workplane, p: Params, x0: float, x1: float) -> tuple[float, float]:
-    """z of the window's two edges on the lens axis, in the plate between x0 and x1."""
-    t = SLICE
-    left = _slice_bounds(wp, x0, x1, p.axis - t, p.axis + t, -REACH, 0)[5]
-    right = _slice_bounds(wp, x0, x1, p.axis - t, p.axis + t, 0, REACH)[4]
-    return left, right
+def _x_face(wp: cq.Workplane, p: Params, near: bool) -> float:
+    """x of the near (lens side, near=True: its least x) or far face of `wp` in the channel's height, beside the window,
+    between the sprocket pocket and the lead-in (z 38 .. 42): where the gate front and the gate body face each other."""
+    hit = _slice_bounds(wp, p.x_film - 6, p.x_film + 6, p.axis - 5, p.axis + 5, 38, 42)
+    return hit[0] if near else hit[1]
 
 
-def _wedge_window_clearance(solids: Solids, p: Params) -> float:
-    """How far, in z, the frame window (in the front plate) is inside the wedge plate's window."""
-    wedge = cadutil.bounds(solids["wedge_plate"])
-    rear = _face(solids["gate_front"], p, back=True)
-    frame_l, frame_r = _window_z_edges(solids["gate_front"], p, rear - 1.0, rear - 0.1)
-    wedge_l, wedge_r = _window_z_edges(solids["wedge_plate"], p, wedge[0], wedge[1])
-    return min(frame_l - wedge_l, wedge_r - frame_r)
+def _channel_height(body: cq.Workplane, p: Params) -> float:
+    """The channel's walls in y, probed in its depth at z 38 .. 42."""
+    x = (p.x_ref + 0.01, p.x_ref + p.channel / 2)
+    top = _slice_bounds(body, *x, p.axis, p.axis + REACH, 38, 42)[2]
+    bottom = _slice_bounds(body, *x, p.axis - REACH, p.axis, 38, 42)[3]
+    return top - bottom
 
 
-def _tab_slot(solids: Solids, p: Params) -> dict[str, float]:
-    """x clearance each side of the tab in the lid's slot, and z clearance from the tab to each end of the slot."""
-    lid, wedge = solids["gate_lid"], solids["wedge_plate"]
-    top = cadutil.bounds(lid)[3]
-    y0, y1 = top - p.wall + 0.5, top - 0.5      # within the lid's thickness, above the wedge plate: only the tab
-    wx0, wx1 = cadutil.bounds(wedge)[:2]
-    tx0, tx1, _, _, tz0, tz1 = _slice_bounds(wedge, wx0 - 1, wx1 + 1, y0, y1, -REACH, REACH)
+def _on_line(wp: cq.Workplane, x0: float, x1: float, y0: float, y1: float, z: float) -> cadutil.Bounds:
+    """What `wp` has in x0 .. x1, y0 .. y1, on the plane z (a SLICE either side)."""
+    return _slice_bounds(wp, x0, x1, y0, y1, z - SLICE, z + SLICE)
+
+
+def _drive(solids: Solids, p: Params) -> dict[str, float]:
+    """The supply side's sprocket against the film, the gate front's groove, its pocket, its two bearings and its gear's
+    D-bore; the idler on its axle; the axle in the deck. A frame is centred, so tooth 0 points at the film."""
+    sp, front, body, deck = solids["sprocket_supply"], solids["gate_front"], solids["gate_body"], solids["deck"]
+    xs, zs = p.x_sprocket, -p.sprocket_z
+    row = p.axis - p.perf_dy
+    film_back = cadutil.bounds(solids["film"])[1]
+    y_deck = p.y_deck + p.deck_t / 2
+    y_gear = p.y_gear + p.gear_t / 2
+    shaft = _on_line(sp, xs, xs + REACH, y_deck - 1, y_deck + 1, zs)[1]
     return {
-        "front": tx0 - _slice_bounds(lid, tx0 - 3, tx0, y0, y1, tz0, tz1)[1],
-        "rear": _slice_bounds(lid, tx1, tx1 + 3, y0, y1, tz0, tz1)[0] - tx1,
-        "z": min(
-            tz0 - _slice_bounds(lid, tx0, tx1, y0, y1, -REACH, tz0)[5],
-            _slice_bounds(lid, tx0, tx1, y0, y1, tz1, REACH)[4] - tz1,
-        ),
+        "ring": _on_line(sp, xs - REACH, xs, p.y_ring_lo[0] + 0.2, p.y_ring_lo[0] + 1.5, zs)[0] - film_back,
+        "groove": (_on_line(sp, xs - REACH, p.x_ref, row - 0.1, row + 0.1, zs)[0]
+                   - _on_line(front, p.x_ref - 3, p.x_ref, row - 0.1, row + 0.1, zs)[1]),
+        "pocket": (_on_line(body, xs + 1, xs + REACH, row - 0.1, row + 0.1, zs)[0]
+                   - _on_line(sp, xs, xs + REACH, row - 0.1, row + 0.1, zs)[1]),
+        "deck": _on_line(deck, xs, xs + REACH, y_deck - 1, y_deck + 1, zs)[0] - shaft,
+        "floor": (_on_line(body, xs, xs + REACH, p.shaft_floor + 2, p.shaft_floor + 6, zs)[0]
+                  - _on_line(sp, xs, xs + REACH, p.shaft_floor + 2, p.shaft_floor + 6, zs)[1]),
+        "flat": (_slice_bounds(solids["gear_supply"], xs - SLICE, xs + SLICE, y_gear - 1, y_gear + 1, zs, zs + 5)[4]
+                 - _slice_bounds(sp, xs - SLICE, xs + SLICE, y_gear - 1, y_gear + 1, zs, zs + 5)[5]),
+        "idler": (_on_line(solids["idler"], xs, xs + REACH, y_gear - 1, y_gear + 1, 0)[0]
+                  - _on_line(solids["idler_axle"], xs, xs + REACH, y_gear - 1, y_gear + 1, 0)[1]),
+        "axle": (_on_line(deck, xs, xs + REACH, y_deck - 1, y_deck + 1, 0)[0]
+                 - _on_line(solids["idler_axle"], xs, xs + REACH, y_deck - 1, y_deck + 1, 0)[1]),
     }
+
+
+def _peg(solids: Solids, p: Params) -> float:
+    """The lower +z peg in its hole, radially toward +z."""
+    y, z = p.peg_points[1]
+    x = (p.x_ref - p.peg_len + 1, p.x_ref - 1)
+    peg = _slice_bounds(solids["gate_body"], *x, y - SLICE, y + SLICE, z, z + REACH)[5]
+    hole = _slice_bounds(solids["gate_front"], *x, y - SLICE, y + SLICE, z, z + REACH)[4]
+    return hole - peg
+
+
+def _spool(solids: Solids, p: Params) -> dict[str, float]:
+    """The supply spool: its flanges to the roll's edges, its bore on the dock's pin, the cap's spigot in its socket."""
+    sp, cap, roll, dock = solids["spool_supply"], solids["cap_supply"], solids["roll_supply"], solids["light_dock"]
+    xs, zs = p.x_spool, -p.spool_z
+    r = (p.spool_core_r + p.roll_r_half) / 2        # in the roll, between the core and its outside
+    _, _, ry0, ry1, _, _ = cadutil.bounds(roll)
+    y_socket = p.y_spool + p.spool_core_h - p.cap_spigot_h / 2
+    return {
+        "lower": ry0 - _on_line(sp, xs + r - 0.5, xs + r + 0.5, ry0 - REACH, ry0, zs)[3],
+        "upper": _on_line(cap, xs + r - 0.5, xs + r + 0.5, ry1, ry1 + REACH, zs)[2] - ry1,
+        "pin": (_on_line(sp, xs, xs + REACH, p.y_spool + 5, p.y_spool + 10, zs)[0]
+                - _on_line(dock, xs, xs + REACH, p.y_spool + 5, p.y_spool + 10, zs)[1]),
+        "cap": (_on_line(sp, xs + 1, xs + REACH, y_socket - 0.5, y_socket + 0.5, zs)[0]
+                - _on_line(cap, xs, xs + REACH, y_socket - 0.5, y_socket + 0.5, zs)[1]),
+    }
+
+
+def _gate_seat(solids: Solids, p: Params) -> dict[str, float]:
+    """The gate body's clearance to the dock's notch in z (the smaller), probed in the floor's thickness over the
+    floor arms; how far the body's rear face is in front of the CS-Lite's lit face, probed beside its light passage;
+    and the floor's edge in front of the gate front, in x."""
+    dock, body, front = solids["light_dock"], solids["gate_body"], solids["gate_front"]
+    x0, x1 = cadutil.bounds(body)[0] + p.peg_len, cadutil.bounds(solids["cs_lite"])[0]
+    floor = (0.5, p.floor_t - 0.5)
+    beside = (p.axis - 1, p.axis + 1, p.rear_win_w / 2 + 1, p.gw / 2 - 1)
+    return {
+        "z": min(
+            _gap(body, dock, 2, x0, x1, *floor, 0, REACH),
+            _gap(dock, body, 2, x0, x1, *floor, -REACH, 0),
+        ),
+        "light": x1 - _slice_bounds(body, x1 - REACH, x1 + REACH, *beside)[1],
+        "front": _gap(dock, front, 0, p.x_gate - REACH, p.x_gate + 1, *floor, -10, 10),
+    }
+
+
+# ---- the report -------------------------------------------------------------------
+
+
+def _fit(label: str, expected: float, measure: Callable[[], float | tuple[float, str]]) -> Fit:
+    try:
+        got = measure()
+    except (LookupError, ValueError, KeyError) as err:      # a solid missing, or nothing where the probe looks
+        return Fit(label, None, expected, note=f"not measured ({type(err).__name__}: {err})")
+    measured, note = got if isinstance(got, tuple) else (got, "")
+    return Fit(label, measured, expected, note=note)
+
+
+def report(p: Params, solids: Solids) -> list[Fit]:
+    """Every fit, each measured on the solids (a frame centred) and compared with what params.py intends."""
+    s = solids
+    drive = functools.cache(lambda: _drive(s, p))
+    spool = functools.cache(lambda: _spool(s, p))
+    seat = functools.cache(lambda: _gate_seat(s, p))
+    return [
+        _fit("tube / adapter socket, radial clearance", p.fit_clear, lambda: _radial_clearance(
+            s["tube"], s["adapter"], p, cadutil.bounds(s["tube"])[0])),
+        _fit("tube / gate front socket, radial clearance", p.fit_clear, lambda: _radial_clearance(
+            s["tube"], s["gate_front"], p, cadutil.bounds(s["gate_front"])[0])),
+        _fit("film channel, gate front to gate body", p.channel,
+             lambda: _x_face(s["gate_body"], p, near=True) - _x_face(s["gate_front"], p, near=False)),
+        _fit("film / gate front (reference plane)", (p.channel - p.film_t) / 2,
+             lambda: cadutil.bounds(s["film"])[0] - _x_face(s["gate_front"], p, near=False)),
+        _fit("film channel height less the film", p.channel_clear, lambda: _channel_height(s["gate_body"], p) - p.film_w),
+        _fit("peg / hole in the gate front, radial", p.peg_fit / 2, lambda: _peg(s, p)),
+        _fit("film / sprocket rings", p.ring_clear, lambda: drive()["ring"]),
+        _fit("tooth tip / groove in the gate front", p.relief_clear, lambda: drive()["groove"]),
+        _fit("tooth tip / sprocket pocket, radial", p.pocket_clear, lambda: drive()["pocket"]),
+        _fit("sprocket shaft / deck bearing, radial", p.bearing_clear, lambda: drive()["deck"]),
+        _fit("sprocket shaft / gate body bearing, radial", p.bearing_clear, lambda: drive()["floor"]),
+        _fit("gear's D-bore / shaft's flat", p.flat_clear, lambda: drive()["flat"]),
+        _fit("idler / its axle, radial", p.bearing_clear, lambda: drive()["idler"]),
+        _fit("idler axle / deck (pressed)", 0.0, lambda: drive()["axle"]),
+        _fit("spool's lower flange / roll", p.spool_clear, lambda: spool()["lower"]),
+        _fit("cap / roll", p.spool_clear, lambda: spool()["upper"]),
+        _fit("spool / dock pin, radial", p.bearing_clear, lambda: spool()["pin"]),
+        _fit("cap spigot / spool socket (pressed)", 0.0, lambda: spool()["cap"]),
+        _fit("CS-Lite slot, width less the panel", p.csl_clear, lambda: _csl_slot(s)),
+        _fit("gate body / dock notch, z clearance (the smaller)", p.dock_gate_clear, lambda: seat()["z"]),
+        _fit("gate body rear face / CS-Lite lit face", 0.0, lambda: seat()["light"]),
+        _fit("gate front / dock floor's edge, x clearance", p.dock_gate_clear, lambda: seat()["front"]),
+    ]
 
 
 def _gap(lower: cq.Workplane, upper: cq.Workplane, axis: int, *ranges: float) -> float:
     """How far `upper` starts beyond where `lower` ends along x (axis 0), y (1) or z (2), both measured on what
     the probe over `ranges` (x0 x1 y0 y1 z0 z1) takes from them."""
     return _slice_bounds(upper, *ranges)[2 * axis] - _slice_bounds(lower, *ranges)[2 * axis + 1]
-
-
-def _plate_clearances(solids: Solids, p: Params) -> dict[str, float]:
-    """The pressure plate's clearance to the floor, to the lid, and to the nearer side wall, each probed in the
-    plate's own shadow: its x and z span for the floor and lid; its x span, below the film slots, for the walls."""
-    plate, box, lid = solids["pressure_plate"], solids["gate_body"], solids["gate_lid"]
-    x0, x1, y0, y1, z0, z1 = cadutil.bounds(plate)
-    low = (p.wall + 1, p.wall + 5)              # under the film slots (and the window), as `_face` probes
-    return {
-        "floor": _gap(box, plate, 1, x0, x1, y0 - REACH, y1, z0, z1),
-        "lid": _gap(plate, lid, 1, x0, x1, y0, y1 + REACH, z0, z1),
-        "side": min(
-            _gap(plate, box, 2, x0, x1, *low, 0, z1 + REACH),
-            _gap(box, plate, 2, x0, x1, *low, z0 - REACH, 0),
-        ),
-    }
-
-
-def _lid_ends(solids: Solids) -> dict[str, float]:
-    """x clearance from the gate front to the lid's front end, and from the lid's rear end to the body's rear wall,
-    probed within the lid's thickness (where the body has only its rear wall) and below the gate front's lettering."""
-    lid, front, body = solids["gate_lid"], solids["gate_front"], solids["gate_body"]
-    x0, x1, y0, y1, _, _ = cadutil.bounds(lid)
-    mid, y = (x0 + x1) / 2, (y0 + 0.5, y1 - 0.5)
-    return {
-        "front": _gap(front, lid, 0, x0 - REACH, mid, *y, -REACH, REACH),
-        "rear": _gap(lid, body, 0, mid, x1 + REACH, *y, -REACH, REACH),
-    }
 
 
 def _csl_slot(solids: Solids) -> float:
@@ -184,91 +250,6 @@ def _csl_slot(solids: Solids) -> float:
     front = _slice_bounds(dock, x0 - REACH, mid, *y, z0, z1)[1]
     back = _slice_bounds(dock, mid, x1 + REACH, *y, z0, z1)[0]
     return (back - front) - (x1 - x0)
-
-
-def _gate_seat(solids: Solids, p: Params) -> dict[str, float]:
-    """The gate body's clearance to the dock's notch in z (the smaller), probed in the floor's thickness over the
-    floor arms; how far the body's rear face is in front of the CS-Lite's lit face, probed on the rear wall
-    beside its window; and the dock's front wall's clearance to the gate front, in x (F11)."""
-    dock, body, front = solids["light_dock"], solids["gate_body"], solids["gate_front"]
-    x0, x1 = cadutil.bounds(body)[0], cadutil.bounds(solids["cs_lite"])[0]
-    floor = (0.5, p.floor_t - 0.5)
-    beside = (p.axis - 1, p.axis + 1, p.rear_win_w / 2 + 1, p.gw / 2 - 1)      # the rear wall, +z of the window
-    return {
-        "z": min(
-            _gap(body, dock, 2, x0, x1, *floor, 0, REACH),
-            _gap(dock, body, 2, x0, x1, *floor, -REACH, 0),
-        ),
-        "light": x1 - _slice_bounds(body, x1 - REACH, x1 + REACH, *beside)[1],
-        # the front wall to the gate front's front face, beside the tube and below the lower screw counterbores' z
-        "front": _gap(dock, front, 0, x0 - REACH, x0, p.floor_t + 1, p.floor_t + 5, p.tube_ro + 2, p.gw / 2),
-    }
-
-
-# ---- the report -------------------------------------------------------------------
-
-
-def _fit(label: str, expected: float, measure: Callable[[], float | tuple[float, str]]) -> Fit:
-    try:
-        got = measure()
-    except (LookupError, ValueError) as err:       # a solid missing, or nothing where the probe looks
-        return Fit(label, None, expected, note=f"not measured ({type(err).__name__}: {err})")
-    measured, note = got if isinstance(got, tuple) else (got, "")
-    return Fit(label, measured, expected, note=note)
-
-
-def report(p: Params, slide: Solids, lock: Solids) -> list[Fit]:
-    """Every fit, each measured on the solids and compared with what params.py intends."""
-    both = {"SLIDE": slide, "LOCK": lock}
-    out = [
-        _fit("tube / adapter socket, radial clearance", p.fit_clear, lambda: _radial_clearance(
-            slide["tube"], slide["adapter"], p, cadutil.bounds(slide["tube"])[0])),
-        _fit("tube / gate front socket, radial clearance", p.fit_clear, lambda: _radial_clearance(
-            slide["tube"], slide["gate_front"], p, cadutil.bounds(slide["gate_front"])[0])),
-        _fit("film / gate front (reference plane)", 0.0,
-             lambda: cadutil.bounds(slide["film"])[0] - _face(slide["gate_front"], p, back=True)),
-    ]
-    intended_channel = {"SLIDE": p.channel, "LOCK": p.channel - p.lock_shift}
-    intended_gap = {"SLIDE": p.channel - p.film_t, "LOCK": 0.0}
-    for name, solids in both.items():
-        out.append(_fit(f"film channel, {name}", intended_channel[name], lambda s=solids: (
-            _face(s["pressure_plate"], p, back=False) - _face(s["gate_front"], p, back=True)
-        )))
-        out.append(_fit(f"film / pressure plate, {name}", intended_gap[name], lambda s=solids: (
-            _face(s["pressure_plate"], p, back=False) - cadutil.bounds(s["film"])[1]
-        )))
-    plate = functools.cache(lambda: _plate_clearances(slide, p))      # measured once for its three rows
-    out += [
-        _fit("pressure plate / floor, clearance", p.plate_clear, lambda: plate()["floor"]),
-        _fit("pressure plate / lid, clearance", p.plate_clear, lambda: plate()["lid"]),
-        _fit("pressure plate / side walls, clearance (the smaller)", p.plate_clear, lambda: plate()["side"]),
-    ]
-    wedge_clear = (p.wedge_win_w - p.win_w) / 2 - p.sw_travel / 2
-    for name, solids in both.items():
-        out.append(_fit(f"wedge window / frame window, z clearance, {name}", wedge_clear,
-                        lambda s=solids: _wedge_window_clearance(s, p)))
-    lid = functools.cache(lambda: _lid_ends(slide))
-    out += [
-        _fit("tab / lid slot, x clearance, front", p.tab_clear, lambda: _tab_slot(slide, p)["front"]),
-        _fit("tab / lid slot, x clearance, rear", p.tab_clear, lambda: _tab_slot(slide, p)["rear"]),
-        _fit("lid / gate front, x clearance", p.lid_clear, lambda: lid()["front"]),
-        _fit("wedge plate / backer, x clearance", p.wedge_back_clear, lambda: _gap(
-            slide["wedge_plate"], slide["gate_body"], 0, p.x_film, p.x_light, p.wall + 2, p.axis - p.film_w / 2 - 2, -20, 20)),
-        _fit("lid / rear wall, x clearance", p.lid_clear, lambda: lid()["rear"]),
-    ]
-    for name, solids in both.items():
-        out.append(_fit(f"tab / lid slot, z clearance to the end, {name}", p.slot_end - p.tab_w / 2,
-                        lambda s=solids: _tab_slot(s, p)["z"]))
-    out += [
-        _fit("CS-Lite slot, width less the panel", p.csl_clear, lambda: _csl_slot(slide)),
-        _fit("gate body / dock notch, z clearance (the smaller)", p.dock_gate_clear,
-             lambda: _gate_seat(slide, p)["z"]),
-        _fit("gate body rear face / CS-Lite lit face", 0.0, lambda: _gate_seat(slide, p)["light"]),
-        _fit("gate front / dock front wall, x clearance", p.dock_gate_clear, lambda: _gate_seat(slide, p)["front"]),
-        _fit("tube / dock front wall, radial clearance", p.dock_tube_clear, lambda: _radial_clearance(
-            slide["tube"], slide["light_dock"], p, cadutil.bounds(slide["light_dock"])[0], "a U, open at the top, F11")),
-    ]
-    return out
 
 
 def format_report(report: Sequence[Fit]) -> str:

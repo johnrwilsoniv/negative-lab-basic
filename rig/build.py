@@ -4,7 +4,7 @@
 
 Writes exports/step/<solid>.step and exports/stl/<solid>.stl, prints one table of numbers,
 then puts the parts together: writes exports/step/nlb-scan-rig-assembly.step, checks that nothing
-intersects at SLIDE or LOCK, and prints the fit numbers and the bed margins. Exits non-zero if any
+intersects with the knob at either of its positions (assembly.TURNS), and prints the fit numbers and the bed margins. Exits non-zero if any
 check fails, and with 2 and a one-line message (nothing built) if the params are impossible, such as
 an axis too low for the lens adapter.
 """
@@ -26,7 +26,7 @@ from params import Params
 
 ROOT = Path(__file__).parent
 EXPORTS = ROOT / "exports"
-PARTS = ("lens_adapter", "tube", "film_gate", "lock_switch", "light_dock")   # build order
+PARTS = ("lens_adapter", "tube", "film_gate", "film_drive", "spools", "light_dock")   # build order
 
 Size = tuple[float, float, float]
 
@@ -132,28 +132,22 @@ def format_table(rows: Sequence[Row]) -> str:
     return cadutil.format_table([header, *cells])
 
 
-def format_interference(
-    p: Params, slide: Mapping[str, cq.Workplane], lock: Mapping[str, cq.Workplane]
-) -> tuple[str, bool]:
-    """The interference report for the assembled `slide` and `lock` solids, and whether it is as designed."""
+def format_interference(p: Params, turned: Mapping[str, Mapping[str, cq.Workplane]]) -> tuple[str, bool]:
+    """The interference report for the assembled solids at each knob position in `turned` (name: solids), and whether
+    nothing intersects."""
+    first = next(iter(turned.values()))
     lines = [
-        f"Interference: {len(assembly.pairs(slide))} pairs at each position; touching (a common volume of "
+        f"Interference: {len(assembly.pairs(first))} pairs at each knob position; touching (a common volume of "
         f"at most {assembly.CONTACT_VOLUME:g} mm3) is fine"
     ]
     ok = True
-    for position, is_lock, solids in (("SLIDE", False, slide), ("LOCK", True, lock)):
-        found = assembly.interference(p, is_lock, solids)
-        wrong = assembly.problems(p, is_lock, found)
-        designed = {frozenset((a, b)): thickness for a, b, thickness in assembly.allowed(p, is_lock)}
+    width = max(len(name) for name in turned)
+    for position, solids in turned.items():
+        found = assembly.interference(p, assembly.TURNS.get(position, 0.0), solids)
+        wrong = assembly.problems(found)
         ok = ok and not wrong
-        for a, b, volume, thickness in found:
-            note = (
-                f"designed: preload {designed[frozenset((a, b))]:.4f} +- {assembly.PRELOAD_TOL:g}"
-                if frozenset((a, b)) in designed else "not allowed"
-            )
-            lines.append(f"  {position:<5}  {a} x {b}  {volume:.4f} mm3  x-thickness {thickness:.4f}  ({note})")
         if not found:
-            lines.append(f"  {position:<5}  none")
+            lines.append(f"  {position:<{width}}  none")
         lines += [f"  FAIL {position}: {message}" for message in wrong]
     return "\n".join(lines), ok
 
@@ -171,33 +165,33 @@ def format_bed(rows: Sequence[Row], p: Params) -> str:
 def check_assembly(p: Params, parts: Mapping[str, ModuleType], rows: Sequence[Row], out_dir: Path) -> bool:
     """Put the parts together and print what comes of it; whether every check passed.
 
-    Writes the assembly STEP (SLIDE) into out_dir/step and reads it back. Waits for every part to exist.
+    Writes the assembly STEP (a frame centred) into out_dir/step and reads it back. Waits for every part to exist.
     """
     if any(r.error for r in rows):
         print("\nAssembly skipped: fix the solids above first.")
         return False
-    slide = assembly.placed(p, False, parts)
-    missing = [name for name in assembly.PRINTED if name not in slide]
+    turned = {name: assembly.placed(p, turn, parts) for name, turn in assembly.TURNS.items()}
+    first = next(iter(turned.values()))
+    missing = [name for name in assembly.PRINTED if name not in first]
     if missing:
         print(f"\nAssembly skipped: no {', '.join(missing)} yet.")
         return True
-    lock = assembly.placed(p, True, parts)
 
     path = out_dir / "step" / assembly.STEP_PATH.name
-    assembly.write_step(p, path, slide)
-    step = assembly.check_step(path, slide)
+    assembly.write_step(p, path, first)
+    step = assembly.check_step(path, first)
     print(f"\nAssembly STEP: {path}")
     print(
-        f"  {len(slide)} solids written (SLIDE), {step.count} read back; volume {step.expected:.1f} mm3 written, "
-        f"{step.volume:.1f} read back, dV {step.error:.1e}"
+        f"  {len(first)} solids written (a frame centred), {step.count} read back; volume {step.expected:.1f} mm3 "
+        f"written, {step.volume:.1f} read back, dV {step.error:.1e}"
     )
     for message in step.problems:
         print(f"  FAIL: {message}")
 
-    text, interference_ok = format_interference(p, slide, lock)
+    text, interference_ok = format_interference(p, turned)
     print("\n" + text)
 
-    report = fits.report(p, slide, lock)
+    report = fits.report(p, first)
     print("\nFit numbers, measured on the assembled solids\n" + fits.format_report(report))
 
     print(f"\nBed margins ({p.bed_x:g} x {p.bed_y:g}, print pose)\n" + format_bed(rows, p))

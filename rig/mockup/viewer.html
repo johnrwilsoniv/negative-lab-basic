@@ -132,7 +132,7 @@ td.c { text-align: right; width: 1%; }
     <div class="loading" id="loading">loading CAD…</div>
     <div class="toolbar" id="toolbar">
       <button id="bExplode" aria-pressed="true">Exploded</button>
-      <button id="bLock" aria-pressed="false">Lock film</button>
+      <button id="bLock" aria-pressed="false">Advance a frame</button>
       <button id="bCut" aria-pressed="false">Cutaway</button>
       <button id="bRef" aria-pressed="true">Camera &amp; lens</button>
       <button id="bThread">Zoom to threads</button>
@@ -144,7 +144,7 @@ td.c { text-align: right; width: 1%; }
   <aside class="rail">
     <header>
       <h1>NLB Scan Rig</h1>
-      <p class="sub">CadQuery model · every printed solid as built by <code>build.py</code>, in place at SLIDE or LOCK</p>
+      <p class="sub">CadQuery model · every printed solid as built by <code>build.py</code>, in place with a frame in the window</p>
     </header>
 
     <section>
@@ -166,7 +166,7 @@ td.c { text-align: right; width: 1%; }
       <ul class="parts ref">
         <li tabindex="0" data-focus="cam"><span class="n">·</span><span class="t">Sony A7 + Laowa 90mm f/2.8 2X</span><span class="d">Drawn by the page, not CAD. Rests on the table; the gate box carries the front end.</span></li>
         <li tabindex="0" data-focus="light"><span class="n">·</span><span class="t">CineStill CS-Lite</span><span class="d">The assembly's reference panel, stood on its long edge in the dock's slot.</span></li>
-        <li tabindex="0" data-focus="film"><span class="n">·</span><span class="t">Film strip</span><span class="d">The assembly's reference strip, against the front plate's rear face.</span></li>
+        <li tabindex="0" data-focus="film"><span class="n">·</span><span class="t">Film</span><span class="d">The assembly's reference: the run through the gate's channel, and half the roll on each spool.</span></li>
       </ul>
     </section>
 
@@ -182,8 +182,9 @@ td.c { text-align: right; width: 1%; }
         <li>Real parts in matte black. The amber here only marks what gets printed.</li>
         <li>Print <code>thread_coupon</code> first: the adapter's M67 × 0.75 thread on a 2mm grip ring. It tells us if the thread fits before anything bigger is printed.</li>
         <li>Print the adapter flat, thread axis vertical, at 0.12–0.16mm layers.</li>
-        <li>The pressure plate and wedge plate print on their bottom edges, so the pad and ramp slopes are traced in each layer, not stepped.</li>
-        <li>Not in the CAD yet: leaf springs, plate guides, wedge plate grooves, detent bumps, and how the lid and dock fasten.</li>
+        <li>The gate front and gate body print with their film faces on the bed, or as the last layer: rear face down for both.</li>
+        <li>Sprockets print standing on their shaft's foot; their teeth come to a 45° ridge, so nothing hangs over air. Print them at 0.12 layers.</li>
+        <li>One knob turn is one frame. Push the film's end into the channel and turn the knob until the teeth catch it.</li>
         <li id="bedNote"></li>
       </ol>
     </section>
@@ -207,17 +208,26 @@ const RIG = /*__RIG_DATA__*/null;
   const INFO = {
     adapter: ['1', 'Lens adapter', 'Screws into the 67mm filter thread. Modelled ISO thread, M67 × 0.75, 0.15 clearance.', 'adapter'],
     tube: ['2', 'Tube', 'Blocks room light between lens and film. Sawtooth baffle ribs inside, 8mm apart.', 'tube'],
-    gate_front: ['3', 'Gate front', 'Tube socket, light passage and frame window. Its rear face is the film reference plane, printed on the bed.', 'gate'],
-    gate_body: ['3', 'Gate body', 'Floor, side walls and rear wall; film slots are notches the gate front closes. A backer below the film takes the wedge plate\'s push at LOCK. Four M3 screws join it to the front.', 'gate'],
-    gate_lid: ['3', 'Gate lid', 'Rests on the side walls, between the gate front and the rear wall. Slot for the switch tab.', 'gate'],
-    pressure_plate: ['3', 'Pressure plate', 'Floats 0.25 inside the body, 0.6 channel behind the reference plane. Four sloped pads on its back.', 'gate'],
-    light_dock: ['4', 'Light dock', 'Holds the CS-Lite on its edge. The gate stands in a notch between its front wall and the lit face, which hold the gate front and body together.', 'dock'],
-    wedge_plate: ['5', 'Wedge plate', 'Slides 10mm along z. Its four ramps push the pressure plate onto the film at LOCK. Its tab sticks ½ in out of the lid: the grip.', 'gate'],
+    gate_front: ['3', 'Gate front', 'Tube socket, light passage and frame window. Its rear face is the film reference plane, printed on the bed. Presses onto the body\'s four pegs.', 'gate'],
+    gate_body: ['3', 'Gate body', 'The 0.3 film channel across its front face, the light passage, and the two sprocket pockets with their bearings.', 'gate'],
+    sprocket_supply: ['5', 'Sprocket, supply side', 'Eight teeth on each of two rings come up through the perforations: one turn, one frame.', 'gate'],
+    sprocket_takeup: ['5', 'Sprocket, take-up side', 'The same print as the supply side\'s, turned half round.', 'gate'],
+    gear_supply: ['5', 'Gear, supply side', '30 teeth, on the sprocket\'s D-flat.', 'gate'],
+    gear_takeup: ['5', 'Gear, take-up side', 'The same print, on the other sprocket.', 'gate'],
+    idler: ['5', 'Idler and knob', 'Turns both gears the same way. The groove on the knob counts turns: one per frame.', 'gate'],
+    idler_axle: ['5', 'Idler axle', 'Pressed through the deck into the gate body.', 'gate'],
+    deck: ['5', 'Deck', 'On the gate body\'s top: the sprocket shafts\' top bearings and the axle.', 'gate'],
+    spool_supply: ['6', 'Supply spool', 'The uncut roll, wound on a Ø30 core. Turns on a pin on the dock.', 'film'],
+    cap_supply: ['6', 'Supply spool cap', 'The top flange; presses on, scalloped for a grip.', 'film'],
+    spool_takeup: ['6', 'Take-up spool', 'Tuck the film\'s end in the slit in its core.', 'film'],
+    cap_takeup: ['6', 'Take-up spool cap', 'The same print as the supply\'s cap.', 'film'],
+    light_dock: ['4', 'Light dock', 'Holds the CS-Lite on its edge. The gate stands in a notch against the lit face; the spools stand on pins beside it.', 'dock'],
   };
-  const ORDER = ['adapter', 'tube', 'gate_front', 'gate_body', 'gate_lid', 'pressure_plate', 'light_dock', 'wedge_plate'];
-  const CUT = new Set(['adapter', 'tube', 'gate_front', 'gate_body', 'gate_lid', 'light_dock']);   // sectioned in cutaway
+  const ORDER = Object.keys(INFO);
+  const CUT = new Set(['adapter', 'tube', 'gate_front', 'gate_body', 'deck', 'light_dock']);   // sectioned in cutaway
+  const TURNING = { sprocket_supply: 1, sprocket_takeup: 1, gear_supply: 1, gear_takeup: 1, idler: -1 };   // sense, about +y
 
-  const P = { exploded: true, cut: false, ref: true, lock: false };
+  const P = { exploded: true, cut: false, ref: true };
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
   // ---- three setup ----
@@ -247,6 +257,8 @@ const RIG = /*__RIG_DATA__*/null;
     lit: new THREE.MeshBasicMaterial({ color: 0xffffff }),
     cut: new THREE.MeshBasicMaterial({ side: THREE.BackSide, clippingPlanes: [clip] }),
   };
+  M.roll = new THREE.MeshStandardMaterial({ color: 0x6b5a45, roughness: 0.5, side: THREE.DoubleSide });
+  let filmMesh = null;
   M.film = new THREE.MeshStandardMaterial({ map: filmTexture(), transparent: true, alphaTest: 0.04, side: THREE.DoubleSide, roughness: 0.4 });
   const printMats = {}, edgeMats = {};
   for (const name of ORDER) {
@@ -278,7 +290,7 @@ const RIG = /*__RIG_DATA__*/null;
   const G = {};
   ['cam', 'adapter', 'tube', 'gate', 'film', 'dock'].forEach(k => { G[k] = new THREE.Group(); scene.add(G[k]); });
   const EXPLODE = { cam: -70, adapter: -32, tube: 0, gate: 45, film: 45, dock: 95 };
-  let ex = P.exploded ? 1 : 0, lk = P.lock ? 1 : 0;
+  let ex = P.exploded ? 1 : 0, turn = 0, turnGoal = 0;
   const anchors = {};   // key -> [object, local Vector3] for leader lines and focus
   const meshes = {};    // solid name -> mesh
 
@@ -292,24 +304,32 @@ const RIG = /*__RIG_DATA__*/null;
   for (const name of ORDER) {
     const s = S[name]; if (!s) continue;
     const geo = stlGeometry(s.stl); geo.computeBoundingBox();
+    const piv = TURNING[name] ? new THREE.Vector3(p.x_sprocket, 0, name === 'idler' ? 0 : (name.endsWith('supply') ? -1 : 1) * p.sprocket_z) : null;
+    if (piv) { geo.translate(-piv.x, 0, -piv.z); geo.computeBoundingBox(); }   // turns about its own shaft
     const m = new THREE.Mesh(geo, printMats[name]);
+    m.userData.pivot = piv;
     m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), edgeMats[name]));
     if (CUT.has(name)) m.add(new THREE.Mesh(geo, M.cut));   // back faces show through the cut as section
-    m.userData.lock = new THREE.Vector3(...s.lock);
+    m.userData.base = m.userData.pivot ? m.userData.pivot.clone() : new THREE.Vector3();
+    m.position.copy(m.userData.base);
     G[INFO[name][3]].add(m);
     meshes[name] = m;
   }
-  const bb = name => meshes[name].geometry.boundingBox;
+  const bb = name => { const b = meshes[name].geometry.boundingBox.clone(); return b.translate(meshes[name].userData.base); };
   const at = (name, x, y, z) => [meshes[name], new THREE.Vector3(x, y, z)];
   {
-    const a = bb('adapter'), t = bb('tube'), lid = bb('gate_lid'), k = bb('wedge_plate'), d = bb('light_dock');
+    const a = bb('adapter'), t = bb('tube'), dk = bb('deck'), k = bb('idler'), sp = bb('spool_takeup'), d = bb('light_dock');
     anchors.adapter = at('adapter', (a.min.x + a.max.x) / 2, a.max.y, 0);
     anchors.thread = at('adapter', a.min.x + 2, p.axis, 0);
     anchors.tube = at('tube', (t.min.x + t.max.x) / 2, t.max.y, 0);
-    anchors.gate = at('gate_lid', lid.min.x + 3, lid.max.y, -28);
-    anchors.lock = at('wedge_plate', k.max.x - 1, k.max.y, (k.min.z + k.max.z) / 2);   // the tab's top
+    anchors.gate = [G.gate, new THREE.Vector3(p.x_ref + 2, p.gh, -40)];
+    anchors.drive = [G.gate, new THREE.Vector3(p.x_sprocket, k.max.y, 0)];      // the knob's top
+    anchors.spools = [G.film, new THREE.Vector3(p.x_spool, sp.max.y, p.spool_z)];
     anchors.dock = at('light_dock', (d.min.x + d.max.x) / 2, 62, (p.csl_l / 2 + d.max.z) / 2);
-    for (const name of ORDER) { const b = bb(name); anchors[name] = at(name, (b.min.x + b.max.x) / 2, b.max.y, (b.min.z + b.max.z) / 2); }
+    for (const name of ORDER) {
+      const b = bb(name), o = meshes[name].userData.base;
+      anchors[name] = at(name, (b.min.x + b.max.x) / 2 - o.x, b.max.y, (b.min.z + b.max.z) / 2 - o.z);
+    }
   }
 
   // ---- bought parts, drawn as the mockup drew them ----
@@ -348,11 +368,16 @@ const RIG = /*__RIG_DATA__*/null;
     cyl(c, L - 12, L - 10, 30, A, M.glass);
     anchors.cam = [c, new THREE.Vector3(-36, 96, 0)];
 
-    // film strip: the assembly's reference, x_film - channel/2, centred at film_strip_z
+    // film: the assembly's reference run through the channel, its mid-plane the film plane, and half the roll on each spool
     const fm = add(G.film, new THREE.PlaneGeometry(p.film_strip_len, p.film_w), M.film);
     fm.geometry.rotateY(-Math.PI / 2);
-    fm.position.set(p.x_film - p.channel / 2 + p.film_t / 2, A, p.film_strip_z);
-    anchors.film = [G.film, new THREE.Vector3(p.x_film, A + p.film_w / 2, 90)];
+    fm.position.set(p.x_film, A, 0);
+    filmMesh = fm;
+    for (const sz of [-p.spool_z, p.spool_z]) {
+      const roll = add(G.film, new THREE.CylinderGeometry(p.roll_r_half, p.roll_r_half, p.film_w, 72, 1, true), M.roll);
+      roll.position.set(p.x_spool, A, sz);
+    }
+    anchors.film = [G.film, new THREE.Vector3(p.x_film, A + p.film_w / 2, 50)];
 
     // CS-Lite: the assembly's reference panel, with its lit face toward the film
     const xl = p.x_light, y0 = p.floor_t;
@@ -366,7 +391,7 @@ const RIG = /*__RIG_DATA__*/null;
   // The strip as the assembly builds it (params.py): frames at frame_zs, KS perforations at perf_zs, both rows
   // perf_inner from the axis. The canvas runs along z left to right and is drawn base side up (top = +y).
   function filmTexture() {
-    const pxmm = 10, L = p.film_strip_len, W = p.film_w, z0 = p.film_strip_z - L / 2;
+    const pxmm = 10, L = p.film_strip_len, W = p.film_w, z0 = -L / 2;
     const c = document.createElement('canvas'); c.width = Math.round(L * pxmm); c.height = Math.round(W * pxmm);
     const x = c.getContext('2d');
     const u = z => (z - z0) * pxmm, v = dy => (W / 2 - dy) * pxmm;     // z, and y up from the axis, to canvas px
@@ -412,9 +437,9 @@ const RIG = /*__RIG_DATA__*/null;
   $('fitRows').innerHTML = RIG.fits.map(f =>
     `<tr><td>${f.label}</td><td class="v">${f.measured == null ? '–' : (Math.round(f.measured * 1e4) / 1e4 + 0).toFixed(4)}</td>` +
     `<td class="c"><span class="chip ${f.ok ? 'known' : 'bad'}">${f.ok ? 'ok' : 'off'}</span></td></tr>`).join('');
-  const bad = [...RIG.interference.SLIDE, ...RIG.interference.LOCK];
+  const bad = Object.values(RIG.interference).flat();
   $('interference').textContent = bad.length ? 'Interference: ' + bad.join('; ')
-    : `All in mm. No solids intersect at SLIDE. At LOCK only the pads press into the ramps, by the designed ${f2(p.preload)} preload.`;
+    : `All in mm. No solids intersect with a frame in the window, nor half a sprocket tooth on (1/16 of a knob turn).`;
   const big = RIG.solids.reduce((a, b) => Math.max(...b.print.slice(0, 2)) > Math.max(...a.print.slice(0, 2)) ? b : a);
   $('bedNote').textContent = `Largest footprint is the ${INFO[big.name][1].toLowerCase()}, ${f2(big.print[0])} × ${f2(big.print[1])}. ` +
     `Every part ${RIG.solids.every(s => s.bed) ? 'fits' : 'does not fit'} a ${p.bed_x} × ${p.bed_y} bed.`;
@@ -422,7 +447,7 @@ const RIG = /*__RIG_DATA__*/null;
   // ---- tags ----
   const TAGS = [
     ['adapter', '<b>1</b> adapter', true], ['tube', '<b>2</b> tube', true], ['gate', '<b>3</b> film gate', true],
-    ['dock', '<b>4</b> light dock', true], ['lock', '<b>5</b> lock switch', true], ['light', 'CS-Lite', false], ['film', 'strip', false], ['cam', 'A7 + Laowa 90', false],
+    ['dock', '<b>4</b> light dock', true], ['drive', '<b>5</b> knob: one turn, one frame', true], ['spools', '<b>6</b> spools', true], ['light', 'CS-Lite', false], ['film', 'film', false], ['cam', 'A7 + Laowa 90', false],
   ];
   const SVG = 'http://www.w3.org/2000/svg';
   const leaders = document.createElementNS(SVG, 'svg'); leaders.setAttribute('class', 'leaders');
@@ -544,10 +569,10 @@ const RIG = /*__RIG_DATA__*/null;
     else flyTo(target, pos);
   }
   controls.addEventListener('start', () => { userMoved = true; fly = null; });
-  const SMALL = new Set(['lock', 'pressure_plate', 'wedge_plate', 'gate_lid']);
+  const SMALL = new Set(['drive', 'spools', ...Object.keys(TURNING), 'idler_axle', 'deck', 'spool_supply', 'spool_takeup', 'cap_supply', 'cap_takeup']);
   function focus(k) {
     const target = worldAnchor(k === 'adapter' ? 'thread' : k).clone();
-    if (['gate', 'dock', 'tube', 'gate_front', 'gate_body', 'light_dock', 'pressure_plate', 'wedge_plate'].includes(k)) target.y = p.axis;
+    if (['gate', 'dock', 'tube', 'gate_front', 'gate_body', 'light_dock', 'sprocket_supply', 'sprocket_takeup'].includes(k)) target.y = p.axis;
     const off = k === 'cam' ? new THREE.Vector3(-150, 180, 360) : SMALL.has(k) ? new THREE.Vector3(-45, 70, 95) : new THREE.Vector3(-90, 110, 220);
     userMoved = true;
     flyTo(target, target.clone().add(off));
@@ -557,7 +582,7 @@ const RIG = /*__RIG_DATA__*/null;
   const refit = () => { if (!userMoved) homeView(); };
   function setPressed(id, on) { $(id).setAttribute('aria-pressed', String(on)); }
   $('bExplode').onclick = () => { P.exploded = !P.exploded; setPressed('bExplode', P.exploded); refit(); };
-  $('bLock').onclick = () => { P.lock = !P.lock; setPressed('bLock', P.lock); };
+  $('bLock').onclick = () => { turnGoal = Math.round(turnGoal) + 1; };
   $('bCut').onclick = () => {
     P.cut = !P.cut; setPressed('bCut', P.cut);
     clip.constant = P.cut ? 0 : 1e4;
@@ -596,8 +621,9 @@ const RIG = /*__RIG_DATA__*/null;
     const goal = P.exploded ? 1 : 0;
     ex = reduce ? goal : ex + (goal - ex) * 0.12;
     for (const k in G) G[k].position.x = EXPLODE[k] * ex;
-    lk = reduce ? +P.lock : lk + (+P.lock - lk) * 0.12;
-    for (const m of Object.values(meshes)) m.position.copy(m.userData.lock).multiplyScalar(lk);
+    turn = reduce ? turnGoal : turn + Math.min(0.02, turnGoal - turn);
+    for (const [name, sense] of Object.entries(TURNING)) if (meshes[name]) meshes[name].rotation.y = sense * 2 * Math.PI * turn;
+    if (filmMesh) filmMesh.position.z = (turn - Math.floor(turn + 1e-9)) * p.frame_pitch;   // a frame on, the strip looks the same
     if (fly) {
       fly.t = Math.min(1, fly.t + 0.045);
       const e = 1 - Math.pow(1 - fly.t, 3);

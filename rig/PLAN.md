@@ -1,5 +1,15 @@
 # NLB Scan Rig: CAD plan
 
+**2026-11-09, branch `claude/rig-sprocket-drive`: the film transport is redesigned (D1–D5).** The rig
+now takes a whole uncut 36 exposure roll. Two 8 tooth sprockets drive the film by its perforations through a
+fixed 0.3 channel between the gate front and the gate body. Three 30 tooth gears on a deck on top of the gate
+link them, and one turn of the knob on the idler moves the film one frame. Spools on pins beside the gate feed
+it and take it up, by hand. The pressure plate, wedge plate, lid, lock switch, gate screws and the dock's front
+wall are gone. The gate front presses onto four pegs on the body. 16 printed solids plus the thread coupon;
+nothing intersects with a frame centred or half a sprocket tooth on, every fit measures as designed, and only
+the gate front's four tooth grooves (2.8 wide) print as bridges. The sections below describe the new design;
+the rulings before D1 are history, and D1 lists which it supersedes.
+
 Status (2026-10-27): **the CAD exists; nothing has been printed yet.** Every printed part is
 modelled in CadQuery from the three.js mockup, put together in an assembly, and checked: one
 STEP file per printed part that the user can import into Onshape and edit, plus STL files for
@@ -17,9 +27,10 @@ dock grew a front wall (F11), so the whole gate is held between it and the CS-Li
 body got a backer behind the wedge plate (F12), so LOCK wedges the plate instead of bending it.
 
 Run it from `rig/`:
-- `uv run pytest`: the checks on the built solids (about a minute).
+- `uv run pytest`: the checks on the built solids (about three minutes).
 - `uv run python build.py [--wd W] [--axis A]`: builds every part, writes `exports/`, and prints
-  the sizes and volumes, the interference check at SLIDE and LOCK, the fit numbers and the bed
+  the sizes and volumes, the interference check with the knob at each of its two positions
+  (`assembly.TURNS`: a frame centred, half a sprocket tooth on), the fit numbers and the bed
   margins. It exits non-zero if a check fails. An axis below 39 is refused with a one-line message.
 - `uv run python print_preview.py`: writes `exports/nlb-rig-print-preview.html`. **Whenever the
   print preview changes** (the template, `print_preview.py`, or the parts it shows), rebuild it and
@@ -28,19 +39,23 @@ Run it from `rig/`:
   (https://tmp.jrwiv.com/a/nlb-rig-print-preview-a5yj677u).
 
 `exports/step/` and `exports/stl/` hold one STEP and one STL per printed solid, plus the thread
-coupon, in print pose. `exports/step/nlb-scan-rig-assembly.step` has every part in place at
-SLIDE, in the Onshape frame (R10), with the film and the CS-Lite as grey reference solids.
+coupon, in print pose. `exports/step/nlb-scan-rig-assembly.step` has every part in place with a
+frame centred, in the Onshape frame (R10), with the film, half a roll on each spool and the CS-Lite as
+grey reference solids. The sprockets, gears and spools are each printed twice (supply and take-up
+side): each pair is one print, exported under both names.
 
 ## What the rig is
 
-A light-tight path for scanning 35mm B&W strips with a camera:
+A light-tight path for scanning a whole uncut roll of 35mm B&W film with a camera:
 
     Sony A7 + Laowa 90mm f/2.8 2X ── 1 lens adapter ── 2 tube ── 3 film gate ── 4 light dock + CineStill CS-Lite
-                                                                     └ 5 lock switch on the gate lid
+                                                                     ├ 5 film drive: sprockets, gears, knob
+                                                                     └ 6 spools, either side of the gate
 
 - Everything rests on one flat table. The camera sits on its own base. There's no cradle;
   the gate box carries the front end of the lens.
-- Strips lie flat and slide sideways through the gate.
+- The roll runs from the supply spool (−z) through the gate to the take-up spool (+z), flat, along z.
+  The knob drives it a frame a turn; the spools are turned by hand to let it out and take it up.
 - The README in this repo says the camera is an **A7 IV**, but the mockup says "A7". Confirm
   with the user before any part depends on body dimensions. Currently none do: the camera
   and lens are reference geometry only.
@@ -107,17 +122,17 @@ size.
 |---|---|---|
 | `GW` | 92 | Gate width |
 | `GATE_D` | 39 | Gate depth: `GATE_FRONT + GAP`, so the body ends on the lit face (F10; was 30) |
-| `GATE_FRONT` | 14 | Gate front wall to film |
-| `WALL` | 3 | Wall thickness |
-| Window | 38 × 26 | Gate window |
+| `GATE_FRONT` | 14 | Gate front's front face to film |
+| Window | 38 × 26 | Frame window, in the gate front |
 | `GAP` | 25 | Film to light face |
 | `TUBE_RO` / `TUBE_RI` | 36 / 32 | Tube outer / inner radius |
 | `FLANGE` | 3 | Adapter flange thickness |
 | `THREAD_LEN` | 4.5 | Thread length |
-| `CHANNEL` | 0.6 | Film channel in slide mode |
-| `SW_TRAVEL` | 10 | Switch travel |
-| Ramps | 12 long, 0.1 → 0.8 thick | Rise 0.7 over 12 |
-| Clamp | 0.58 | Closes the 0.6 channel onto the film with ~0.11 preload |
+| `channel` | 0.3 | Fixed film channel, 35.2 tall (D2) |
+| `sprocket_teeth` | 8 | Sprocket pitch radius 6.048: one turn, one frame (D3) |
+| `gear_teeth` | 30 | Every gear; module 1.029, 20°, 0.15 backlash (D4) |
+| `spool_core_r` / `spool_flange_r` | 15 / 21 | Spools (D5) |
+| `peg_d` / `peg_fit` | 4 / 0 | Friction pegs joining the gate front to the body (D2) |
 
 **Derived values** at the defaults:
 
@@ -126,14 +141,16 @@ size.
 | Film plane | `xFilm = 125 + wd` | 255 |
 | Gate box height | `GH = axis + 36` | 78.5 |
 | Tube length | `wd − 13` | 117 |
-| Dock width | `DOCK_W = 165 + 16` | 181 |
+| Dock width | `DOCK_W = 165 + 26` | 191 |
+| Sprocket centres | `x_film + r_pitch`, z = ±(2.375 + 6 × 4.75) | x 261.05, z ±30.875 |
+| Spool centres | `x_film − (15 + roll_r_full) / 2`, z = ±(46 + 3 + 21) | x 238.8, z ±70 |
 
 The mockup's rail shows these live, and `updateText()` has the formulas.
 
 ## Parts
 
-Each part gets `rig/parts/<part>/model.py`, which exposes `build(p, lock=False)`: a dict of the
-part's solids, in mockup coordinates, at SLIDE or LOCK. `PRINT_UP` says which side of each faces up
+Each part gets `rig/parts/<part>/model.py`, which exposes `build(p, turn=0.0)`: a dict of the
+part's solids, in mockup coordinates, with the knob `turn` turns from a frame centred (only the drive moves). `PRINT_UP` says which side of each faces up
 on the bed. Folder numbers follow the mockup's labels.
 
 ### 1 · Lens adapter (`parts/lens_adapter/`): build first
@@ -166,116 +183,122 @@ Screws into the Laowa's 67mm filter thread. The tube slides into the other end.
 
 ### 3 · Film gate (`parts/film_gate/`)
 
-Four printed pieces (F5): the gate front, the gate body, the lid and the pressure plate.
+Two printed pieces (D2): the gate front and the gate body, pressed together on four friction pegs.
+Nothing clamps the film: it runs in a fixed channel between the two.
 
 **Gate front** (solid block, prints with its rear face on the bed):
-- x_gate .. `x_ref` (13.7 deep), 78.5 tall, 110 wide (`gw` plus a screw pillar's width each side).
+- x_gate .. `x_ref` (13.85 deep), 78.5 tall, 92 wide.
 - Socket: Ø72.6, 4 deep, on the lens axis. The tube's end rests on its floor.
 - Light passage: flares from the socket's floor (the frame window scaled until its corners reach
   the tube's Ø64 bore) down to the 38 × 26 frame window, which runs straight for 1.8 to the
   rear face. The passage only narrows toward the film, so it prints without support.
-- Rear face: the film reference plane, `CHANNEL/2` (0.3) in front of the film plane. It's the
-  first layer, so the film lies on bed-flat plastic, across the whole width, including where the
-  film leaves through the side walls.
-- Four Ø3.4 holes for M3 × 20 screws, counterbored Ø6.5 × 3.5 from the front.
-- Its top is plain (F14).
+- Rear face: the film reference plane, `channel/2` (0.15) in front of the film plane. It's the
+  first layer, so the film's front slides on bed-flat plastic.
+- Four tooth grooves in the rear face, one per sprocket per perforation row: 2.8 wide, 1.2 deep
+  (0.35 past the tooth tips), from the gate's side to 1 past where the tips cross the face, then a
+  45° ramp up toward the window. They print as 2.8 bridges in the first layers.
+- Four Ø4 holes right through, at y 10 and 70.5, z ±41, for the body's pegs. Same size as the pegs
+  (`peg_fit` 0): FDM prints holes a little small, so they press.
 
-**Gate body** (prints rear wall down):
-- Floor (3), side walls (3) and the rear wall (3, with a 46 × 34 window toward the light),
-  from `x_ref` back to the CS-Lite's lit face (F10): 25.3 deep, 92 wide, 78.5 tall. Open at the top for the lid and open at the
-  front, where the gate front closes it.
-- Film slots: 3.2 (along x) × 35.2 (along y) notches in the side walls, open toward the gate front.
-  Each floor is flush under the film's lower edge, so the strip rests on it; the roof is 0.2
-  (`film_slot_clear`) over its upper edge (F13).
-- Four 9 × 9 screw pillars outside the side walls, the body's whole depth so they stand on the
-  bed: two at the floor, two just under the lid. Ø2.5 pilots, 12 deep, for the M3 screws to
-  self-tap (`pilot_d` 4.0 for heat-set inserts).
-- **Backer** (F12): a block on the floor behind the wedge plate, from 0.05 (`wedge_back_clear`)
-  behind its back face to the rear wall, side wall to side wall, up to the film's bottom edge
-  (y 25), so it stays out of the light path. At LOCK the plate is wedged between the pressure
-  plate's pads and the backer.
+**Gate body** (prints rear face down):
+- A block from `x_ref` to the CS-Lite's lit face: 25.15 deep, 92 wide, 78.5 tall.
+- Film channel across its whole front face: 0.3 deep, 35.2 tall (0.1 beyond each film edge),
+  opening to 1.0 deep over the last 3 at each side so the film's end finds its way in.
+- Light passage: 40 × 28 at the front face to 46 × 34 at the rear (the frame's chief rays and the
+  lens cone, 25 behind the film). The panel closes it.
+- Two sprocket pockets, vertical, r 7.45, at (x 261.05, z ±30.875), from y 21.67 up through the
+  top, where the sprockets drop in. Each breaks through the front face, so the teeth reach the film.
+  Below each, a Ø6.4 bearing hole down to y 4: the shaft's foot stands on its floor.
+- The idler's axle hole: Ø6, 8 deep in the top, between the pockets (pressed).
+- Four Ø4 pegs, 6 long, chamfered, on the front face outside the channel.
+- The pockets and holes lie along the bed when it prints, so each is a teardrop pointing at the
+  gate front (`cadutil.teardrop_y`). Nothing overhangs.
 
-**Lid:** 3 thick, on the side walls, 0.2 short of the gate front and of the rear wall. Slot
-3 × 16 for the lock switch's tab.
-
-**Pressure plate:**
-- 1.8 thick, with a 38 × 26 window. Floats along x only. 0.25 clearance to the floor, the
-  lid and the side walls (F1).
-- Prints flat with the face that presses the film on the bed (F7).
-- Sits `CHANNEL/2` behind the film plane.
-- Four pads on its back face, 4 × 4, at z = ±22 and y = axis ± 15.5. Pad thickness is
-  computed in the mockup (`padT`).
-
-**Not designed yet. Brainstorm these with the user before modelling:**
-- Two **leaf springs** that pull the pressure plate back toward the light in slide mode.
-  They should be printed flexures, probably in PETG. They are what returns the plate to
-  SLIDE: nothing else pulls it off the film.
-- **Guides** that let the pressure plate move along x but stop it moving along y or z.
-- **Grooves** that guide the wedge plate along z. Below the film the backer (F12) now carries the
-  clamp's reaction in x with 0.05 play. Above the film nothing does: the upper ramps (y 58) push
-  on a 2 thick plate held only by its tab, which has 0.5 play each side in the lid slot, more
-  than the 0.47 stroke. The upper ramps need backing too, outside the light path: at the sides
-  (|z| > 26, beside the wedge window) or a lid-side rail.
-- **Lid retention.** Nothing holds the lid on yet.
+**Not designed yet:**
 - **Gate position along the tube.** Nothing locates the gate along the tube. The socket is a
-  slip fit, so the film plane sits wherever the gate is pushed.
-- **Light seal at the lid's front end.** The lid's 0.2 end clearance leaves a 0.2 × 86 slit
-  from the top into the film chamber, on the light side of the film. Since F5 there is no
-  lens-side chamber for it to open into, but it still lets room light onto the film's back.
-  Tape, or a lip on the lid.
+  slip fit, so the film plane sits wherever the gate is pushed. The floor's edge in front of the
+  gate front, 0.2 clear, now stops it moving toward the camera.
+- **Room light on the film's back.** The channel is open at both sides of the gate (the film runs
+  through), and the film between the spools and the gate is in the open. Only the 25 between the
+  film and the panel matters, and it's enclosed by the body.
 
 ### 4 · Light dock (`parts/light_dock/`)
 
 Holds the CS-Lite standing on its long edge, lit face toward the film, `GAP` (25) behind
-the film plane.
+the film plane, with the gate standing in front of it and the spools beside the gate.
 
-- **Floor:** 4 thick, 181 wide. It runs along x from the front wall to 6 past the slot's back
-  edge (69.7 at the default).
-- **Front wall** (F11): 4 thick, full width, 62 tall, 0.2 in front of the gate front. A U 1 clear
-  of the tube (a half circle below the axis, straight up above it) lets the tube through. The gate
-  front and the gate body are held between it and the CS-Lite, with 0.2 play. It covers the gate
-  front's two lower screw heads: lift the gate out to reach them.
+- **Floor:** 4 thick, 191 wide. It runs along x from 4 in front of the spools' flanges (x 213.8)
+  to 6 past the slot's back edge (92.7 long).
+- **No front wall** (D5): the spools stand where it was. The floor's edge in front of the gate
+  front (0.2 clear) locates the gate toward the camera; the friction pegs hold the front on.
 - **Lips:** front and back, 12 tall. Together they make a 20.5 wide slot for the light: its
   20 plus 0.5 clearance, all behind it, so the lit face stays at the front lip.
-- **Side cheeks:** 62 tall.
-- **Gate notch** (F10): 110.4 wide (the gate front's 110 plus `dock_gate_clear` 0.2 each side),
-  through the floor and the front lip, from the front wall to the lit face. The whole gate
-  stands on the table in it, between two floor arms that locate it in z, its rear face flush on
-  the panel, which closes the rear window. What's left of the front lip holds the panel's ends.
-  There's no shroud.
-- **Bed size:** at 181 wide the dock is the largest footprint. The mockup says it fits a 220
-  bed, but the 220 bed was my assumption. **Confirm the printer's bed size.**
+- **Side cheeks:** 62 tall, 12.5 wide.
+- **Gate notch** (F10): 92.4 wide (the gate's 92 plus `dock_gate_clear` 0.2 each side), through the
+  floor and the front lip, from 0.2 in front of the gate front to the lit face. The whole gate
+  stands on the table in it, its rear face flush on the panel.
+- **Spool stands** (D5): at (x 238.8, z ±70), a Ø16 pedestal up to y 22.5 and a Ø6 pin up to 1
+  under the cap's spigot (y 56.5), chamfered. At axis 50 the pins stand 64 tall, past the cheeks.
+- **Bed size:** at 191 wide the dock is the largest footprint (29 to spare on a 220 bed).
+  **Confirm the printer's bed size.**
 
 **Not designed yet:**
-- Holding the CS-Lite against the front lip. The slot has 0.5 play behind it. With the front
-  wall's 0.2, the gate's rear face can sit up to 0.2 off the lit face and leak light.
+- Holding the CS-Lite against the front lip. The slot has 0.5 play behind it, so the gate's
+  rear face can sit up to 0.5 off the lit face and leak light.
+- Drag on the supply spool. It turns freely on its pin, 0.2 clear; hold it with a finger while
+  winding on, or add a felt washer under it.
 
-### 5 · Lock switch (`parts/lock_switch/`)
+### 5 · Film drive (`parts/film_drive/`)
 
-**Tab:** 2 (x) × 4 (z), up from the plate's top through the lid slot and 12.7 (½ inch,
-`tab_reach`) out of the lid top. It is the grip: push it toward +z for LOCK, −z for SLIDE.
-There's no knob (F15).
+Two sprockets drive the film by its perforations; three gears turn them together; the knob on the
+idler is turned by hand. One knob turn is one frame (D3, D4).
 
-**Wedge plate:**
-- 2 thick, 70 wide (z), and as tall as the gate interior (about 70).
-- Window 52 × 26. Shifted ±5, it still clears the 38 wide frame window.
-- Four ramps on its front face, one under each pressure-plate pad. Each is 12 long and goes
-  from 0.8 thick at the −z end to 0.1 at the +z end.
+**Sprockets** (two, the same print; the take-up side's is turned half round):
+- Upright in the gate body's pockets, on the light side of the film, at z ±30.875: each over a
+  perforation's centre when a frame is centred in the window.
+- Pitch radius 6.048, at the film's mid-plane: 8 teeth × 4.75 = 38, one frame a turn. The film is
+  a rack and each sprocket a pinion on it.
+- Two rings (r 5.933, 0.05 behind the film), one under each perforation row, from 12.6 off the
+  axis to the film's edges, so they only touch the film outside the frame. A Ø9 hub between them.
+- 8 teeth per ring, 1.0 past the pitch radius. Each tapers along the film (1.4 to 0.9; the
+  perforation is 1.98) and comes to a 45° ridge across it (2.2–2.46 where it passes the film, in a
+  2.79 perforation), so it finds the perforation's middle and prints without overhang. One or two
+  teeth per row reach through the film at a time; the channel stops the film lifting off them.
+- Ø6 shaft from its foot on the bearing hole's floor (y 4) to the gear's top (y 87.5), with a
+  0.5 D-flat above the deck. 45° cones under each ring.
+- Prints standing on its shaft's foot, at 0.12 layers.
 
-**How it works:**
-- Travel is ±5 along z. At SLIDE (tab at −z) each pad sits on the thin end of its ramp.
-- At LOCK, the pressure plate moves forward by
-  `min(rampT(−s) − rampT(SW_TRAVEL/2), CHANNEL − FILM_T)`.
-- The ramp slope (about 1:17) should be self-locking. Still add a detent bump at each end
-  of the slot. Not designed yet: a working detent needs a compliant member, and the tab is
-  rigid with 0.5 play. The detents are what hold LOCK; the
-  leaf springs are what return the plate to SLIDE.
+**Gears:** 30 teeth, module 1.029 (so three in a row span the sprockets' 30.875 spacing), ISO 20°
+involute, 0.15 backlash, 5 thick. One on each sprocket shaft's D-flat, standing on the deck; the
+idler between them on its axle, with a Ø20 × 10 knob on top and a groove that counts turns.
+Gear tips end 2.5 short of the CS-Lite.
 
-**Assembly:** drop the wedge plate in, then lower the lid over it so the tab comes up through
-the slot. Nothing to snap on.
+**Mesh phase** (D4): each shaft's flat faces the idler and lies on a sprocket tooth and a gear tooth,
+and the idler (an even tooth count) shows each gear a gap, so the same prints mesh on both sides with
+a perforation centred on each sprocket.
 
-**Tuning:** if the grip is wrong after a test print, change the ramp rise (about 0.6–0.8
-only: see "Tuning and print notes"). Don't change `CHANNEL`.
+**Deck:** 4 thick, on the gate body's top from the reference plane to 0.5 short of the CS-Lite:
+the shafts' top bearings (Ø6.4) and the idler's axle (pressed). **Idler axle:** Ø6 × 26, through the
+deck into the gate body's top.
+
+**Assembly:** drop the sprockets into their pockets, lay the deck over the shafts, press the axle
+through it into the body, put the gears on the D-flats with a tooth toward the idler and the idler
+on its axle.
+
+**Loading film:** wind the roll onto the supply spool, push its end into the channel at the −z
+side, and turn the knob until the teeth catch the perforations; it comes out at +z. Tuck it in the
+take-up spool's slit and wind on a turn or two by the cap.
+
+### 6 · Spools (`parts/spools/`)
+
+Two the same (D5), each two prints: the spool (bottom flange, r 21 × 2, and a Ø30 core with a Ø6.4
+bore, a 1 × 6 slit for the film's end on the side away from the film, and a Ø16 × 3 socket in its
+top) and the cap (flange r 21 × 2.5, scalloped round its rim, with a Ø16 × 3 spigot pressed into
+the socket). The flanges are 0.5 beyond the film's edges. A whole roll is r 17.4.
+
+They stand on the dock's pedestals and turn on its pins, beside the gate on the lens side, where a
+half-wound roll is tangent to the film plane: the film leaves the roll within about 3° of the
+channel's line, empty or full. The spool prints bottom flange down, the cap upside down.
 
 ## Folder layout
 
@@ -297,9 +320,10 @@ rig/
 ├── parts/
 │   ├── lens_adapter/       model.py (+ thread_coupon in the same file)
 │   ├── tube/               model.py
-│   ├── film_gate/          model.py: gate_front, gate_body, gate_lid, pressure_plate
-│   ├── light_dock/         model.py: light_dock
-│   └── lock_switch/        model.py: wedge_plate
+│   ├── film_gate/          model.py: gate_front, gate_body
+│   ├── film_drive/         model.py: sprocket_*, gear_*, idler, idler_axle, deck
+│   ├── spools/             model.py: spool_*, cap_*
+│   └── light_dock/         model.py: light_dock
 ├── tests/                  pytest on the built solids
 └── exports/
     ├── step/               one STEP per printed solid + nlb-scan-rig-assembly.step (for Onshape)
@@ -333,9 +357,8 @@ from this machine, so it's deferred.
 2. **Lens adapter and thread coupon.** Export both. Stop and hand the coupon to the user
    for a test print before going further on threaded geometry.
 3. **Tube.**
-4. **Film gate box and plates.** Before modelling the springs and guides, brainstorm those
-   open items with the user.
-5. **Lock switch.**
+4. **Film gate.** (The clamp that was here first is superseded by D1.)
+5. **Film drive and spools** (D1–D5).
 6. **Light dock.** Settle the gate/dock joint with the user first.
 7. **Assembly.** Write `assembly.py` and the assembly STEP, then an interference check
    across all parts.
@@ -348,12 +371,14 @@ Write these as pytest checks against the built solids:
 - Bounding boxes match the dimensions above at the default params, within 0.05.
 - Mating fits:
   - tube OD vs adapter socket ID and gate hole: 0.3 radial clearance
-  - pressure plate face to front plate: `CHANNEL` (0.6)
-  - drop-in and sliding fits: pressure plate 0.25 to the floor, lid and side walls; lid 0.2
-    to the front and rear walls; CS-Lite slot 0.5 wider than the panel
+  - the film channel (0.3) and the film's 0.085 either side; peg holes the pegs' size
+  - the drive: rings 0.05 behind the film, tooth tips 0.35 short of the grooves' floors and 0.4
+    from the pockets, shafts 0.2 in their bearings, the D-bores 0.1 off the flats
+  - the spools: 0.2 on their pins, flanges 0.5 beyond the roll, caps pressed
+  - CS-Lite slot 0.5 wider than the panel; the gate 0.2 in the dock's notch
 - At the assembly level:
-  - no two solids intersect in either switch position (SLIDE, LOCK)
-  - except at LOCK, where the plate clamps the film; the film isn't a printed part
+  - no two solids intersect, with a frame centred or half a sprocket tooth on; the teeth stay in
+    the perforations at a quarter and a half turn too
 - Every printed part fits the bed. 220 × 220 is assumed until the user confirms.
 - STEP round-trip: re-import each exported STEP and check its volume matches.
 - Every solid manifold: each edge between exactly two faces. OCC's `isValid()` misses a solid
@@ -475,6 +500,32 @@ number.
   the wedge plate prints flat as before, now 87.7 tall on the bed, with the tab in the first
   layers. Print the tab solid. Nothing marks SLIDE and LOCK any more.
 
+- **The film transport is redesigned (D1).** The user asked for a full redesign: gears that drive the film
+  by its perforations, left to right through the window, an uncut 36 exposure roll on spools either side,
+  and no pressure plate or wedge, a friction fit between the gate body and front holding the film flat.
+  This supersedes the clamp and everything that served it: R3, R4, R6, R7, F1 (the plate and lid fits),
+  F3, F4, F7 (the pressure plate), F9, F11, F12, F13, F14 and F15. `build(p, lock)` became
+  `build(p, turn)`, and the interference check runs at two knob positions instead of SLIDE and LOCK.
+- **A fixed channel, a pegged gate (D2).** The film runs in a 0.3 channel (the film plus 0.17) recessed
+  into the gate body's front face and closed by the gate front's bed-printed rear face; the channel's
+  walls keep it straight in y. The front presses onto four Ø4 pegs, no screws, so the channel's depth is
+  set by the body's recess however hard the front is pushed on. The film's front still slides on a
+  first layer (F7's intent).
+- **8 tooth sprockets on the light side (D3).** One turn, one frame. On the light side so the lens side
+  stays a solid block with the tube socket; the 25 gap leaves room for the pocket (tips to x 268.1).
+  Over the 7th perforation from the window's centre (z ±30.875), so a tooth stands in a perforation
+  with a frame centred, and the pockets stay 2.7 clear of the light passage. The film runs flat past
+  the sprockets, not wrapped: only the teeth near the tangent point engage, and the channel is the
+  keeper. The model checks the rack and pinion by interference at four knob positions.
+- **Three equal gears in a row (D4).** The idler reverses, so both sprockets turn the same way. Equal
+  gears keep one knob turn one frame, which sets the module to 30.875 / 30. The gears sit on top of the
+  gate, the only place clear of the light, the tube and the spools; the CS-Lite (112 tall, behind them)
+  caps their size at about 16.5 radius. An even tooth count lets identical prints mesh on both sides.
+- **Spools on pins beside the gate (D5).** On the lens side, where they can't block the light and the
+  CS-Lite doesn't stand, at a spacing that keeps a half roll tangent to the film plane. The dock's front
+  wall (F11) is gone to make room, and the dock grows to 191 wide and 92.7 long. The spools are turned by
+  hand; nothing gears them to the drive, since the roll's radius changes as it winds.
+
 ## Mockup differences to republish
 
 The CAD differs from the mockup on purpose here. The mockup hasn't been changed: republishing
@@ -484,43 +535,37 @@ it is the user's call.
 |---|---|---|
 | Gate lid | full gate depth, over the front and rear walls (it overlaps the tube) | between the front and rear walls, 0.2 short of each |
 | Gate floor | full gate depth, under the front and rear walls | between the front and rear walls |
-| Pressure plate | 86 × 72.5, flat pads `padT` thick | 85.5 × 72 (0.25 clearance), pads sloped like the ramps |
+| Pressure plate, wedge plate, lock switch, lid | present | none (D1): a fixed 0.3 channel, a sprocket drive and spools |
 | Tube | plain ring | baffle ribs inside |
-| Film slots | centred on the film plane, x 252.5–257.5 | notches from the reference plane, x 254.7–257.9 |
-| Gate | one box with a thin front plate and a chamber in front of it | gate front (solid, flared light passage) + gate body, M3 screws through side pillars, 110 wide |
+| Film slots | centred on the film plane, x 252.5–257.5 | a channel across the gate body's front face |
+| Gate | one box with a thin front plate and a chamber in front of it | gate front (solid, flared light passage) + gate body (solid, sprocket pockets), pressed on four pegs, 92 wide |
+| Film | a 228 strip | an uncut roll on two spools, driven by two sprockets, three gears and a knob |
 | Lettering | on the lid | none |
 | Knob | 10 × 12 on the tab, grip ridges | none: the tab sticks 12.7 out of the lid and is the grip |
 | Shroud | part of the dock | none: the gate body (39 deep) stands in a notch in the dock, flush on the lit face |
-| CS-Lite slot | 20, dock 35 long | 20.5; the dock runs forward under the gate to a front wall, 69.7 long |
+| CS-Lite slot | 20, dock 35 long | 20.5; the dock runs forward past the spools, 92.7 long, 191 wide, no front wall |
 | `axis` | slider 30–60 | 39 at least |
 
 ## Tuning and print notes
 
-- **`ramp_rise`** works only from about 0.6 to 0.8 (0.7 gives the 0.113 preload). Below about
-  0.56 the ramps run out before the plate reaches the film. `build.py` then fails with
-  "pressure_plate and wedge_plate should overlap … and do not touch" at LOCK, and FAIL on
-  "film / pressure plate, LOCK". Above 0.8 the ramps' thick ends are thicker than `wedge_gap`
-  (0.9) and hit the pressure plate's body: "pressure_plate and wedge_plate intersect" at
-  SLIDE. At 0.57 the preload is only 0.005.
 - **`thread_clear`** builds valid solids from 0.05 to 0.3. Print the coupon to choose.
 - **Supports:** only the adapter's socket ledge (a 5.3 wide annular overhang in the thread-up
-  pose).
-- **First layer:** the gate front's and the pressure plate's first layers are the film's
-  surfaces. Level the bed, keep the plate clean, and turn off or compensate elephant's foot,
-  which would put a lip on the frame window's edge.
-- **Pads and ramps:** both print as top layers, stepped (F7, F9). Use 0.12 layers or finer,
-  and ironing.
-- **Gate screws:** four M3 × 20, socket or button head, from the front. They self-tap into the
-  Ø2.5 pilots, so don't overtighten. For repeated assembly, use M3 heat-set inserts and
-  `pilot_d` 4.0.
-- **Wedge window:** 26 tall, the same as the frame window, so there's no y margin. The ramps
-  cap it at ±13.5 from the axis.
-- **Lettering font:** if Arial is missing, CadQuery silently uses another font. It's fine on
-  this Mac.
+  pose). The gate front's four tooth grooves are 2.8 wide bridges.
+- **First layer:** the gate front's first layer is the film's front surface. Level the bed, keep the
+  plate clean, and turn off or compensate elephant's foot, which would put a lip on the frame
+  window's edge and the grooves.
+- **The channel's floor** is the gate body's last layers: use ironing.
+- **`channel`** (0.3): if the film drags, open it to 0.35; if it bows, close it. **`channel_clear`**
+  (0.2): FDM prints slots narrow; open it if the film's edges bind.
+- **`peg_fit`** (0): open it 0.05 at a time if the gate front won't press on.
+- **Sprockets:** print at 0.12 layers so the 1.0 teeth keep their shape; two at once, or a brim,
+  since each is Ø6 × 83.5. Print one first with a short test strip of film: if the teeth don't
+  enter the perforations cleanly, tune `tooth_tip`, `tooth_w` and `tooth_h`.
+- **Gears:** if they bind, open `gear_backlash`; if the knob feels loose, close it.
 - **Stale exports:** an invalid solid isn't exported, so the previous STEP/STL stays in
   `exports/`.
 
-## Questions for the user
+## Questions for the user## Questions for the user
 
 - **Printer:** bed size and build height. 220 × 220 is assumed. `tube_max_len` borrows the
   220 footprint as the height. The plan wants a spigot split past `wd` ≈ 200; that isn't built.
@@ -528,6 +573,11 @@ it is the user's call.
 - **Camera:** A7 or A7 IV? Nothing depends on it yet.
 - **Gate height (R8):** keep `gate_above_axis` at 36, or raise it to 39.3 to close the hole?
 - **Mockup:** republish it with the differences above?
+- **Film direction:** the roll runs from −z to +z (left to right from the camera's side, looking at the
+  gate). Should either end be the supply side for how the roll comes off the developing reel?
+- **Roll length:** `film_roll_len` is 1600 (36 frames plus leader and trailer). A 37 or 38 frame roll fits.
+- **Print preview:** republish it from this branch, or wait until the branch merges? The page's URL
+  shows main's design now.
 
 ## Conventions from this session
 
@@ -540,8 +590,8 @@ it is the user's call.
 
 ## Suggested skills
 
-- `superpowers:brainstorming`: before designing the open mechanisms (leaf springs, guides,
-  gate/dock joint). These are design decisions for the user.
+- `superpowers:brainstorming`: before designing the open mechanisms (holding the CS-Lite, spool drag,
+  locating the gate on the tube). These are design decisions for the user.
 - `superpowers:test-driven-development`: write the geometry checks before each `model.py`.
 - `superpowers:verification-before-completion`: run `build.py` and the tests and quote the
   output before saying a part is done.

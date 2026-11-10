@@ -228,3 +228,23 @@ def fits_bed(wp: cq.Workplane, p: Params) -> bool:
     """Whether the footprint, as the solid is posed, is within the bed (`bed_x` by `bed_y`)."""
     dx, dy, _ = size(wp)
     return dx <= p.bed_x + 1e-6 and dy <= p.bed_y + 1e-6
+
+
+def box(x0: float, x1: float, y0: float, y1: float, z0: float, z1: float) -> cq.Workplane:
+    """A solid box over the given ranges (the same as `probe`, named for building)."""
+    return probe(x0, x1, y0, y1, z0, z1)
+
+
+def cylinder_y(x: float, z: float, r: float, y0: float, y1: float) -> cq.Workplane:
+    """A cylinder of radius r along y, from y0 to y1, on the line (x, z)."""
+    return cq.Workplane("XZ", origin=(0, y1, 0)).center(x, z).circle(r).extrude(y1 - y0)
+
+
+def teardrop_y(x: float, z: float, r: float, y0: float, y1: float, point: str = "-x") -> cq.Workplane:
+    """A cylinder of radius r along y, from y0 to y1, with a 45 degree point toward `point` ("-x" or "+x"): a hole
+    through a part that prints with that side up, so its roof leans 45 degrees instead of hanging flat."""
+    s = {"-x": -1, "+x": 1}[point]
+    k = r / math.sqrt(2)
+    kite = [(x + s * r * math.sqrt(2), z), (x + s * k, z + k), (x, z), (x + s * k, z - k)]
+    wedge = cq.Workplane("XZ", origin=(0, y1, 0)).polyline(kite).close().extrude(y1 - y0)
+    return cylinder_y(x, z, r, y0, y1).union(wedge)

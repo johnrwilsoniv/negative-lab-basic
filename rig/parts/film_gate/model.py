@@ -1,189 +1,131 @@
-"""3 · Film gate: the gate front, the gate body, the lid, and the floating pressure plate.
+"""3 · Film gate: the gate front and the gate body, pressed together on four friction pegs (ruling D2).
 
-Mockup `rebuild()` lines 415-465, split for printing (ruling F5). The gate front is a solid block from
-the gate's front face to the film reference plane (`x_ref`): the tube socket, then a light passage
-that narrows to the frame window, which runs straight for `plate_t` to the reference plane. It prints
-with that plane on the bed, so the face the film lies on is the smoothest one there is. The gate body
-is the floor, the side walls and the rear wall, from the reference plane back; it prints rear wall
-down. The film slots in its side walls are notches open toward the gate front, which closes them, so
-neither part has a bridge. Four M3 screws join the two through pillars outside the side walls.
+The film runs along z, flat, in a channel `channel` deep recessed into the gate body's front face, across
+the whole width of the body, so it enters at one side and leaves at the other. The gate front's rear face
+closes the channel: it is the film reference plane (`x_ref`), and it prints on the bed, so the face the
+film's front slides on is the smoothest there is. Nothing clamps: the channel is the film's thickness plus
+0.17, which holds it flat. The channel is `channel_clear` taller than the film, so its walls keep the strip
+straight in y, and it opens up over `lead_in` at each side so the film's end finds its way in.
 
-Below the film the gate body fills the space behind the wedge plate with the backer (ruling F12): a block on
-the floor from `wedge_back_clear` behind the plate to the rear wall, wall to wall, up to the film's bottom
-edge, so it stays out of the light path. At LOCK the pads push the plate back onto it, so the plate is
-wedged between the pressure plate and the body rather than bending away into free space.
+The gate front is a solid block from the gate's front face to the reference plane: the tube socket, then a
+light passage that narrows to the frame window, which runs straight for `win_depth` to the reference plane.
+Behind the channel the gate body is solid too, apart from:
+  - the light passage, from `body_win` at its front face to `rear_win` on the CS-Lite's lit face;
+  - the two sprocket pockets (D3), vertical, at z = +-sprocket_z, `r_pocket` round, from `y_pocket` up
+    through the body's top, where the sprockets drop in; each breaks through the front face, so the teeth reach
+    the film. A bearing hole under each pocket takes the shaft's lower end, which stands on its floor;
+  - the idler's axle hole, in the top, between the pockets (the deck and the gears: film_drive).
+Pockets and holes run along y, which lies on the bed when the body prints, so each is a teardrop pointing at
+the gate front (the top of the print).
 
-The lid is its own solid resting on the side walls, `lid_clear` short of the gate front and of the
-rear wall. The pressure plate is `plate_clear` inside the floor, the lid and the side walls all round,
-so it drops in and floats; it prints with the face that meets the film on the bed (F7).
+The teeth reach `tooth_h` past the film, into the gate front: two grooves in its rear face per sprocket, one
+per perforation row, from the side of the gate to `relief_z`, ramping up to the face at 45 degrees on the
+window's side.
 
-The walls are slabs with rectangular windows extruded in one go, so the booleans are the tube socket
-(it breaks through the top edge, ruling R8), the light passage, the screw holes, the pads joined to the
-pressure plate, and the unions that make the body. The gate front's top is plain (F14).
-
-Not modelled (ruling R3): leaf springs, pressure plate guides, wedge plate z-grooves, the
-lid-slot detent bumps, and how the lid is fastened.
+The pegs stand on the body's front face, outside the channel, and press into holes through the gate front
+(`peg_fit` 0: FDM prints holes a little small).
 """
 
 import cadquery as cq
 
+import cadutil
+from cadutil import box
 from params import DEFAULT, Params
 
-# The gate front and the pressure plate print with their film faces on the bed (F5, F7): -x up for the gate front,
-# whose rear face is the reference plane, +x up for the pressure plate, whose front face meets the film. The body
-# prints rear wall down (-x up), so its walls, pillars and film notches all stand straight up from the bed.
-PRINT_UP = {"gate_front": "-x", "gate_body": "-x", "gate_lid": "+y", "pressure_plate": "+x"}
-
-def _slab(plane, origin, outer, hole, depth):
-    """Extrude the rectangle `outer` = (u0, u1, v0, v1), with `hole` (same form, or None) cut through,
-    `depth` along the plane's normal. u and v are the plane's own x and y axes."""
-
-    def rect(wp, r):
-        u0, u1, v0, v1 = r
-        return wp.moveTo((u0 + u1) / 2, (v0 + v1) / 2).rect(u1 - u0, v1 - v0)
-
-    wp = rect(cq.Workplane(plane, origin=origin), outer)
-    if hole is not None:
-        wp = rect(wp, hole)
-    return wp.extrude(depth)
+# Both print with their reference-plane faces on the bed (-x up for the gate front, whose rear face it is) or up
+# (the body, rear face on the bed, -x up too): every opening then runs straight up, or leans no more than 45 degrees.
+PRINT_UP = {"gate_front": "-x", "gate_body": "-x"}
 
 
-def _centred(c, w, h):
-    """(u0, u1, v0, v1) of a w by h rectangle centred on c."""
-    return c[0] - w / 2, c[0] + w / 2, c[1] - h / 2, c[1] + h / 2
-
-
-def _wall_x(p: Params, x0: float, x1: float, y0: float, y1: float, z_half: float, window: tuple[float, float] | None):
-    """A wall across the gate from x0 to x1, y0..y1, z +-z_half, with a window (along z, along y) on the axis."""
-    hole = None if window is None else _centred((p.axis, 0), window[1], window[0])
-    return _slab("YZ", (x0, 0, 0), (y0, y1, -z_half, z_half), hole, x1 - x0)
-
-
-def _box(x0: float, x1: float, y0: float, y1: float, z0: float, z1: float) -> cq.Workplane:
-    return cq.Workplane("XY").box(x1 - x0, y1 - y0, z1 - z0, centered=False).translate((x0, y0, z0))
-
-
-def _bores(p: Params, x0: float, x1: float, d: float) -> cq.Workplane:
-    """A d diameter rod along x from x0 to x1 at each of the four joint screws."""
-    rods = cq.Workplane("YZ", origin=(x0, 0, 0)).pushPoints(p.screw_points).circle(d / 2)
-    return rods.extrude(x1 - x0)
+def _rect_x(p: Params, x: float, w: float, h: float) -> cq.Workplane:
+    """A w (z) by h (y) rectangle on the lens axis, in the plane at x (the workplane's normal is +x)."""
+    return cq.Workplane("YZ", origin=(x, 0, 0)).center(p.axis, 0).rect(h, w)
 
 
 def _light_passage(p: Params) -> cq.Workplane:
-    """The air the lens looks through: the frame window straight for plate_t from the reference plane, then flaring
-    to `flare_scale` times its size at the socket's floor, so its corners reach the tube's bore and the tube's end
-    rests on the ledge all round."""
-    x_win = p.x_ref - p.plate_t
+    """The air the lens looks through: the frame window straight for win_depth from the reference plane, then flaring
+    to `flare_scale` times its size at the socket's floor, so its corners reach the tube's bore."""
+    x_win = p.x_ref - p.win_depth
     x_socket = p.x_gate + p.front_wall
     k = p.flare_scale
-    window = _box(x_win - 0.01, p.x_ref + 1, p.axis - p.win_h / 2, p.axis + p.win_h / 2, -p.win_w / 2, p.win_w / 2)
+    window = box(x_win - 0.01, p.x_ref + 1, p.axis - p.win_h / 2, p.axis + p.win_h / 2, -p.win_w / 2, p.win_w / 2)
     flare = (
-        cq.Workplane("YZ", origin=(x_socket, 0, 0)).center(p.axis, 0).rect(k * p.win_h, k * p.win_w)
+        _rect_x(p, x_socket, k * p.win_w, k * p.win_h)
         .workplane(offset=x_win - x_socket).rect(p.win_h, p.win_w)
         .loft(combine=True, ruled=True)
     )
     return window.union(flare)
 
 
+def _rods_x(p: Params, x0: float, x1: float, d: float) -> cq.Workplane:
+    """A d diameter rod along x from x0 to x1 at each of the four pegs."""
+    return cq.Workplane("YZ", origin=(x0, 0, 0)).pushPoints(p.peg_points).circle(d / 2).extrude(x1 - x0)
+
+
+def _relief(p: Params, sign: int, y_row: float) -> cq.Workplane:
+    """One tooth groove: relief_depth forward of the reference plane, tooth_w wide about the row at y_row, from past the
+    gate's side to relief_z, then up to the face at 45 degrees."""
+    d, edge, z_in = p.relief_depth, p.gw / 2 + 1, p.relief_z
+    outline = [(p.x_ref + 1, edge), (p.x_ref - d, edge), (p.x_ref - d, z_in), (p.x_ref, z_in - d),
+               (p.x_ref + 1, z_in - d - 1)]
+    outline = [(x, sign * z) for x, z in outline]
+    y1 = y_row + p.tooth_w / 2
+    return cq.Workplane("XZ", origin=(0, y1, 0)).polyline(outline).close().extrude(p.tooth_w)
+
+
 def gate_front(p: Params = DEFAULT) -> cq.Workplane:
-    """x_gate .. x_ref, gh tall, gate_front_w wide: the tube socket, the light passage and the screw holes."""
-    block = _box(p.x_gate, p.x_ref, 0, p.gh, -p.gate_front_w / 2, p.gate_front_w / 2)
+    """x_gate .. x_ref, gh tall, gw wide: the tube socket, the light passage, the peg holes, the tooth grooves."""
+    block = box(p.x_gate, p.x_ref, 0, p.gh, -p.gw / 2, p.gw / 2)
     socket = cq.Workplane("YZ", origin=(p.x_gate - 1, 0, 0)).center(p.axis, 0).circle(p.fit_r).extrude(p.front_wall + 1)
     block = block.cut(socket).cut(_light_passage(p))
-    block = block.cut(_bores(p, p.x_gate - 1, p.x_ref + 1, p.joint_hole_d))
-    return block.cut(_bores(p, p.x_gate - 1, p.x_gate + p.cbore_depth, p.cbore_d))
+    block = block.cut(_rods_x(p, p.x_gate - 1, p.x_ref + 1, p.peg_d + p.peg_fit))
+    for sign in (-1, 1):
+        for y_row in (p.axis - p.perf_dy, p.axis + p.perf_dy):
+            block = block.cut(_relief(p, sign, y_row))
+    return block
 
 
-def _rear_wall(p: Params) -> cq.Workplane:
-    x1 = p.x_gate + p.gate_d
-    return _wall_x(p, x1 - p.wall, x1, 0, p.gh, p.gw / 2, (p.rear_win_w, p.rear_win_h))
+def _channel(p: Params) -> cq.Workplane:
+    """The film's channel, across the body's whole width, with a lead-in at each side."""
+    y0, y1 = p.axis - p.channel_h / 2, p.axis + p.channel_h / 2
+    cut = box(p.x_ref - 1, p.x_ref + p.channel, y0, y1, -p.gw / 2 - 1, p.gw / 2 + 1)
+    for sign in (-1, 1):
+        z_in, z_out = p.gw / 2 - p.lead_in, p.gw / 2 + 1
+        outline = [(p.x_ref - 1, z_in), (p.x_ref + p.channel, z_in), (p.x_ref + p.lead_in_depth, p.gw / 2),
+                   (p.x_ref + p.lead_in_depth, z_out), (p.x_ref - 1, z_out)]
+        wedge = cq.Workplane("XZ", origin=(0, y1, 0)).polyline([(x, sign * z) for x, z in outline]).close()
+        cut = cut.union(wedge.extrude(y1 - y0))
+    return cut
 
 
-def _floor(p: Params) -> cq.Workplane:
-    """From the reference plane to the rear wall."""
-    return _slab("XZ", (0, p.wall, 0), (p.x_ref, p.x_gate + p.gate_d - p.wall, -p.gw / 2, p.gw / 2), None, p.wall)
-
-
-def _side_wall(p: Params, sign: int) -> cq.Workplane:
-    """From the reference plane to the rear wall, from the floor up to the lid, with the film slot: a notch film_slot_w
-    along x from film_slot_x0 (the reference plane, so the notch is open toward the gate front, which closes it),
-    film_slot_h along y from film_slot_y0, the film's lower edge, so the film rests on the notch's floor (F13)."""
-    z0 = p.gw / 2 - p.wall if sign > 0 else -p.gw / 2
-    wall = _slab("XY", (0, 0, z0), (p.x_ref, p.x_gate + p.gate_d - p.wall, p.wall, p.gh - p.wall), None, p.wall)
-    notch = _box(p.film_slot_x0 - 1, p.film_slot_x0 + p.film_slot_w, p.film_slot_y0,
-                 p.film_slot_y0 + p.film_slot_h, z0 - 1, z0 + p.wall + 1)
-    return wall.cut(notch)
-
-
-def _pillars(p: Params) -> list[cq.Workplane]:
-    """One per joint screw, outside the side walls, the body's whole depth so each stands on the bed."""
-    x1 = p.x_gate + p.gate_d
-    out = []
-    for y, z in p.screw_points:
-        out.append(_box(p.x_ref, x1, y - p.ear_h / 2, y + p.ear_h / 2, z - p.ear_w / 2, z + p.ear_w / 2))
-    return out
-
-
-def _backer(p: Params) -> cq.Workplane:
-    """wedge_back_clear behind the wedge plate's back face to the rear wall, side wall to side wall, from the floor up to
-    the film's bottom edge."""
-    x0 = p.x_wedge + p.wedge_t + p.wedge_back_clear
-    return _box(x0, p.x_gate + p.gate_d - p.wall, p.wall, p.axis - p.film_w / 2, -(p.gw / 2 - p.wall), p.gw / 2 - p.wall)
-
-
-def gate_body(p: Params = DEFAULT) -> cq.Workplane:
-    body = _rear_wall(p)
-    for part in (_floor(p), _side_wall(p, -1), _side_wall(p, 1), _backer(p), *_pillars(p)):
-        body = body.union(part)
-    return body.cut(_bores(p, p.x_ref - 1, p.x_ref + p.pilot_depth, p.pilot_d))
-
-
-def gate_lid(p: Params = DEFAULT) -> cq.Workplane:
-    """Between the gate front and the rear wall, lid_clear short of each, on the side walls, with the switch slot
-    (placed absolutely, not from the lid's ends)."""
-    slot_x0 = p.x_wedge - p.tab_clear
-    slot_z = p.sw_travel / 2 + p.slot_end
-    return _slab(
-        "XZ", (0, p.gh, 0),
-        (p.x_ref + p.lid_clear, p.x_gate + p.gate_d - p.wall - p.lid_clear, -p.gw / 2, p.gw / 2),
-        (slot_x0, slot_x0 + p.tab_t + 2 * p.tab_clear, -slot_z, slot_z),
-        p.wall,
+def _body_passage(p: Params) -> cq.Workplane:
+    """The light's way from the lit face to the film: rear_win at the rear face, body_win at the front."""
+    return (
+        _rect_x(p, p.x_ref - 0.01, p.body_win_w, p.body_win_h)
+        .workplane(offset=p.x_light - p.x_ref + 0.02).rect(p.rear_win_h, p.rear_win_w)
+        .loft(combine=True, ruled=True)
     )
 
 
-def _pad(p: Params, zc: float, yc: float) -> cq.Workplane:
-    """One pad on the pressure plate's back face, footprint pad x pad centred on (zc, yc).
-
-    Its back face is parallel to the face of the ramp that presses on it (ruling R6). A ramp's face recedes
-    from the wedge plate (toward -x) by ramp_t, thick toward -z, so that face climbs toward +x as
-    z grows; the pad, on the other side of the gap, therefore grows thicker toward +z.
-    """
-    h = p.pad / 2
-    slope = p.ramp_rise / p.ramp_len
-
-    def thickness(z):
-        return p.pad_t + slope * (z - zc)
-
-    outline = [(p.x_pp, zc - h), (p.x_pp + thickness(zc - h), zc - h), (p.x_pp + thickness(zc + h), zc + h), (p.x_pp, zc + h)]
-    return cq.Workplane("XZ", origin=(0, yc + h, 0)).polyline(outline).close().extrude(p.pad)
+def _pegs(p: Params) -> cq.Workplane:
+    """Standing peg_len forward of the body's front face, chamfered at the tip."""
+    pegs = _rods_x(p, p.x_ref - p.peg_len, p.x_ref + 0.01, p.peg_d)
+    return pegs.faces("<X").edges().chamfer(p.peg_chamfer)
 
 
-def pressure_plate(p: Params = DEFAULT, lock: bool = False) -> cq.Workplane:
-    """Floats along x: half the channel behind the film at SLIDE, `lock_shift` toward it at LOCK.
+def gate_body(p: Params = DEFAULT) -> cq.Workplane:
+    """x_ref .. x_light, gh tall, gw wide: the channel, the light passage, the sprocket pockets and bearings, the idler's
+    axle hole, and the pegs."""
+    body = box(p.x_ref, p.x_light, 0, p.gh, -p.gw / 2, p.gw / 2)
+    body = body.cut(_channel(p)).cut(_body_passage(p))
+    xs = p.x_sprocket
+    for z in (-p.sprocket_z, p.sprocket_z):
+        body = body.cut(cadutil.teardrop_y(xs, z, p.r_pocket, p.y_pocket, p.gh + 1))
+        body = body.cut(cadutil.teardrop_y(xs, z, p.shaft_d / 2 + p.bearing_clear, p.shaft_floor, p.y_pocket + 0.01))
+    body = body.cut(cadutil.teardrop_y(xs, 0, p.shaft_d / 2, p.gh - p.axle_hole_depth, p.gh + 1))
+    return body.union(_pegs(p))
 
-    plate_clear inside the floor, the lid and the side walls; its x, window and pads are as the mockup's.
-    """
-    x0, c = p.x_film + p.channel / 2, p.plate_clear
-    plate = _wall_x(p, x0, p.x_pp, p.wall + c, p.gh - p.wall - c, p.gw / 2 - p.wall - c, (p.win_w, p.win_h))
-    for zc in (-p.pad_z, p.pad_z):
-        for yc in (p.axis - p.pad_dy, p.axis + p.pad_dy):
-            plate = plate.union(_pad(p, zc, yc))
-    return plate.translate((-p.lock_shift, 0, 0)) if lock else plate
 
-
-def build(p: Params = DEFAULT, lock: bool = False) -> dict[str, cq.Workplane]:
-    """The gate's printed solids in mockup coordinates. Only the pressure plate moves with `lock`."""
-    return {
-        "gate_front": gate_front(p), "gate_body": gate_body(p), "gate_lid": gate_lid(p),
-        "pressure_plate": pressure_plate(p, lock),
-    }
+def build(p: Params = DEFAULT, turn: float = 0.0) -> dict[str, cq.Workplane]:
+    """The gate's printed solids in mockup coordinates. Neither moves when the knob turns."""
+    return {"gate_front": gate_front(p), "gate_body": gate_body(p)}

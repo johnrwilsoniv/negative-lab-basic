@@ -4,9 +4,9 @@
     uv run python print_preview.py
 
 Writes exports/nlb-rig-print-preview.html, one self-contained page with the print-pose STLs from
-exports/stl/ embedded, and the assembly: every printed solid in place at SLIDE (built here, meshed
-more coarsely to keep the page small) with the references: the film strip with its perforations and its
-exposures as meshes, the CS-Lite as a box. The page template is
+exports/stl/ embedded, and the assembly: every printed solid in place with a frame in the window (built
+here, meshed more coarsely to keep the page small) with the references: the film through the gate with its
+perforations and its exposures, and half the roll on each spool, as meshes; the CS-Lite as a box. The page template is
 mockup/print-preview.html. The notes per solid come from PLAN.md ("Tuning and print notes" and each
 part's "Printing" line).
 """
@@ -34,10 +34,11 @@ MARK = "/*__PRINT_DATA__*/null"
 ASM_LINEAR_TOL = 0.05         # coarser than the print STLs (0.01): the assembly is for looking at, and it halves the page
 ASM_ANGULAR_TOL = 0.2
 REF_GREY = "#9aa3a0"
-FILM_GROUP, DOCK_GROUP = "3 · Film gate", "4 · Light dock"     # the picker lists each reference under these
-REF_MESHES = (                  # name, label, colour, opacity: the film's base is clear orange, its exposures dark
-    ("film", "Film strip (perforated)", "#b39466", 0.55),
-    ("film_frames", "Exposures, 36 × 24", "#2b2622", 0.85),
+FILM_GROUP, DOCK_GROUP, SPOOL_GROUP = "3 · Film gate", "4 · Light dock", "6 · Spools"   # the picker's groups for the refs
+REF_MESHES = (                  # name, label, group, colour, opacity: the film's base is clear orange, its exposures dark
+    ("film", "Film through the gate (perforated)", FILM_GROUP, "#b39466", 0.55),
+    ("film_frames", "Exposures, 36 × 24", FILM_GROUP, "#2b2622", 0.85),
+    ("rolls", "Half the roll on each spool", SPOOL_GROUP, "#6b5a45", 0.7),
 )
 
 # name: (number, label, group, default layer, description, notes); which way up comes from the models' PRINT_UP
@@ -70,66 +71,97 @@ SOLIDS = {
     "gate_front": (
         "3", "Gate front", "3 · Film gate", 0.2,
         "Solid block: tube socket, a light passage flaring down to the 38 × 26 frame window, and the film "
-        "reference plane.",
+        "reference plane, with a groove under each sprocket's tooth rows. Presses onto the gate body's four pegs.",
         [
-            "<b>Film face on the bed.</b> The rear face, which the film lies on, is the first layer: as flat and "
+            "<b>Film face on the bed.</b> The rear face, which the film slides on, is the first layer: as flat and "
             "smooth as the bed. Keep the first layer clean (no elephant's foot) around the window.",
-            "No supports. The passage and the socket only widen going up.",
-            "Four M3 × 20 screws, heads in the counterbores, self-tap into the body's pillars (or use heat-set inserts: "
-            "set <code>pilot_d</code> 4.0).",
+            "No supports. The passage and the socket only widen going up; the four tooth grooves are 2.8 wide bridges, "
+            "1.2 deep, in the first layers.",
+            "The peg holes run through. They're the pegs' own size, so the front presses on (FDM prints holes a little "
+            "small); open <code>peg_fit</code> if it won't go.",
         ],
     ),
     "gate_body": (
         "3b", "Gate body", "3 · Film gate", 0.2,
-        "Floor, side walls and rear wall, with four screw pillars outside the walls, and a backer below the film that "
-        "the wedge plate is wedged against at LOCK. Joins to the gate front's rear face.",
+        "The film channel across its front face (0.3 deep, 35.2 tall, with a lead-in at each side), the light passage "
+        "to the lit face, the two sprocket pockets and their bearing holes, the idler's axle hole, and the four pegs.",
         [
-            "Rear wall on the bed. Walls, pillars and the film notches all rise straight up: no bridges, no supports.",
-            "The film slots are notches open at the top of the print; the gate front closes them, so the film's "
-            "front face only ever touches the bed-printed reference plane.",
+            "Rear face on the bed. The channel's floor is the last layers: use ironing, since the film slides on it.",
+            "The pockets and holes run along the bed, so each is a teardrop pointing up: no supports.",
         ],
     ),
-    "gate_lid": (
-        "3c", "Gate lid", "3 · Film gate", 0.2,
-        "Drops in between the gate front and the rear wall, on the side walls, with the switch tab's slot.",
+    "sprocket_supply": (
+        "5", "Sprocket (×2)", "5 · Film drive", 0.12,
+        "Eight teeth on each of two rings come up through the perforations: one turn is one frame. The shaft stands "
+        "in a bearing hole in the gate body and runs up through the deck to its gear, keyed by a D-flat.",
         [
-            "Flat, top up.",
+            "Standing on its shaft's foot, at 0.12 layers. The rings sit on 45° cones and the teeth come to 45° ridges, "
+            "so nothing hangs over air.",
+            "Tall and thin (Ø6 × 83.5): print two at once, or with a brim, so each layer has time to cool.",
+            "The take-up side is the same print: <code>sprocket_takeup</code>.",
         ],
     ),
-    "pressure_plate": (
-        "3d", "Pressure plate", "3 · Film gate", 0.12,
-        "Floats along the optical axis; its four sloped pads ride the wedge plate's ramps.",
-        [
-            "<b>Film face on the bed.</b> The face that presses the film is the first layer. No bridge over the window.",
-            "The pads' 1:17 slopes are now the top layers, so they print stepped. Use 0.12 or finer layers and ironing "
-            "on top surfaces; tune <code>ramp_rise</code> if the clamp is off.",
-        ],
+    "sprocket_takeup": (
+        "5", "Sprocket, take-up side", "5 · Film drive", 0.12,
+        "The same as the supply side's, turned half round in the rig.", [],
     ),
-    "wedge_plate": (
-        "5", "Wedge plate", "5 · Lock switch", 0.12,
-        "Slides ±5 along z; four ramps push the pressure plate onto the film at LOCK. Its tab sticks 12.7 (½ in) "
-        "out of the lid: push it toward LOCK or SLIDE (no knob).",
-        [
-            "Flat, back face on the bed, ramps up (F9). No bridges, no supports, no brim needed.",
-            "The tab is 2 × 4: print it solid (100% infill there) so it doesn't snap when you push it.",
-            "The ramps' 1:17 slopes are now the top layers, so they print stepped, like the pressure plate's pads. "
-            "Use 0.12 or finer layers and ironing; tune <code>ramp_rise</code> against the print.",
-        ],
+    "gear_supply": (
+        "5", "Gear (×2)", "5 · Film drive", 0.12,
+        "30 teeth, module 1.03, 20°: on each sprocket shaft's D-flat, standing on the deck.",
+        ["Flat. The take-up side is the same print: <code>gear_takeup</code>."],
+    ),
+    "gear_takeup": (
+        "5", "Gear, take-up side", "5 · Film drive", 0.12, "The same as the supply side's.", [],
+    ),
+    "idler": (
+        "5", "Idler and knob", "5 · Film drive", 0.12,
+        "30 teeth, between the two gears, so both sprockets turn the same way. One knob turn is one frame; the groove "
+        "on top counts turns.",
+        ["Gear face down, knob up."],
+    ),
+    "idler_axle": (
+        "5", "Idler axle", "5 · Film drive", 0.2,
+        "Ø6 × 26: presses through the deck into the gate body's top.", ["Upright."],
+    ),
+    "deck": (
+        "5", "Deck", "5 · Film drive", 0.2,
+        "Lies on the gate body's top: the sprocket shafts' top bearings, and the idler's axle pressed in.",
+        ["Flat."],
+    ),
+    "spool_supply": (
+        "6", "Spool (×2)", "6 · Spools", 0.2,
+        "The bottom flange and a Ø30 core, with a slit for the film's end and a socket for the cap. Turns on a pin on "
+        "the dock.",
+        ["Bottom flange on the bed. The take-up spool is the same print: <code>spool_takeup</code>."],
+    ),
+    "spool_takeup": (
+        "6", "Take-up spool", "6 · Spools", 0.2, "The same as the supply spool.", [],
+    ),
+    "cap_supply": (
+        "6", "Spool cap (×2)", "6 · Spools", 0.2,
+        "The top flange, scalloped for a grip, with a spigot that presses into the core's socket. Turn the spools by "
+        "their caps.",
+        ["Upside down: its top on the bed, the spigot up. The other cap is the same print: <code>cap_takeup</code>."],
+    ),
+    "cap_takeup": (
+        "6", "Take-up spool cap", "6 · Spools", 0.2, "The same as the supply spool's cap.", [],
     ),
     "light_dock": (
         "4", "Light dock", "4 · Light dock", 0.2,
-        "Holds the CS-Lite on its long edge, 25 behind the film. The gate stands in a notch between a front wall "
-        "(a U around the tube) and the lit face, which hold the gate front and body together.",
+        "Holds the CS-Lite on its long edge, 25 behind the film. The gate stands in a notch against the lit face; the "
+        "spools stand on pedestals and pins beside it.",
         [
-            "Floor down. No bridges.",
-            "At 181 wide it's the largest part: confirm the bed size.",
+            "Floor down. No bridges. The pins print upright.",
+            "At 191 wide it's the largest part: confirm the bed size.",
         ],
     ),
 }
 ORDER = [
-    "thread_coupon", "adapter", "tube", "gate_front", "gate_body", "gate_lid", "pressure_plate", "light_dock",
-    "wedge_plate",
+    "thread_coupon", "adapter", "tube", "gate_front", "gate_body", "sprocket_supply", "sprocket_takeup", "gear_supply",
+    "gear_takeup", "idler", "idler_axle", "deck", "spool_supply", "spool_takeup", "cap_supply", "cap_takeup",
+    "light_dock",
 ]
+
 
 
 def _commit() -> str:
@@ -142,10 +174,10 @@ def _commit() -> str:
 
 
 def assembled(p: Params) -> dict:
-    """The printed solids in place at SLIDE (mockup coordinates: y up, the table at y = 0), as STLs, in assembly order;
-    then the references: the perforated film strip and its exposures (all frames in one mesh) as STLs, the CS-Lite
-    as a box."""
-    placed = assembly.placed(p, False)
+    """The printed solids in place with a frame in the window (mockup coordinates: y up, the table at y = 0), as STLs, in
+    assembly order; then the references: the perforated film, its exposures (all frames in one mesh) and the two rolls
+    as STLs, the CS-Lite as a box."""
+    placed = assembly.placed(p)
     solids = []
     with tempfile.TemporaryDirectory() as tmp:
         for name in assembly.PRINTED:
@@ -159,15 +191,16 @@ def assembled(p: Params) -> dict:
         meshes = {
             "film": cadutil.solid(placed["film"]),
             "film_frames": cq.Compound.makeCompound([cadutil.solid(wp) for wp in frames]),
+            "rolls": cq.Compound.makeCompound([cadutil.solid(placed[n]) for n in ("roll_supply", "roll_takeup")]),
         }
         refs = []
-        for name, label, colour, opacity in REF_MESHES:
+        for name, label, group, colour, opacity in REF_MESHES:
             path = Path(tmp) / f"{name}.stl"
             if not meshes[name].exportStl(
                 str(path), tolerance=ASM_LINEAR_TOL, angularTolerance=ASM_ANGULAR_TOL, relative=False
             ):
                 raise RuntimeError(f"STL export of {name} failed")
-            refs.append({"name": name, "label": label, "group": FILM_GROUP, "colour": colour, "opacity": opacity,
+            refs.append({"name": name, "label": label, "group": group, "colour": colour, "opacity": opacity,
                          "stl": base64.b64encode(path.read_bytes()).decode()})
     refs.append({"name": "cs_lite", "label": "CS-Lite", "group": DOCK_GROUP, "colour": REF_GREY, "opacity": 0.35,
                  "box": [round(v, 4) for v in cadutil.bounds(placed["cs_lite"])]})

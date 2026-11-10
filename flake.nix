@@ -1,5 +1,5 @@
 {
-  description = "Negative Lab Basic: invert phone and camera photos of B&W and C-41 film negatives";
+  description = "Negative Lab Basic: invert phone and camera photos of 35mm film negatives";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

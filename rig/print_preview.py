@@ -39,7 +39,7 @@ MARK = "/*__PRINT_DATA__*/null"
 ASM_LINEAR_TOL = 0.05         # coarser than the print STLs (0.01): the assembly is for looking at, and it halves the page
 ASM_ANGULAR_TOL = 0.2
 REF_GREY = "#9aa3a0"
-FILM_GROUP, DOCK_GROUP = "3 · Film gate", "4 · Light dock"     # the picker lists each reference under these
+FILM_GROUP, DOCK_GROUP = "2 · Film gate", "3 · Light dock"     # the picker lists each reference under these
 REF_MESHES = (                  # name, label, colour, opacity: the film's base is clear orange, its exposures dark
     ("film", "Film strip (perforated)", "#b39466", 0.55),
     ("film_frames", "Exposures, 36 × 24", "#2b2622", 0.85),
@@ -66,14 +66,14 @@ SOLIDS = {
         ],
     ),
     "tube": (
-        "2", "Tube", "2 · Tube", 0.2,
+        "1b", "Tube", "1 · Lens adapter", 0.2,
         "Ø68 / Ø64, <code>wd − 13</code> long, with sawtooth baffle ribs inside.",
         [
             "Upright. The baffles' lower flanks are 45°, so no supports.",
         ],
     ),
     "gate_front": (
-        "3", "Gate front", "3 · Film gate", 0.2,
+        "2", "Gate front", FILM_GROUP, 0.2,
         "Solid block: tube socket, a light passage flaring down to the 38 × 26 frame window, and the film "
         "reference plane.",
         [
@@ -85,7 +85,7 @@ SOLIDS = {
         ],
     ),
     "gate_body": (
-        "3b", "Gate body", "3 · Film gate", 0.2,
+        "2b", "Gate body", FILM_GROUP, 0.2,
         "Floor, side walls and rear wall, with four screw pillars outside the walls, and a backer below the film that "
         "the wedge plate is wedged against at LOCK. Joins to the gate front's rear face.",
         [
@@ -95,14 +95,14 @@ SOLIDS = {
         ],
     ),
     "gate_lid": (
-        "3c", "Gate lid", "3 · Film gate", 0.2,
+        "2c", "Gate lid", FILM_GROUP, 0.2,
         "Drops in between the gate front and the rear wall, on the side walls, with the switch tab's slot.",
         [
             "Flat, top up.",
         ],
     ),
     "pressure_plate": (
-        "3d", "Pressure plate", "3 · Film gate", 0.12,
+        "2d", "Pressure plate", FILM_GROUP, 0.12,
         "Floats along the optical axis; its four sloped pads ride the wedge plate's ramps.",
         [
             "<b>Film face on the bed.</b> The face that presses the film is the first layer. No bridge over the window.",
@@ -111,7 +111,7 @@ SOLIDS = {
         ],
     ),
     "wedge_plate": (
-        "5", "Wedge plate", "5 · Lock switch", 0.12,
+        "2e", "Wedge plate", FILM_GROUP, 0.12,
         "Slides ±5 along z; four ramps push the pressure plate onto the film at LOCK. Its tab sticks 12.7 (½ in) "
         "out of the lid: push it toward LOCK or SLIDE (no knob).",
         [
@@ -122,7 +122,7 @@ SOLIDS = {
         ],
     ),
     "light_dock": (
-        "4", "Light dock", "4 · Light dock", 0.2,
+        "3", "Light dock", DOCK_GROUP, 0.2,
         "Holds the CS-Lite on its long edge, 25 behind the film. The gate stands in a notch between a front wall "
         "(a U around the tube) and the lit face, which hold the gate front and body together.",
         [
@@ -132,8 +132,8 @@ SOLIDS = {
     ),
 }
 ORDER = [
-    "thread_coupon", "adapter", "tube", "gate_front", "gate_body", "gate_lid", "pressure_plate", "light_dock",
-    "wedge_plate",
+    "thread_coupon", "adapter", "tube", "gate_front", "gate_body", "gate_lid", "pressure_plate", "wedge_plate",
+    "light_dock",
 ]
 
 # ---- "Dimensions to confirm": the page's checklist, PLAN.md "Check before printing" item for item ----

@@ -704,7 +704,7 @@ body.tab-dims .dims { display: block; }
     };
     for (const it of c.items) add(PARTS[it.name].group, { name: it.name, label: PARTS[it.name].label, colour: it.colour });
     for (const r of c.refs) add(r.group, { name: r.name, label: r.label, colour: r.colour });
-    groups.sort((a, b) => parseFloat(a.label) - parseFloat(b.label));     // by subassembly number: "4 · …" before "5 · …"
+    groups.sort((a, b) => parseFloat(a.label) - parseFloat(b.label));     // by subassembly number: "2 · …" before "3 · …"
     return groups;
   }
   function buildTree() {

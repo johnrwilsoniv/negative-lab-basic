@@ -155,7 +155,8 @@ The mockup's rail shows these live, and `updateText()` has the formulas.
 
 Each part gets `rig/parts/<part>/model.py`, which exposes `build(p, lock=False)`: a dict of the
 part's solids, in mockup coordinates, at SLIDE or LOCK. `PRINT_UP` says which side of each faces up
-on the bed. Folder numbers follow the mockup's labels.
+on the bed. Section numbers follow the print preview's groups: 1 · Lens adapter (with the tube),
+2 · Film gate (with the lock switch's wedge plate), 3 · Light dock.
 
 ### 1 · Lens adapter (`parts/lens_adapter/`): build first
 
@@ -174,7 +175,7 @@ Screws into the Laowa's 67mm filter thread. The tube slides into the other end.
   thread fit can be checked before the full part is printed. This is the riskiest geometry
   in the rig. At 0.75 pitch, FDM is marginal.
 
-### 2 · Tube (`parts/tube/`)
+### 1b · Tube (`parts/tube/`)
 
 - **Size:** Ø68 OD / Ø64 ID. Length is `wd − 13` (98 at the default), with 12 baffle ribs.
 - **Ends:** one end slides into the adapter socket and the other into the gate's front-wall
@@ -185,7 +186,7 @@ Screws into the Laowa's 67mm filter thread. The tube slides into the other end.
 - **Bed size:** 98 tall is fine. If `wd` grows past roughly 200, split the tube with a
   spigot joint.
 
-### 3 · Film gate (`parts/film_gate/`)
+### 2 · Film gate (`parts/film_gate/`)
 
 Four printed pieces (F5): the gate front, the gate body, the lid and the pressure plate.
 
@@ -245,7 +246,34 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
   lens-side chamber for it to open into, but it still lets room light onto the film's back.
   Tape, or a lip on the lid.
 
-### 4 · Light dock (`parts/light_dock/`)
+### 2e · Lock switch (`parts/lock_switch/`)
+
+**Tab:** 2 (x) × 4 (z), up from the plate's top through the lid slot and 12.7 (½ inch,
+`tab_reach`) out of the lid top. It is the grip: push it toward +z for LOCK, −z for SLIDE.
+There's no knob (F15).
+
+**Wedge plate:**
+- 2 thick, 70 wide (z), and as tall as the gate interior (about 70).
+- Window 52 × 26. Shifted ±5, it still clears the 38 wide frame window.
+- Four ramps on its front face, one under each pressure-plate pad. Each is 12 long and goes
+  from 0.8 thick at the −z end to 0.1 at the +z end.
+
+**How it works:**
+- Travel is ±5 along z. At SLIDE (tab at −z) each pad sits on the thin end of its ramp.
+- At LOCK, the pressure plate moves forward by
+  `min(rampT(−s) − rampT(SW_TRAVEL/2), CHANNEL − FILM_T)`.
+- The ramp slope (about 1:17) should be self-locking. Still add a detent bump at each end
+  of the slot. Not designed yet: a working detent needs a compliant member, and the tab is
+  rigid with 0.5 play. The detents are what hold LOCK; the
+  leaf springs are what return the plate to SLIDE.
+
+**Assembly:** drop the wedge plate in, then lower the lid over it so the tab comes up through
+the slot. Nothing to snap on.
+
+**Tuning:** if the grip is wrong after a test print, change the ramp rise (about 0.6–0.8
+only: see "Tuning and print notes"). Don't change `CHANNEL`.
+
+### 3 · Light dock (`parts/light_dock/`)
 
 Holds the CS-Lite standing on its long edge, lit face toward the film, `GAP` (25) behind
 the film plane.
@@ -273,33 +301,6 @@ the film plane.
 **Not designed yet:**
 - Holding the CS-Lite against the front lip. The slot has 0.5 play behind it. With the front
   wall's 0.2, the gate's rear face can sit up to 0.2 off the lit face and leak light.
-
-### 5 · Lock switch (`parts/lock_switch/`)
-
-**Tab:** 2 (x) × 4 (z), up from the plate's top through the lid slot and 12.7 (½ inch,
-`tab_reach`) out of the lid top. It is the grip: push it toward +z for LOCK, −z for SLIDE.
-There's no knob (F15).
-
-**Wedge plate:**
-- 2 thick, 70 wide (z), and as tall as the gate interior (about 70).
-- Window 52 × 26. Shifted ±5, it still clears the 38 wide frame window.
-- Four ramps on its front face, one under each pressure-plate pad. Each is 12 long and goes
-  from 0.8 thick at the −z end to 0.1 at the +z end.
-
-**How it works:**
-- Travel is ±5 along z. At SLIDE (tab at −z) each pad sits on the thin end of its ramp.
-- At LOCK, the pressure plate moves forward by
-  `min(rampT(−s) − rampT(SW_TRAVEL/2), CHANNEL − FILM_T)`.
-- The ramp slope (about 1:17) should be self-locking. Still add a detent bump at each end
-  of the slot. Not designed yet: a working detent needs a compliant member, and the tab is
-  rigid with 0.5 play. The detents are what hold LOCK; the
-  leaf springs are what return the plate to SLIDE.
-
-**Assembly:** drop the wedge plate in, then lower the lid over it so the tab comes up through
-the slot. Nothing to snap on.
-
-**Tuning:** if the grip is wrong after a test print, change the ramp rise (about 0.6–0.8
-only: see "Tuning and print notes"). Don't change `CHANNEL`.
 
 ## Folder layout
 

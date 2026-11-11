@@ -1,68 +1,57 @@
 # Negative Lab Basic
 
-Turns photos of B&W negatives (lightbox + mount; iPhone HEIC or ProRAW/DNG, Sony ARW)
-into cropped 3:2, flipped, inverted grayscale HEIC positives (`IMG_1.DNG` → `IMG_1.HEIC`).
-A pun on Negative Lab Pro.
+Scan 35mm film with a camera, then turn the negatives into positives. It has three parts: a 3D-printed
+scanning rig, a local web app for tethered capture and editing, and a command-line tool for batch
+conversion. The name is a pun on Negative Lab Pro.
 
-    uv run nlb preview <dir>                         # previews + contact sheet + manifest
-    uv run nlb render <dir> --rotate IMG_4031=90ccw  # full-res into <dir>-positive/
+## The rig
 
-In Claude Code: `/nlb-invert <dir>` runs preview → agent review → your confirmation → render.
-Install the skill: `ln -s "$PWD/skills/nlb-invert" ~/.claude/skills/nlb-invert`
+A light-tight path from camera to film: Sony A7 IV + Laowa 90mm 2X macro → lens adapter → tube → film
+gate → light dock holding a CineStill CS-Lite. Strips slide sideways through the gate, and a switch on
+the lid clamps them flat. It's modelled in CadQuery; nothing has been printed yet.
 
-## Studio: tethered capture, review and color
+**See it at [nlb.jrwiv.com](https://nlb.jrwiv.com)**: the assembled model, a print preview, and
+every STL and STEP file.
 
-`nlb studio` is a local web app for camera scanning (Sony A7 IV + macro lens + film
-holder): capture, review and render a roll, C-41 color or B&W, to 16-bit TIFF.
+Build the STLs yourself, from `rig/`:
+
+    uv run python build.py [--wd W] [--axis A]   # STEP + STL per part into rig/exports/
+    uv run pytest                                # checks on the built solids
+
+`--wd` (working distance) and `--axis` (table to lens centre) default to the measured 111 and 40.5.
+The design notes, rulings and pre-print checklist are in [rig/PLAN.md](rig/PLAN.md).
+
+## Studio
+
+A local web app for scanning a roll with a tethered Sony: capture, review, and render C-41 color
+or B&W to 16-bit TIFF.
 
     nix run . -- studio sony-capture/rolls/roll02    # opens http://127.0.0.1:8765/
 
-- **Capture**: inverted live view (2×/4× focus zoom, focus meter, and a dashed box where
-  auto-frame finds the picture, with the strip's tilt), `Space` to shoot, `R` to reshoot
-  the last frame. The camera's own shutter button works too. Frames land in the roll
-  folder as `frame-001.ARW`, `frame-002.ARW`, … and numbering resumes across sessions.
-  On connect it sets `imagequality=RAW` and `pcsaveimgsize=Original`.
-- **Test shots** (Shoot mode *Test first*, the default): a capture doesn't go into the roll.
-  It gets checked first: exposure (film base vs the 60–85% target, with the shutter speed
-  to set), clipping, framing and centering, strip tilt, even light, stray light, focus
-  (sprocket-hole edge sharpness vs your earlier test shots) and whether it matches the
-  roll's earlier frames. Look at it as *Frame*, *Result* or *Exposure* (clipped pixels in
-  red), then `Enter` keeps it as the next frame, *Replace* swaps it for the last frame, and
-  `Del` throws it away. A new test shot replaces (deletes) the previous one. `L` flips
-  between live view and the test shot. *Direct* mode sends captures straight to the roll.
-- **Review**: per frame crop (drag; `C`), rotate (`[` `]`), straighten, exposure / contrast /
-  color sliders, reject (`X`); `←` `→` to move. Per roll: film type, mirror, film base
-  (*Pick from rebate* on the negative view) and *Lock levels to roll* for consistent color.
-- **Process** (per frame, `D` toggles): nlb's own engine, or darktable. The darktable
-  option runs `darktable-cli` headless with the negadoctor styles in
-  [sony-capture/darktable/](sony-capture/darktable/README.md) (C-41 or B&W, following the
-  roll's film type), then applies the frame's crop, rotation and straighten. A picked film
-  base (*Pick from rebate*) becomes negadoctor's Dmin for the roll; on *Auto* the style's own
-  Dmin is used. The sliders and levels only affect nlb. A darktable preview takes a few seconds the first time
-  and is cached in `~/.cache/nlb/darktable/`. *Copy* / *Paste to all* include this setting, and
-  new captures inherit it from the previous frame.
-- **Render roll**: full-res 16-bit TIFFs of the kept frames into `<roll>-positive/`.
+- **Capture**: inverted live view with a focus aid and auto-framing. Test shots are checked for
+  exposure, focus and framing before they go into the roll.
+- **Review**: crop, rotate, straighten, exposure and color, and film-base pick, per frame or locked
+  to the roll.
+- **Process**: nlb's own engine or darktable's negadoctor.
+- **Render**: full-res TIFFs of the kept frames into `<roll>-positive/`.
 
-Edits live in `<roll>/roll.json`; originals are never modified (reshoots move the old
-raw to `<roll>/.nlb/trash/`). No camera handy? `--fake-camera <dir>` replays raw files
-from `<dir>` as captures. Capture needs the gphoto2 Python module (`pip install 'nlb[camera]'`,
-or `nix develop`); without it the studio still runs with Capture grayed out. With no camera
-plugged in, it connects as soon as one is. Camera setup and troubleshooting:
-[sony-capture/](sony-capture/README.md).
-The conversion engine is `src/nlb/develop.py`; see
-[its plan](docs/superpowers/plans/2026-10-10-develop-engine.md).
+Edits live in `<roll>/roll.json`, and originals are never modified. `--fake-camera <dir>` replays
+raw files when there's no camera. Camera setup: [sony-capture/](sony-capture/README.md).
 
-Headless, the same engine renders a roll from its `roll.json` (or picks crop, deskew, film
-base and levels per frame without one). Auto-framing handles a whole strip in a holder or
-straight on a lightbox (sprocket holes visible; their pitch sizes the 36 × 24 mm frame) and a carrier that masks all but the picture, like the iPhone ProRAW
-rig; turn on mirror (`flip`) for film shot emulsion side up.
+## Command line
 
-    uv run nlb develop <roll-dir>            # 16-bit TIFFs into <roll-dir>-positive/
-    uv run nlb develop <roll-dir> --check    # capture exposure report, renders nothing
+    uv run nlb preview <dir>                         # low-res positives, contact sheet, manifest
+    uv run nlb render <dir> --rotate IMG_4031=90ccw  # full-res grayscale HEIC into <dir>-positive/
+    uv run nlb develop <roll-dir>                    # 16-bit TIFFs from raws + roll.json
+    uv run nlb develop <roll-dir> --check            # exposure report only
+    uv run nlb studio <roll-dir>                     # the studio, above
 
-Tests: `uv run pytest` (sample-based tests need `iphone-negatives/` or the rolls in `nextcloud/`).
+`preview` and `render` take iPhone HEIC, ProRAW/DNG or Sony ARW shot on a lightbox. Each output is
+cropped to 3:2, mirrored, inverted and rotated (`IMG_1.DNG` → `IMG_1.HEIC`).
 
-With Nix (no uv needed; dependencies come from nixpkgs):
+Tests: `uv run pytest`. With Nix: `nix run . -- <command>`, or `nix develop -c pytest`.
 
-    nix run . -- preview <dir>                       # or `nix build` → ./result/bin/nlb
-    nix develop -c pytest                            # dev shell puts src/ on PYTHONPATH
+## Skills
+
+- **`/nlb-invert <dir>`** (Claude Code): preview → agent review → your OK → render. Install it with
+  `ln -s "$PWD/skills/nlb-invert" ~/.claude/skills/nlb-invert`.

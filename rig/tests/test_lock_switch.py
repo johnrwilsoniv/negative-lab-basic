@@ -145,7 +145,7 @@ def test_the_plate_is_2_thick_70_wide_and_69_5_tall(wedge):
     assert plate[3] - plate[2] == pytest.approx(69.5, abs=EPS)                   # gh - 7
     assert plate[5] - plate[4] == pytest.approx(70, abs=EPS)
     assert_full(wedge, p.x_wedge, p.x_wedge + 2, 3.5, 23, -40, 30)                # below the ramps and the window
-    assert_full(wedge, p.x_wedge, p.x_wedge + 2, 58.5, 73, -40, 30)              # above them
+    assert_full(wedge, p.x_wedge + p.mark_depth, p.x_wedge + 2, 58.5, 73, -40, 30)  # above them, behind the ▲ (F18)
     assert_void(wedge, p.x_wedge - 5, p.x_wedge - 0.9, 0, 80, -50, 50)           # nothing farther than the thickest ramp
 
 
@@ -244,7 +244,8 @@ def test_wedge_plate_volume_is_the_plate_less_the_window_plus_the_tab_and_four_r
     plate = 2 * 70 * 69.5 - 2 * 52 * 26
     tab = 2 * 4 * (3.5 + 12.7)
     ramps = 4 * (4 * 12 * 0.45)
-    assert cadutil.volume(wedge) == pytest.approx(plate + tab + ramps, rel=1e-9)
+    mark = 3 * 3 / 2 * 0.36                                                       # the ▲ (F18)
+    assert cadutil.volume(wedge) == pytest.approx(plate + tab + ramps - mark, rel=1e-9)
 
 
 # ---- mating with the pressure plate --------------------------------------------------

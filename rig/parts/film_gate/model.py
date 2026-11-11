@@ -1,4 +1,4 @@
-"""3 · Film gate: the gate front, the gate body, the lid, and the floating pressure plate.
+"""2 · Film gate: the gate front, the gate body, the lid, and the floating pressure plate.
 
 Mockup `rebuild()` lines 415-465, split for printing (ruling F5). The gate front is a solid block from
 the gate's front face to the film reference plane (`x_ref`): the tube socket, then a light passage
@@ -21,12 +21,18 @@ The walls are slabs with rectangular windows extruded in one go, so the booleans
 (1.7 under the top edge, ruling R8), the light passage, the screw holes, the pads joined to the
 pressure plate, and the unions that make the body. The gate front's top is plain (F14).
 
+Assembly marks (F18), each `mark_depth` deep and only where they print without a ceiling: a short groove across
+the gate front / body joint on the +z side, which only lines up with the front the right way up; an open
+padlock on the lid's top at the SLIDE end of the slot and a shut one at the LOCK end; and a ▲ on the pressure
+plate's back, pointing up and facing the light (the wedge plate's faces it from the lens side).
+
 Not modelled (ruling R3): leaf springs, pressure plate guides, wedge plate z-grooves, the
 lid-slot detent bumps, and how the lid is fastened.
 """
 
 import cadquery as cq
 
+import cadutil
 from params import DEFAULT, Params
 
 # The gate front and the pressure plate print with their film faces on the bed (F5, F7): -x up for the gate front,
@@ -91,7 +97,36 @@ def gate_front(p: Params = DEFAULT) -> cq.Workplane:
     socket = cq.Workplane("YZ", origin=(p.x_gate - 1, 0, 0)).center(p.axis, 0).circle(p.fit_r).extrude(p.front_wall + 1)
     block = block.cut(socket).cut(_light_passage(p))
     block = block.cut(_bores(p, p.x_gate - 1, p.x_ref + 1, p.joint_hole_d))
-    return block.cut(_bores(p, p.x_gate - 1, p.x_gate + p.cbore_depth, p.cbore_d))
+    block = block.cut(_bores(p, p.x_gate - 1, p.x_gate + p.cbore_depth, p.cbore_d))
+    return cadutil.cut_marks(block, [_front_groove(p)] if p.mark_depth else [])
+
+
+def _groove_y(p: Params) -> tuple[float, float]:
+    """The seam groove's y range (F18): mark_groove_dy above the upper screws, where both parts are solid."""
+    yc = max(y for y, _ in p.screw_points) + p.mark_groove_dy
+    return yc - p.mark_groove_w / 2, yc + p.mark_groove_w / 2
+
+
+def _front_groove(p: Params) -> cq.Workplane:
+    """The gate front's half of the seam groove, on its +z side: mark_groove_len long, stopping 1 short of the
+    reference plane, which is on the bed. The front prints -x up, so the groove's upper end runs out over 1
+    instead of ending in a ceiling."""
+    y0, y1 = _groove_y(p)
+    zf, d, o = p.gate_front_w / 2, p.mark_depth, cadutil.MARK_OVERCUT
+    x1 = p.x_ref - 1
+    x0 = x1 - p.mark_groove_len
+    side = cq.Plane(origin=(0, y1, 0), xDir=(1, 0, 0), normal=(0, -1, 0))       # local (x, z), extruded toward -y
+    outline = [(x1, zf - d), (x0, zf - d), (x0 - 1, zf), (x0 - 1, zf + o), (x1, zf + o)]
+    return cq.Workplane(side).polyline(outline).close().extrude(y1 - y0)
+
+
+def _body_groove(p: Params) -> cq.Workplane:
+    """The gate body's half: from the reference plane (the top of its print) mark_groove_len back, on the +z
+    pillar's outer face, in line with the gate front's."""
+    y0, y1 = _groove_y(p)
+    zf = p.gw / 2 + p.ear_w
+    return cadutil.probe(p.x_ref - cadutil.MARK_OVERCUT, p.x_ref + p.mark_groove_len, y0, y1,
+                         zf - p.mark_depth, zf + cadutil.MARK_OVERCUT)
 
 
 def _rear_wall(p: Params) -> cq.Workplane:
@@ -135,20 +170,29 @@ def gate_body(p: Params = DEFAULT) -> cq.Workplane:
     body = _rear_wall(p)
     for part in (_floor(p), _side_wall(p, -1), _side_wall(p, 1), _backer(p), *_pillars(p)):
         body = body.union(part)
-    return body.cut(_bores(p, p.x_ref - 1, p.x_ref + p.pilot_depth, p.pilot_d))
+    body = body.cut(_bores(p, p.x_ref - 1, p.x_ref + p.pilot_depth, p.pilot_d))
+    return cadutil.cut_marks(body, [_body_groove(p)] if p.mark_depth else [])
 
 
 def gate_lid(p: Params = DEFAULT) -> cq.Workplane:
     """Between the gate front and the rear wall, lid_clear short of each, on the side walls, with the switch slot
     (placed absolutely, not from the lid's ends)."""
     slot_x0 = p.x_wedge - p.tab_clear
+    slot_w = p.tab_t + 2 * p.tab_clear
     slot_z = p.sw_travel / 2 + p.slot_end
-    return _slab(
+    lid = _slab(
         "XZ", (0, p.gh, 0),
         (p.x_ref + p.lid_clear, p.x_gate + p.gate_d - p.wall - p.lid_clear, -p.gw / 2, p.gw / 2),
-        (slot_x0, slot_x0 + p.tab_t + 2 * p.tab_clear, -slot_z, slot_z),
+        (slot_x0, slot_x0 + slot_w, -slot_z, slot_z),
         p.wall,
     )
+    if not p.mark_depth:
+        return lid
+    # padlocks either side of the slot (F18), shackles toward +x: open toward SLIDE (-z), shut toward LOCK (+z)
+    top = cadutil.face_plane((0, p.gh, 0), (0, 1, 0), (1, 0, 0))                  # u = +z, v = +x
+    u, v = slot_z + p.mark_lock_off, slot_x0 + slot_w / 2
+    return cadutil.cut_marks(lid, [cadutil.mark_padlock(top, -u, v, p.mark_depth, shut=False),
+                                   cadutil.mark_padlock(top, u, v, p.mark_depth, shut=True)])
 
 
 def _pad(p: Params, zc: float, yc: float) -> cq.Workplane:
@@ -178,6 +222,9 @@ def pressure_plate(p: Params = DEFAULT, lock: bool = False) -> cq.Workplane:
     for zc in (-p.pad_z, p.pad_z):
         for yc in (p.axis - p.pad_dy, p.axis + p.pad_dy):
             plate = plate.union(_pad(p, zc, yc))
+    if p.mark_depth:        # ▲ on the back (F18), pointing up, toward the light
+        back = cadutil.face_plane((p.x_pp, 0, 0), (1, 0, 0), (0, 1, 0))
+        plate = cadutil.cut_marks(plate, [cadutil.mark_triangle(back, 0, p.gh - p.wall - p.mark_drop, p.mark_tri, p.mark_depth)])
     return plate.translate((-p.lock_shift, 0, 0)) if lock else plate
 
 

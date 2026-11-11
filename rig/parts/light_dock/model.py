@@ -1,4 +1,4 @@
-"""6 · Light dock: the printed holder for the CS-Lite panel, with the film gate inset in it.
+"""3 · Light dock: the printed holder for the CS-Lite panel, with the film gate inset in it.
 
 Mockup `rebuild()` lines 473-494. The panel (bought, 165 x 112 x 20) stands on its long edge in a
 slot between two lips, its lit face toward the film, against the front lip. The gate body's rear face

@@ -1,4 +1,4 @@
-"""5 · Lock switch: the wedge plate, with its tab and four ramps.
+"""2e · Lock switch: the wedge plate, with its tab and four ramps.
 
 Mockup `rebuild()` lines 422-442 (the `sl` group) and the lock animation at 686-690. The switch
 slides along z inside the gate. Its wedge plate sits behind the pressure plate; the plate's four
@@ -6,6 +6,8 @@ ramps run under the pressure plate's four sloped pads (film_gate `_pad`) and pus
 clamp the film at LOCK. The tab rises through the lid's slot and sticks `tab_reach` (1/2 inch) out of
 the lid top, so it is the grip that slides the switch: there is no knob (F15). The lid goes on after
 the wedge plate, over the tab.
+
+A ▲ on the plate's front face (F18), pointing up, faces the pressure plate's, so the ramps go toward the lens.
 
 Everything is drawn at s = 0 (switch centred) and then moved along z, as the mockup's `sl` group
 is: SLIDE is s = -sw_travel/2, LOCK s = +sw_travel/2.
@@ -20,6 +22,7 @@ along z. The surfaces where they would attach (the lid slot's ends, the plate's 
 
 import cadquery as cq
 
+import cadutil
 from params import DEFAULT, Params
 
 # Wedge plate flat, back face on the bed, ramps up (F9): on its bottom edge it bridged 52 over its window. The ramps'
@@ -74,6 +77,9 @@ def wedge_plate(p: Params = DEFAULT, lock: bool = False) -> cq.Workplane:
     for zc in (-p.pad_z, p.pad_z):
         for yc in (p.axis - p.pad_dy, p.axis + p.pad_dy):
             wedge = wedge.union(_ramp(p, zc, yc))
+    if p.mark_depth:
+        front = cadutil.face_plane((p.x_wedge, 0, 0), (-1, 0, 0), (0, 1, 0))
+        wedge = cadutil.cut_marks(wedge, [cadutil.mark_triangle(front, 0, p.gh - p.wall - p.mark_drop, p.mark_tri, p.mark_depth)])
     return wedge.translate((0, 0, _shift(p, lock)))
 
 

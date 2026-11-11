@@ -1,4 +1,4 @@
-"""2 · Tube: slides into the adapter socket at the camera end and the gate's front-wall hole at the other.
+"""1b · Tube: slides into the adapter socket at the camera end and the gate's front-wall hole at the other.
 
 Mockup `rebuild()` lines 410-413 draw a plain ring; the sawtooth baffle ribs inside are ruling R12.
 The tube is one revolved (x, r) profile, so there are no booleans to go wrong.

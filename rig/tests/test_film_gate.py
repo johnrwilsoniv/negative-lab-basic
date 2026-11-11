@@ -256,7 +256,8 @@ def test_front_volume(front):
     flare = 7.9 / 3 * (a1 + a2 + math.sqrt(a1 * a2))
     socket = 4 * math.pi * 34.3**2                                      # whole: 1.7 under the top
     holes = 4 * (13.7 * math.pi * 1.7**2 + 3.5 * math.pi * (3.25**2 - 1.7**2))
-    assert cadutil.volume(front) == pytest.approx(13.7 * 76.5 * 110 - socket - 1.8 * a1 - flare - holes, rel=1e-6)
+    groove = 0.8 * 0.36 * (6 + 1 / 2)                                   # the seam mark (F18), its end run out over 1
+    assert cadutil.volume(front) == pytest.approx(13.7 * 76.5 * 110 - socket - 1.8 * a1 - flare - holes - groove, rel=1e-6)
 
 
 def test_front_top_is_plain_behind_the_socket(front):
@@ -320,7 +321,7 @@ def test_four_screw_pillars_stand_the_bodys_whole_depth_outside_the_side_walls(b
     for y0, y1, z0, z1 in PILLARS:
         yc, zc = (y0 + y1) / 2, (z0 + z1) / 2
         solid = probe(REF, REAR, y0, y1, z0, z1).cut(
-            cq.Workplane("YZ", origin=(REF, 0, 0)).center(yc, zc).circle(1.25).extrude(12))
+            cq.Workplane("YZ", origin=(REF, 0, 0)).center(yc, zc).circle(1.25).extrude(12)).cut(model._body_groove(p))
         assert cadutil.common_volume(body, solid) == pytest.approx(cadutil.volume(solid), rel=1e-6)
         assert_void(body, REF, REF + 12 - 0.01, yc - 1.2, yc + 1.2, zc - 0.05, zc + 0.05)     # the pilot ...
         assert_full(body, REF + 12 + 0.01, REAR, yc - 1.2, yc + 1.2, zc - 0.05, zc + 0.05)    # ... is blind
@@ -336,7 +337,8 @@ def test_body_volume_is_the_sum_of_its_walls_and_pillars(body):
     rear = 3 * 76.5 * 92 - 3 * 46 * 34
     pillars = 4 * (25.3 * 9 * 9 - 12 * math.pi * 1.25**2)
     backer = 16.95 * 20 * 86
-    assert cadutil.volume(body) == pytest.approx(floor + sides + rear + pillars + backer, rel=1e-6)
+    groove = 0.8 * 0.36 * 6                                             # the seam mark (F18)
+    assert cadutil.volume(body) == pytest.approx(floor + sides + rear + pillars + backer - groove, rel=1e-6)
 
 
 # ---- the backer behind the wedge plate (F12) -----------------------------------------
@@ -525,7 +527,8 @@ def test_lid_slot_is_3_by_16_for_the_tab(lid):
     assert_opening(lid, across_y(73.5, 76.5), 3, 16, ca=p.x_wedge + 1, cb=0)
 
 
-def test_lid_volume_is_the_plate_less_the_slot(lid):
+def test_lid_volume_is_the_plate_less_the_slot():
+    lid = model.gate_lid(Params(mark_depth=0))                          # the padlocks: tests/test_marks.py
     assert cadutil.volume(lid) == pytest.approx(21.9 * 3 * 92 - 3 * 16 * 3, rel=1e-9)
 
 
@@ -589,7 +592,8 @@ def test_the_pads_print_as_the_top_layers_stepped_by_them(built):
 def test_pressure_plate_volume_is_the_plate_plus_four_pads(plate):
     plate_only = 85.5 * 70 * 1.8 - 1.8 * 38 * 26
     pads = 4 * p.pad * p.pad * p.pad_t               # linear slope about the centre: mean thickness is pad_t
-    assert cadutil.volume(plate) == pytest.approx(plate_only + pads, rel=1e-9)
+    mark = 3 * 3 / 2 * 0.36                          # the ▲ (F18)
+    assert cadutil.volume(plate) == pytest.approx(plate_only + pads - mark, rel=1e-9)
 
 
 # ---- follows the params --------------------------------------------------------------

@@ -22,6 +22,10 @@ thread coupon and the lid keep their shape. At the lower axis the dock's floor c
 tube under its front wall, so the U's round now goes through the floor too (F17). Numbers in the
 rulings below are as they were when each was made, at the old defaults.
 
+2026-11-10: assembly marks (F18). Six shallow recesses, 0.36 deep, show how the film gate goes
+together: a seam groove across the gate front / body joint, padlocks either side of the lid's slot,
+and a ▲ on each plate.
+
 **Before printing anything, go through "Check before printing" below** (also the print preview's
 "Dimensions to confirm" tab): the sizes that come from the camera, lens, CS-Lite, film, screws and
 printer, most of them still guesses or assumptions.
@@ -201,6 +205,7 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
   film leaves through the side walls.
 - Four Ø3.4 holes for M3 × 20 screws, counterbored Ø6.5 × 3.5 from the front.
 - Its top is plain (F14).
+- Seam groove (F18): 0.8 × 0.36, 6 long, on the +z side at y 72, ending 1 short of the rear face.
 
 **Gate body** (prints rear wall down):
 - Floor (3), side walls (3) and the rear wall (3, with a 46 × 34 window toward the light),
@@ -216,9 +221,12 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
   behind its back face to the rear wall, side wall to side wall, up to the film's bottom edge
   (y 23), so it stays out of the light path. At LOCK the plate is wedged between the pressure
   plate's pads and the backer.
+- Seam groove (F18): the other half of the gate front's, 6 long from `x_ref` on the +z upper
+  pillar's outer face.
 
 **Lid:** 3 thick, on the side walls, 0.2 short of the gate front and of the rear wall. Slot
-3 × 16 for the lock switch's tab.
+3 × 16 for the lock switch's tab. Two padlocks on its top (F18): open at the −z end of the slot
+(SLIDE), shut at the +z end (LOCK).
 
 **Pressure plate:**
 - 1.8 thick, with a 38 × 26 window. Floats along x only. 0.25 clearance to the floor, the
@@ -227,6 +235,7 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
 - Sits `CHANNEL/2` behind the film plane.
 - Four pads on its back face, 4 × 4, at z = ±22 and y = axis ± 15.5. Pad thickness is
   computed in the mockup (`padT`).
+- A 3 mm ▲ on its back face, top centre (F18): points up, faces the light.
 
 **Not designed yet. Brainstorm these with the user before modelling:**
 - Two **leaf springs** that pull the pressure plate back toward the light in slide mode.
@@ -268,7 +277,11 @@ There's no knob (F15).
   leaf springs are what return the plate to SLIDE.
 
 **Assembly:** drop the wedge plate in, then lower the lid over it so the tab comes up through
-the slot. Nothing to snap on.
+the slot. Nothing to snap on. The marks (F18) say which way round: the pressure plate's ▲ faces
+the light and the wedge plate's faces the lens, so the two point at each other; the gate front's
+seam groove meets the body's; push the tab toward the shut padlock to lock.
+
+**Wedge plate mark** (F18): a 3 mm ▲ on its front face under the tab, pointing up.
 
 **Tuning:** if the grip is wrong after a test print, change the ramp rise (about 0.6–0.8
 only: see "Tuning and print notes"). Don't change `CHANNEL`.
@@ -309,7 +322,7 @@ rig/
 ├── PLAN.md                 this file
 ├── pyproject.toml          its own uv project (cadquery, pytest), kept out of the nlb package
 ├── params.py               every dimension above, defaults plus derived values
-├── cadutil.py              shared helpers: measuring, print pose, export (ruling R11)
+├── cadutil.py              shared helpers: measuring, print pose, export (ruling R11), assembly marks (F18)
 ├── build.py                builds every part, writes exports/, prints sizes and checks
 ├── assembly.py             places all parts at mockup coordinates, interference check, assembly STEP
 ├── fits.py                 the mating fits, measured on the assembled solids
@@ -326,7 +339,7 @@ rig/
 ├── parts/
 │   ├── lens_adapter/       model.py (+ thread_coupon in the same file)
 │   ├── tube/               model.py
-│   ├── film_gate/          model.py: gate_front, gate_body, gate_lid, pressure_plate
+│   ├── film_gate/          model.py: gate_front, gate_body, gate_lid, pressure_plate (+ assembly marks, F18)
 │   ├── light_dock/         model.py: light_dock
 │   └── lock_switch/        model.py: wedge_plate
 ├── tests/                  pytest on the built solids
@@ -524,6 +537,26 @@ number.
   16 mm³ sliver and leaves 3.5 of floor under the tube; the trough opens upward, so it prints
   without support. `tests/test_light_dock.py` checks the clearance at axis 39, 40.5, 42.5 and 50.
 
+- **Assembly marks on the film gate (F18).** The user asked for small, sparse, inconspicuous marks so
+  the gate goes together without instructions. Every mark is `mark_depth` (0.36: 3 layers at 0.12,
+  2 at 0.2) deep, and only where it prints without a ceiling: on a face that prints as a top layer,
+  or as a straight groove running up an upright face. None touches a bed face, the film band, a
+  window, a pad or a ramp. Six in all:
+  - **Seam groove:** 0.8 wide, 6 long each side of the gate front / body joint, on the +z side only,
+    3 above the upper screws (y 72). It lines up only with the front the right way up: flipped, the
+    front's half lands at the bottom on the −z side. The front prints −x up, so its half's upper end
+    runs out over 1 instead of ending in a 0.36 ceiling, and it stops 1 short of the bed face.
+  - **Padlocks on the lid's top:** open at the −z (SLIDE) end of the tab slot, shut at the +z (LOCK)
+    end, 4.5 (`mark_lock_off`) past each end, shackles toward the light. Each is 4.4 wide, a body
+    4.4 × 3.4 under a shackle of 0.8 strokes. This puts back what F15 took away with the knob.
+  - **A ▲ on each plate,** 3 × 3 (`mark_tri`), 7.5 (`mark_drop`) under the lid: on the pressure
+    plate's back (its front prints on the bed) and on the wedge plate's front, so they point at each
+    other. Up/down matters most for the pressure plate: upside down its pads miss the ramps.
+  The lid needs no front/back mark (its slot lines up with the tab only one way round) and the gate
+  front no ▲ (the groove does it). An earlier draft had about fifteen marks with words and numbers;
+  the user asked for fewer and quieter. `mark_depth` 0 leaves them all off.
+  `tests/test_marks.py` checks where each is, its depth, and that none reaches the film band.
+
 ## Mockup differences to republish
 
 The CAD differs from the mockup on purpose here. The mockup's shapes haven't been changed (the local
@@ -674,8 +707,9 @@ After printing, tune `ramp_rise` and `wedge_back_clear` against the parts ("Tuni
   `pilot_d` 4.0.
 - **Wedge window:** 26 tall, the same as the frame window, so there's no y margin. The ramps
   cap it at ±13.5 from the axis.
-- **Lettering font:** if Arial is missing, CadQuery silently uses another font. It's fine on
-  this Mac.
+- **Assembly marks (F18):** 0.36 deep, so 3 layers on the plates at 0.12 and 2 elsewhere at 0.2.
+  Ironing doesn't fill them. If they come out too faint, raise `mark_depth`; every wall under a mark
+  keeps at least 1.4.
 - **Stale exports:** an invalid solid isn't exported, so the previous STEP/STL stays in
   `exports/`.
 

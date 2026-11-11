@@ -10,7 +10,7 @@ from parts.lock_switch import model as switch
 p = DEFAULT
 BARE = Params(mark_depth=0)
 BUILDERS = {
-    "gate_front": gate.gate_front, "gate_body": gate.gate_body, "gate_lid": gate.gate_lid,
+    "gate_front": gate.gate_front, "gate_lid": gate.gate_lid,
     "pressure_plate": gate.pressure_plate, "wedge_plate": switch.wedge_plate,
 }
 UP = {**gate.PRINT_UP, **switch.PRINT_UP}
@@ -35,7 +35,7 @@ def test_each_part_is_still_one_valid_solid_that_prints_without_overhangs(cut, n
 
 
 @pytest.mark.parametrize("name, removed", [
-    ("gate_front", 0.8 * 0.36 * 6.5), ("gate_body", 0.8 * 0.36 * 6),
+    ("gate_front", 1.5 * 3 * 0.36),
     ("pressure_plate", 1.5 * 3 * 0.36), ("wedge_plate", 1.5 * 3 * 0.36),
 ])
 def test_removed_volume(cut, name, removed):
@@ -50,12 +50,17 @@ def test_the_padlocks_are_shallow_and_beside_the_slot(cut):
     assert 8 < cut["gate_lid"][2] < 20                                             # two icons' worth, not a lid's
 
 
-def test_the_seam_groove_lines_up_across_the_joint(cut):
-    front, body = cut["gate_front"][3], cut["gate_body"][3]
-    assert front[2:] == pytest.approx(body[2:], abs=EPS)                           # same y and z
-    assert front[2:] == pytest.approx((71.6, 72.4, 55 - 0.36, 55), abs=EPS)        # 3 above the upper screws, +z side
-    assert front[1] == pytest.approx(p.x_ref - 1, abs=EPS)                         # clear of the bed face
-    assert (body[0], body[1]) == pytest.approx((p.x_ref, p.x_ref + 6), abs=EPS)
+def test_the_gate_front_triangle_is_on_the_socket_floor_inside_the_tube(cut):
+    x0, x1, y0, y1, z0, z1 = cut["gate_front"][3]
+    floor = p.x_gate + p.front_wall
+    assert (x0, x1) == pytest.approx((floor, floor + 0.36), abs=EPS)                # the socket floor, a top layer
+    assert (z0, z1) == pytest.approx((-1.5, 1.5), abs=EPS)                         # centred on the axis
+    assert y0 > p.axis + p.flare_scale * p.win_h / 2                               # above the light passage ...
+    assert y1 < p.axis + p.tube_ri - 0.5                                           # ... and inside the tube's bore
+
+
+def test_the_gate_body_has_no_mark():
+    assert cadutil.volume(gate.gate_body(p)) == pytest.approx(cadutil.volume(gate.gate_body(BARE)), rel=1e-12)
 
 
 def test_the_plates_triangles_face_each_other_above_the_film(cut):

@@ -22,9 +22,10 @@ thread coupon and the lid keep their shape. At the lower axis the dock's floor c
 tube under its front wall, so the U's round now goes through the floor too (F17). Numbers in the
 rulings below are as they were when each was made, at the old defaults.
 
-2026-11-10: assembly marks (F18). Six shallow recesses, 0.36 deep, show how the film gate goes
-together: a seam groove across the gate front / body joint, padlocks either side of the lid's slot,
-and a ▲ on each plate.
+2026-11-10: assembly marks (F18). Five shallow recesses, 0.36 deep, show how the film gate goes
+together: a ▲ on the gate front's socket floor, padlocks either side of the lid's slot, and a ▲ on
+each plate. 2026-11-11: the seam groove across the gate front / body joint is gone (the user didn't
+like it); the gate front's ▲ took its place.
 
 **Before printing anything, go through "Check before printing" below** (also the print preview's
 "Dimensions to confirm" tab): the sizes that come from the camera, lens, CS-Lite, film, screws and
@@ -205,7 +206,8 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
   film leaves through the side walls.
 - Four Ø3.4 holes for M3 × 20 screws, counterbored Ø6.5 × 3.5 from the front.
 - Its top is plain (F14).
-- Seam groove (F18): 0.8 × 0.36, 6 long, on the +z side at y 72, ending 1 short of the rear face.
+- A 3 mm ▲ on the socket floor (F18), pointing up, centred between the light passage's top and the
+  tube's bore (y 65.5), so it shows down the tube.
 
 **Gate body** (prints rear wall down):
 - Floor (3), side walls (3) and the rear wall (3, with a 46 × 34 window toward the light),
@@ -221,8 +223,6 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
   behind its back face to the rear wall, side wall to side wall, up to the film's bottom edge
   (y 23), so it stays out of the light path. At LOCK the plate is wedged between the pressure
   plate's pads and the backer.
-- Seam groove (F18): the other half of the gate front's, 6 long from `x_ref` on the +z upper
-  pillar's outer face.
 
 **Lid:** 3 thick, on the side walls, 0.2 short of the gate front and of the rear wall. Slot
 3 × 16 for the lock switch's tab. Two padlocks on its top (F18): open at the −z end of the slot
@@ -279,7 +279,7 @@ There's no knob (F15).
 **Assembly:** drop the wedge plate in, then lower the lid over it so the tab comes up through
 the slot. Nothing to snap on. The marks (F18) say which way round: the pressure plate's ▲ faces
 the light and the wedge plate's faces the lens, so the two point at each other; the gate front's
-seam groove meets the body's; push the tab toward the shut padlock to lock.
+▲ points up; push the tab toward the shut padlock to lock.
 
 **Wedge plate mark** (F18): a 3 mm ▲ on its front face under the tab, pointing up.
 
@@ -539,13 +539,11 @@ number.
 
 - **Assembly marks on the film gate (F18).** The user asked for small, sparse, inconspicuous marks so
   the gate goes together without instructions. Every mark is `mark_depth` (0.36: 3 layers at 0.12,
-  2 at 0.2) deep, and only where it prints without a ceiling: on a face that prints as a top layer,
-  or as a straight groove running up an upright face. None touches a bed face, the film band, a
-  window, a pad or a ramp. Six in all:
-  - **Seam groove:** 0.8 wide, 6 long each side of the gate front / body joint, on the +z side only,
-    3 above the upper screws (y 72). It lines up only with the front the right way up: flipped, the
-    front's half lands at the bottom on the −z side. The front prints −x up, so its half's upper end
-    runs out over 1 instead of ending in a 0.36 ceiling, and it stops 1 short of the bed face.
+  2 at 0.2) deep, and only where it prints without a ceiling: on a face that prints as a top layer.
+  None touches a bed face, the film band, a window, a pad or a ramp. Five in all:
+  - **A ▲ on the gate front's socket floor,** 3 × 3 (`mark_tri`), pointing up, where the tube goes
+    in: centred between the light passage's top and the tube's bore, so it shows down the tube. The
+    front prints −x up, so the floor is a top layer.
   - **Padlocks on the lid's top:** open at the −z (SLIDE) end of the tab slot, shut at the +z (LOCK)
     end, 4.5 (`mark_lock_off`) past each end, shackles toward the light. Each is 4.4 wide, a body
     4.4 × 3.4 under a shackle of 0.8 strokes. This puts back what F15 took away with the knob.
@@ -553,8 +551,9 @@ number.
     plate's back (its front prints on the bed) and on the wedge plate's front, so they point at each
     other. Up/down matters most for the pressure plate: upside down its pads miss the ramps.
   The lid needs no front/back mark (its slot lines up with the tab only one way round) and the gate
-  front no ▲ (the groove does it). An earlier draft had about fifteen marks with words and numbers;
-  the user asked for fewer and quieter. `mark_depth` 0 leaves them all off.
+  body none. An earlier draft had about fifteen marks with words and numbers; the user asked for
+  fewer and quieter. A seam groove across the gate front / body joint, on their +z sides, came out
+  on 2026-11-11: the user didn't like it. `mark_depth` 0 leaves them all off.
   `tests/test_marks.py` checks where each is, its depth, and that none reaches the film band.
 
 ## Mockup differences to republish

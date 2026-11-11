@@ -21,10 +21,10 @@ The walls are slabs with rectangular windows extruded in one go, so the booleans
 (1.7 under the top edge, ruling R8), the light passage, the screw holes, the pads joined to the
 pressure plate, and the unions that make the body. The gate front's top is plain (F14).
 
-Assembly marks (F18), each `mark_depth` deep and only where they print without a ceiling: a short groove across
-the gate front / body joint on the +z side, which only lines up with the front the right way up; an open
-padlock on the lid's top at the SLIDE end of the slot and a shut one at the LOCK end; and a ▲ on the pressure
-plate's back, pointing up and facing the light (the wedge plate's faces it from the lens side).
+Assembly marks (F18), each `mark_depth` deep and only where they print without a ceiling: a ▲ on the gate front's
+socket floor, pointing up; an open padlock on the lid's top at the SLIDE end of the slot and a shut one at the LOCK
+end; and a ▲ on the pressure plate's back, pointing up and facing the light (the wedge plate's faces it from the
+lens side).
 
 Not modelled (ruling R3): leaf springs, pressure plate guides, wedge plate z-grooves, the
 lid-slot detent bumps, and how the lid is fastened.
@@ -98,35 +98,16 @@ def gate_front(p: Params = DEFAULT) -> cq.Workplane:
     block = block.cut(socket).cut(_light_passage(p))
     block = block.cut(_bores(p, p.x_gate - 1, p.x_ref + 1, p.joint_hole_d))
     block = block.cut(_bores(p, p.x_gate - 1, p.x_gate + p.cbore_depth, p.cbore_d))
-    return cadutil.cut_marks(block, [_front_groove(p)] if p.mark_depth else [])
+    return cadutil.cut_marks(block, [_front_triangle(p)] if p.mark_depth else [])
 
 
-def _groove_y(p: Params) -> tuple[float, float]:
-    """The seam groove's y range (F18): mark_groove_dy above the upper screws, where both parts are solid."""
-    yc = max(y for y, _ in p.screw_points) + p.mark_groove_dy
-    return yc - p.mark_groove_w / 2, yc + p.mark_groove_w / 2
-
-
-def _front_groove(p: Params) -> cq.Workplane:
-    """The gate front's half of the seam groove, on its +z side: mark_groove_len long, stopping 1 short of the
-    reference plane, which is on the bed. The front prints -x up, so the groove's upper end runs out over 1
-    instead of ending in a ceiling."""
-    y0, y1 = _groove_y(p)
-    zf, d, o = p.gate_front_w / 2, p.mark_depth, cadutil.MARK_OVERCUT
-    x1 = p.x_ref - 1
-    x0 = x1 - p.mark_groove_len
-    side = cq.Plane(origin=(0, y1, 0), xDir=(1, 0, 0), normal=(0, -1, 0))       # local (x, z), extruded toward -y
-    outline = [(x1, zf - d), (x0, zf - d), (x0 - 1, zf), (x0 - 1, zf + o), (x1, zf + o)]
-    return cq.Workplane(side).polyline(outline).close().extrude(y1 - y0)
-
-
-def _body_groove(p: Params) -> cq.Workplane:
-    """The gate body's half: from the reference plane (the top of its print) mark_groove_len back, on the +z
-    pillar's outer face, in line with the gate front's."""
-    y0, y1 = _groove_y(p)
-    zf = p.gw / 2 + p.ear_w
-    return cadutil.probe(p.x_ref - cadutil.MARK_OVERCUT, p.x_ref + p.mark_groove_len, y0, y1,
-                         zf - p.mark_depth, zf + cadutil.MARK_OVERCUT)
+def _front_triangle(p: Params) -> cq.Workplane:
+    """The gate front's ▲ (F18), pointing up on the socket floor, where the tube's end goes: centred between the
+    light passage's top and the tube's bore, so it shows down the tube. The front prints -x up, so the floor is a
+    top layer."""
+    floor = cadutil.face_plane((p.x_gate + p.front_wall, 0, 0), (-1, 0, 0), (0, 1, 0))
+    v = p.axis + (p.flare_scale * p.win_h / 2 + p.tube_ri) / 2
+    return cadutil.mark_triangle(floor, 0, v, p.mark_tri, p.mark_depth)
 
 
 def _rear_wall(p: Params) -> cq.Workplane:
@@ -170,8 +151,7 @@ def gate_body(p: Params = DEFAULT) -> cq.Workplane:
     body = _rear_wall(p)
     for part in (_floor(p), _side_wall(p, -1), _side_wall(p, 1), _backer(p), *_pillars(p)):
         body = body.union(part)
-    body = body.cut(_bores(p, p.x_ref - 1, p.x_ref + p.pilot_depth, p.pilot_d))
-    return cadutil.cut_marks(body, [_body_groove(p)] if p.mark_depth else [])
+    return body.cut(_bores(p, p.x_ref - 1, p.x_ref + p.pilot_depth, p.pilot_d))
 
 
 def gate_lid(p: Params = DEFAULT) -> cq.Workplane:

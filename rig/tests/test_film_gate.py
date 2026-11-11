@@ -256,8 +256,8 @@ def test_front_volume(front):
     flare = 7.9 / 3 * (a1 + a2 + math.sqrt(a1 * a2))
     socket = 4 * math.pi * 34.3**2                                      # whole: 1.7 under the top
     holes = 4 * (13.7 * math.pi * 1.7**2 + 3.5 * math.pi * (3.25**2 - 1.7**2))
-    groove = 0.8 * 0.36 * (6 + 1 / 2)                                   # the seam mark (F18), its end run out over 1
-    assert cadutil.volume(front) == pytest.approx(13.7 * 76.5 * 110 - socket - 1.8 * a1 - flare - holes - groove, rel=1e-6)
+    mark = 3 * 3 / 2 * 0.36                                             # the ▲ (F18)
+    assert cadutil.volume(front) == pytest.approx(13.7 * 76.5 * 110 - socket - 1.8 * a1 - flare - holes - mark, rel=1e-6)
 
 
 def test_front_top_is_plain_behind_the_socket(front):
@@ -321,7 +321,7 @@ def test_four_screw_pillars_stand_the_bodys_whole_depth_outside_the_side_walls(b
     for y0, y1, z0, z1 in PILLARS:
         yc, zc = (y0 + y1) / 2, (z0 + z1) / 2
         solid = probe(REF, REAR, y0, y1, z0, z1).cut(
-            cq.Workplane("YZ", origin=(REF, 0, 0)).center(yc, zc).circle(1.25).extrude(12)).cut(model._body_groove(p))
+            cq.Workplane("YZ", origin=(REF, 0, 0)).center(yc, zc).circle(1.25).extrude(12))
         assert cadutil.common_volume(body, solid) == pytest.approx(cadutil.volume(solid), rel=1e-6)
         assert_void(body, REF, REF + 12 - 0.01, yc - 1.2, yc + 1.2, zc - 0.05, zc + 0.05)     # the pilot ...
         assert_full(body, REF + 12 + 0.01, REAR, yc - 1.2, yc + 1.2, zc - 0.05, zc + 0.05)    # ... is blind
@@ -337,8 +337,7 @@ def test_body_volume_is_the_sum_of_its_walls_and_pillars(body):
     rear = 3 * 76.5 * 92 - 3 * 46 * 34
     pillars = 4 * (25.3 * 9 * 9 - 12 * math.pi * 1.25**2)
     backer = 16.95 * 20 * 86
-    groove = 0.8 * 0.36 * 6                                             # the seam mark (F18)
-    assert cadutil.volume(body) == pytest.approx(floor + sides + rear + pillars + backer - groove, rel=1e-6)
+    assert cadutil.volume(body) == pytest.approx(floor + sides + rear + pillars + backer, rel=1e-6)
 
 
 # ---- the backer behind the wedge plate (F12) -----------------------------------------

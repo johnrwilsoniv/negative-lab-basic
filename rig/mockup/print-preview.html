@@ -940,7 +940,7 @@ body.tab-dims .dims { display: block; }
   if (DATA.site) {
     $('dlH').textContent = 'Download STL and STEP';
     $('dlNote').innerHTML = 'One STL (for the slicer) and one STEP (for Onshape) per printed solid, in print pose (Z up, the bed at ' +
-      `Z = 0). The assembly STEP and every file are in <a href="${DATA.site.files}">files/</a>.`;
+      `Z = 0). The assembly STEP, and everything as one zip, are on <a href="${DATA.site.files}">Files</a>.`;
   }
   {
     const kb = (b64) => Math.round((b64.length * 3 / 4 - (b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0)) / 1024);

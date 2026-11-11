@@ -78,7 +78,8 @@ def exports(tmp_path, monkeypatch):
 
     def pp_data(p, stl_dir):
         assert stl_dir == ex / "stl"
-        parts = [{"name": n, "stl": B64((stl_dir / f"{n}.stl").read_bytes())} for n in ("tube", "adapter")]
+        parts = [{"name": n, "num": num, "label": n.title(), "group": "1 · Lens adapter",
+                  "stl": B64((stl_dir / f"{n}.stl").read_bytes())} for n, num in (("tube", "1b"), ("adapter", "1"))]
         return {"parts": parts, "assembly": {"solids": [{"name": "tube", "stl": B64(b"coarse" + bytes(90))}],
                                              "refs": [{"name": "cs_lite", "box": [0] * 6}]},
                 "built": "wd 111 · axis 40.5 · abc1234 · 2026-11-09"}
@@ -168,3 +169,42 @@ def test_the_standalone_pages_inline_icon_is_the_sites_favicon(template):
     assert m, "no inline icon"
     inline = base64.b64decode(m.group(0).split("data:image/png;base64,", 1)[1].rstrip('">'))
     assert inline == (website.ICONS / "favicon-96x96.png").read_bytes()
+
+
+# ---- the files page and its zips ----------------------------------------------------------
+
+
+def test_files_has_its_own_page_linking_every_file_by_part(tmp_path, exports):
+    (exports / "stl" / ".gitkeep").write_bytes(b"")
+    here = website.write(DEFAULT, "main", tmp_path / "out", exports)
+    page = (here / "files" / "index.html").read_text()
+    for href in ("/main/files/stl/tube.stl", "/main/files/step/tube.step", "/main/files/stl/adapter.stl",
+                 "/main/files/step/nlb-scan-rig-assembly.step"):
+        assert f'href="{href}"' in page
+        assert (here / href.removeprefix("/main/")).is_file()
+    assert ".gitkeep" not in page
+    assert page.index("tube.stl") < page.index("adapter.stl")              # print_preview's order, not the alphabet
+    assert '<a href="/main/files/" aria-current="page">Files</a>' in page
+    assert 'href="/favicon.ico"' in page and "<script" not in page
+    assert "wd 111 · axis 40.5" in page
+
+
+def test_the_zips_hold_every_download_under_one_folder(tmp_path, exports):
+    import zipfile
+    (exports / "step" / ".gitkeep").write_bytes(b"")
+    files = website.write(DEFAULT, "main", tmp_path / "out", exports) / "files"
+    names = lambda z: sorted(zipfile.ZipFile(files / z).namelist())     # noqa: E731
+    stl = ["nlb-scan-rig/stl/adapter.stl", "nlb-scan-rig/stl/tube.stl"]
+    step = ["nlb-scan-rig/step/adapter.step", "nlb-scan-rig/step/nlb-scan-rig-assembly.step", "nlb-scan-rig/step/tube.step"]
+    assert names("nlb-scan-rig.zip") == sorted(stl + step)
+    assert names("nlb-scan-rig-stl.zip") == stl
+    assert names("nlb-scan-rig-step.zip") == step
+    assert zipfile.ZipFile(files / "nlb-scan-rig.zip").read("nlb-scan-rig/stl/adapter.stl") == STL_B
+    page = (files / "index.html").read_text()
+    for z in ("nlb-scan-rig.zip", "nlb-scan-rig-stl.zip", "nlb-scan-rig-step.zip"):
+        assert f'href="/main/files/{z}"' in page
+
+
+def test_a_preview_slots_files_page_says_so(tmp_path, exports):
+    page = (website.write(DEFAULT, "fix-a", tmp_path / "out", exports) / "files" / "index.html").read_text()
+    assert "preview: fix-a" in page and 'href="/fix-a/files/nlb-scan-rig.zip"' in page

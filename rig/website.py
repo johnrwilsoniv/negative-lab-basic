@@ -9,7 +9,9 @@ preview of a design branch):
 
     index.html                 viewer.py's page: the assembled CAD, with the abstract and the site's links
     print-preview/index.html   print_preview.py's page: each part on the bed, and "Dimensions to confirm"
+    files/index.html           files_page.py's page: every STL and STEP by subassembly, and the zips
     files/stl/, files/step/    every print-pose STL and STEP in exports/, to download
+    files/nlb-scan-rig*.zip    all of them, the STLs, the STEPs
     files/mesh/<hash>.stl      the meshes the two pages draw, named by their content so they cache forever
 
 and, for main only, at the site root: site-out/index.html, the same home page, and the icons from icons/
@@ -31,6 +33,7 @@ from pathlib import Path
 from typing import Sequence
 
 import build
+import files_page
 import print_preview
 import viewer
 from params import Params
@@ -120,6 +123,9 @@ def write(p: Params, slot: str = "main", out: Path = OUT, exports: Path = build.
         part["download"] = {kind: f"{site['files']}{kind}/{part['name']}.{kind}" for kind in ("stl", "step")}
     rig["built"] = preview["built"]
     rig["site"] = preview["site"] = site
+
+    zips = files_page.write_zips(files)
+    (files / "index.html").write_text(files_page.render(files, preview["parts"], site, preview["built"], zips, ICON_TAGS))
 
     home = fill(viewer.TEMPLATE, viewer.MARK, rig)
     (here / "index.html").write_text(home)

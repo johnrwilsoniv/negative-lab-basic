@@ -13,12 +13,13 @@ preview of a design branch):
     files/stl/, files/step/    every print-pose STL and STEP in exports/, to download
     files/nlb-scan-rig*.zip    all of them, the STLs, the STEPs
     files/mesh/<hash>.stl      the meshes the two pages draw, named by their content so they cache forever
+    slots.js                   the branch switcher in every page's nav: lists the published slots from /slots/
 
 and, for main only, at the site root: site-out/index.html, the same home page, and the icons from icons/
 (make_icons.py): favicon.ico, favicon-96x96.png, apple-touch-icon.png, the PWA icons and site.webmanifest, at the names
-browsers and iOS look for. Every page links them from the root, in place of the standalone page's inline icon. The two pages are the
-standalone pages' own data, with each embedded STL (`stl`, base64) moved out to a mesh file the page
-fetches (`mesh`), so a page is tens of KB instead of MBs. Every link is absolute (/<slot>/...), so the
+browsers and iOS look for. Every page links them from the root, in place of the standalone page's inline icon, and
+loads its slot's slots.js. The two pages are the standalone pages' own data, with each embedded STL (`stl`, base64)
+moved out to a mesh file the page fetches (`mesh`), so a page is tens of KB instead of MBs. Every link is absolute (/<slot>/...), so the
 root copy of the home page needs no rewriting.
 """
 
@@ -43,6 +44,7 @@ OUT = ROOT / "site-out"
 REPO = "https://github.com/johnrwilsoniv/negative-lab-basic"
 SLOT = re.compile(r"[a-z0-9][a-z0-9-]{0,39}")
 ICONS = ROOT / "icons"
+SWITCHER = ROOT / "slots.js"
 INLINE_ICON = re.compile(r'<link rel="icon"(?: type="[^"]*")? href="data:[^"]*">')
 ICON_TAGS = """<link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/favicon-96x96.png" type="image/png" sizes="96x96">
@@ -88,12 +90,17 @@ def links(slot: str) -> dict:
     }
 
 
-def fill(template: Path, mark: str, data: dict) -> str:
-    """The template with its data filled in and its inline icon swapped for the site's icons."""
+def head(slot: str) -> str:
+    """What every page's head gets on the site: the icons, and the slot's branch switcher."""
+    return ICON_TAGS + f'\n<script src="/{slot}/slots.js" data-slot="{slot}" defer></script>'
+
+
+def fill(template: Path, mark: str, data: dict, tags: str) -> str:
+    """The template with its data filled in and its inline icon swapped for tags (head())."""
     page = template.read_text()
     if mark not in page:
         raise ValueError(f"{template} has no {mark} to fill in")
-    page, icons = INLINE_ICON.subn(lambda _: ICON_TAGS, page)
+    page, icons = INLINE_ICON.subn(lambda _: tags, page)
     if icons != 1:
         raise ValueError(f"{template} has {icons} inline icons, not one")
     return page.replace(mark, json.dumps(data, separators=(",", ":")))
@@ -124,13 +131,15 @@ def write(p: Params, slot: str = "main", out: Path = OUT, exports: Path = build.
     rig["built"] = preview["built"]
     rig["site"] = preview["site"] = site
 
+    tags = head(slot)
     zips = files_page.write_zips(files)
-    (files / "index.html").write_text(files_page.render(files, preview["parts"], site, preview["built"], zips, ICON_TAGS))
+    (files / "index.html").write_text(files_page.render(files, preview["parts"], site, preview["built"], zips, tags))
 
-    home = fill(viewer.TEMPLATE, viewer.MARK, rig)
+    shutil.copy(SWITCHER, here / "slots.js")
+    home = fill(viewer.TEMPLATE, viewer.MARK, rig, tags)
     (here / "index.html").write_text(home)
     (here / "print-preview").mkdir()
-    (here / "print-preview" / "index.html").write_text(fill(print_preview.TEMPLATE, print_preview.MARK, preview))
+    (here / "print-preview" / "index.html").write_text(fill(print_preview.TEMPLATE, print_preview.MARK, preview, tags))
     if slot == "main":
         (out / "index.html").write_text(home)
         for icon in ICONS.iterdir():

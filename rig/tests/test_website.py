@@ -146,6 +146,25 @@ def test_another_slot_leaves_the_root_alone_and_rebuilds_its_folder(tmp_path, ex
     assert page_data((here / "index.html").read_text())["site"]["home"] == "/fix-a/"
 
 
+@pytest.mark.parametrize("slot", ["main", "fix-a"])
+def test_every_page_loads_its_slots_branch_switcher(tmp_path, exports, slot):
+    out = tmp_path / "out"
+    here = website.write(DEFAULT, slot, out, exports)
+    assert (here / "slots.js").read_text() == website.SWITCHER.read_text()
+    pages = [here / "index.html", here / "print-preview" / "index.html", here / "files" / "index.html"]
+    for page in pages + ([out / "index.html"] if slot == "main" else []):
+        assert f'<script src="/{slot}/slots.js" data-slot="{slot}" defer></script>' in page.read_text()
+
+
+def test_the_switcher_lists_the_slots_nginx_lists():
+    conf = (website.ROOT / "deploy" / "nginx.conf").read_text()
+    block = re.search(r"location = /slots/ \{(.*?)\}", conf, re.DOTALL)
+    assert block, "nginx.conf has no /slots/ listing"
+    assert "autoindex_format json" in block.group(1) and "alias /usr/share/nginx/html/" in block.group(1)
+    js = website.SWITCHER.read_text()
+    assert "fetch('/slots/'" in js and "e.type === 'directory'" in js
+
+
 def test_missing_exports_say_run_build(tmp_path, exports):
     with pytest.raises(FileNotFoundError, match="build.py"):
         website.write(DEFAULT, "main", tmp_path / "out", tmp_path / "nowhere")
@@ -185,7 +204,8 @@ def test_files_has_its_own_page_linking_every_file_by_part(tmp_path, exports):
     assert ".gitkeep" not in page
     assert page.index("tube.stl") < page.index("adapter.stl")              # print_preview's order, not the alphabet
     assert '<a href="/main/files/" aria-current="page">Files</a>' in page
-    assert 'href="/favicon.ico"' in page and "<script" not in page
+    assert 'href="/favicon.ico"' in page
+    assert re.findall(r"<script[^>]*>", page) == ['<script src="/main/slots.js" data-slot="main" defer>']
     assert "wd 111 · axis 40.5" in page
 
 

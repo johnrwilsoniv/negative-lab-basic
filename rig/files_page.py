@@ -1,5 +1,6 @@
 """The site's files/ page, in place of nginx's autoindex: every part's STL and STEP by subassembly, the assembly STEP,
-and the zips (everything, the STLs, the STEPs). website.py writes the zips and the page; the page has no script."""
+and the zips (everything, the STLs, the STEPs). website.py writes the zips and the page; its one script is the
+branch switcher in its head (slots.js)."""
 
 import html
 import zipfile
@@ -49,7 +50,7 @@ def file_link(href: str, f: Path, kind: str) -> str:
             f'<span class="v">{size(f.stat().st_size)}</span></a>')
 
 
-def render(files: Path, parts: list[dict], site: dict, built: str, zips: dict[str, int], icon_tags: str) -> str:
+def render(files: Path, parts: list[dict], site: dict, built: str, zips: dict[str, int], head: str) -> str:
     """The page, from files/ as written (sizes come from the files) and print_preview's parts (order, groups, labels)."""
     base = site["files"]
     known = {p["name"] for p in parts}
@@ -83,7 +84,7 @@ def render(files: Path, parts: list[dict], site: dict, built: str, zips: dict[st
                        for g, rows in groups.items())
 
     count = sum(len(v) for v in on_disk.values())
-    return PAGE.format(icons=icon_tags, home=html.escape(site["home"]), nav=nav(site), built=html.escape(built),
+    return PAGE.format(head=head, home=html.escape(site["home"]), nav=nav(site), built=html.escape(built),
                        cards=cards, sections=sections, count=count)
 
 
@@ -94,7 +95,7 @@ PAGE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>NLB Scan Rig · Files</title>
 <meta name="description" content="Download the NLB scan rig: every printed part as STL and STEP, the assembly STEP, or all of it zipped.">
-{icons}
+{head}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">

@@ -223,15 +223,15 @@ def test_front_wall_has_a_u_for_the_tube_1_clear_of_it(dock):
 
 @pytest.mark.parametrize("axis", [39, 40.5, 42.5, 50])      # 39: the lowest axis Params allows
 def test_the_tube_is_1_clear_of_the_dock_at_every_axis(axis):
-    """The U's round goes through the floor under the front wall too (F17): below axis 41 it reaches into the floor,
-    which would otherwise come within 1 of the tube, or into it below axis 40."""
+    """The U's round goes through the floor under the front wall too (F17), so the floor never comes within 1 of the
+    tube. With the Ø68 tube it only touches the floor's top at axis 39, the lowest allowed."""
     q = Params(wd=p.wd, axis=axis)
     d = model.build(q)["light_dock"]
     x0, x1 = q.dock_x0, q.x_gate - q.dock_gate_clear
     clear = cq.Workplane("YZ", origin=(x0, 0, 0)).center(q.axis, 0).circle(q.tube_ro + q.dock_tube_clear).extrude(x1 - x0)
     assert cadutil.common_volume(d, clear) < 1e-3
     assert cadutil.common_volume(d, tube_model.build(q)["tube"]) < 1e-3
-    # exactly 1: 0.01 more and it takes material, under the tube in the floor (or the wall, above axis 41)
+    # exactly 1: 0.01 more and it takes material, under the tube in the floor (or the wall, above axis 39)
     under = q.axis - q.tube_ro - q.dock_tube_clear
     assert cadutil.common_volume(d, probe(x0, x1, under - 0.01, under, -1, 1)) > 1e-4
     assert_full(d, x0, x1, 0, under - 0.01, -1, 1)

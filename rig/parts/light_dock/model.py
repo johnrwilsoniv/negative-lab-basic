@@ -87,8 +87,9 @@ def light_dock(p: Params = DEFAULT) -> cq.Workplane:
     dock = _floor(p)
     for part in (*_lips(p), *_cheeks(p)):
         dock = dock.union(part)
-    # The U's round is cut from the floor under the front wall too (F17): below axis 41 it reaches below the floor's
-    # top, and the floor would come within dock_tube_clear of the tube (into it below axis 40). Above, it cuts nothing.
+    # The U's round is cut from the floor under the front wall too (F17), so the floor can never come within
+    # dock_tube_clear of the tube. With the Ø68 tube its bottom is axis - 35, at or above the floor's top at every
+    # allowed axis, so today it cuts nothing from the floor.
     return dock.cut(_gate_notch(p)).union(_front_wall(p)).cut(_u_round(p))
 
 

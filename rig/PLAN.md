@@ -627,6 +627,11 @@ numbers (`print_preview.feedback`, F19); this list is numbered the same. Nothing
   channel 0.6 of it. The pressure plate's square edge blocks 1.8, and 0.8 leads behind the plate into the
   pads and ramps.
 
+Proposed for FB5 and FB6 (branch `proposal/fb5-fb6-film-path`, not built): **5A**, a sill (the gate body filled up to the
+film's lower edge, the plates 20 shorter and standing on it), and **6A**, the slot only as deep as the channel at the
+wall's inner face, flaring to 2.0 at the outer face, with a 0.6 × 45° lead-in on each end of the pressure plate. Drawings
+and the alternatives (5B, longer slots; 6B, a fence and a chamfer): `proposals/fb5-fb6.html`.
+
 ### Minor
 
 - **FB7 · Openings on the light side that PLAN doesn't list.** The tab slot (48 mm², 40 open), a slit

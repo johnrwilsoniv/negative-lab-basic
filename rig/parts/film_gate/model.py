@@ -6,16 +6,21 @@ that narrows to the frame window, which runs straight for `plate_t` to the refer
 with that plane on the bed, so the face the film lies on is the smoothest one there is. The gate body
 is the floor, the side walls and the rear wall, from the reference plane back; it prints rear wall
 down. The film slots in its side walls are notches open toward the gate front, which closes them, so
-neither part has a bridge. Four M3 screws join the two through pillars outside the side walls.
+neither part has a bridge. Four M3 screws join the two through pillars outside the side walls. Each notch is only as
+deep as the channel at the wall's inner face and widens to `film_slot_mouth` at its outer face (ruling F21), so a strip
+fed in can only reach the channel, not the pressure plate's edge or the space behind it.
 
-Below the film the gate body fills the space behind the wedge plate with the backer (ruling F12): a block on
-the floor from `wedge_back_clear` behind the plate to the rear wall, wall to wall, up to the film's bottom
-edge, so it stays out of the light path. At LOCK the pads push the plate back onto it, so the plate is
-wedged between the pressure plate and the body rather than bending away into free space.
+Below the film the gate body is filled with the sill (ruling F20): from the reference plane to the rear wall, wall to
+wall, up to the film's lower edge, level with the slots' floors, so the strip lies on it across the whole gate and an
+end frame held by one slot cannot droop. The pressure plate and the wedge plate stand on it. Behind the wedge plate's
+lower ramps the sill carries the backer (ruling F12), a step `backer_step_d` deep with a 45 degree slope under it, up
+to the plate's settled window edge, so it stays out of the light path. At LOCK the pads push the plate back onto it,
+so the plate is wedged between the pressure plate and the body rather than bending away into free space.
 
 The lid is its own solid resting on the side walls, `lid_clear` short of the gate front and of the
-rear wall. The pressure plate is `plate_clear` inside the floor, the lid and the side walls all round,
-so it drops in and floats; it prints with the face that meets the film on the bed (F7).
+rear wall. The pressure plate is `plate_clear` inside the sill, the lid and the side walls all round,
+so it drops in and floats; it prints with the face that meets the film on the bed (F7). Each end of that face has a
+45 degree lead-in (F21): a plate lying forward on the gate front is pushed back by the strip's tip, not struck by it.
 
 The walls are slabs with rectangular windows extruded in one go, so the booleans are the tube socket
 (1.7 under the top edge, ruling R8), the light passage, the screw holes, the pads joined to the
@@ -121,13 +126,18 @@ def _floor(p: Params) -> cq.Workplane:
 
 
 def _side_wall(p: Params, sign: int) -> cq.Workplane:
-    """From the reference plane to the rear wall, from the floor up to the lid, with the film slot: a notch film_slot_w
-    along x from film_slot_x0 (the reference plane, so the notch is open toward the gate front, which closes it),
-    film_slot_h along y from film_slot_y0, the film's lower edge, so the film rests on the notch's floor (F13)."""
+    """From the reference plane to the rear wall, from the floor up to the lid, with the film slot: a notch from
+    film_slot_x0 (the reference plane, so the notch is open toward the gate front, which closes it), film_slot_h along y
+    from film_slot_y0, the film's lower edge, so the film rests on the notch's floor (F13). Along x it is `channel` deep
+    at the wall's inner face and `film_slot_mouth` at the outer face, a funnel whose lens side is the reference plane
+    (F21)."""
     z0 = p.gw / 2 - p.wall if sign > 0 else -p.gw / 2
     wall = _slab("XY", (0, 0, z0), (p.x_ref, p.x_gate + p.gate_d - p.wall, p.wall, p.gh - p.wall), None, p.wall)
-    notch = _box(p.film_slot_x0 - 1, p.film_slot_x0 + p.film_slot_w, p.film_slot_y0,
-                 p.film_slot_y0 + p.film_slot_h, z0 - 1, z0 + p.wall + 1)
+    x0, z_in, z_out, e = p.film_slot_x0, sign * (p.gw / 2 - p.wall), sign * p.gw / 2, sign
+    outline = [(x0 - 1, z_in - e), (x0 + p.channel, z_in - e), (x0 + p.channel, z_in), (x0 + p.film_slot_mouth, z_out),
+               (x0 + p.film_slot_mouth, z_out + e), (x0 - 1, z_out + e)]
+    top = p.film_slot_y0 + p.film_slot_h
+    notch = cq.Workplane("XZ", origin=(0, top, 0)).polyline(outline).close().extrude(p.film_slot_h)    # XZ extrudes -y
     return wall.cut(notch)
 
 
@@ -140,16 +150,25 @@ def _pillars(p: Params) -> list[cq.Workplane]:
     return out
 
 
+def _sill(p: Params) -> cq.Workplane:
+    """The reference plane to the rear wall, side wall to side wall, from the floor up to the film's lower edge (F20)."""
+    return _box(p.x_ref, p.x_gate + p.gate_d - p.wall, p.wall, p.sill_y, -(p.gw / 2 - p.wall), p.gw / 2 - p.wall)
+
+
 def _backer(p: Params) -> cq.Workplane:
-    """wedge_back_clear behind the wedge plate's back face to the rear wall, side wall to side wall, from the floor up to
-    the film's bottom edge."""
-    x0 = p.x_wedge + p.wedge_t + p.wedge_back_clear
-    return _box(x0, p.x_gate + p.gate_d - p.wall, p.wall, p.axis - p.film_w / 2, -(p.gw / 2 - p.wall), p.gw / 2 - p.wall)
+    """The step on the sill behind the wedge plate's lower ramps (F12, F20), side wall to side wall: its face
+    wedge_back_clear behind the plate's back face, up to backer_step_top, its top backer_step_d deep, then a 45 degree
+    slope down to the sill. The body prints -x up, so the slope is the step's underside."""
+    x0, x1 = p.x_wedge + p.wedge_t + p.wedge_back_clear, p.x_wedge + p.wedge_t + p.wedge_back_clear + p.backer_step_d
+    rise = p.backer_step_top - p.sill_y
+    outline = [(x0, p.sill_y), (x0, p.backer_step_top), (x1, p.backer_step_top), (x1 + rise, p.sill_y)]
+    half = p.gw / 2 - p.wall
+    return cq.Workplane("XY", origin=(0, 0, -half)).polyline(outline).close().extrude(2 * half)
 
 
 def gate_body(p: Params = DEFAULT) -> cq.Workplane:
     body = _rear_wall(p)
-    for part in (_floor(p), _side_wall(p, -1), _side_wall(p, 1), _backer(p), *_pillars(p)):
+    for part in (_floor(p), _side_wall(p, -1), _side_wall(p, 1), _sill(p), _backer(p), *_pillars(p)):
         body = body.union(part)
     return body.cut(_bores(p, p.x_ref - 1, p.x_ref + p.pilot_depth, p.pilot_d))
 
@@ -192,13 +211,29 @@ def _pad(p: Params, zc: float, yc: float) -> cq.Workplane:
     return cq.Workplane("XZ", origin=(0, yc + h, 0)).polyline(outline).close().extrude(p.pad)
 
 
+def _lead_ins(p: Params, x0: float, y0: float, y1: float, z_end: float) -> cq.Workplane:
+    """What comes off the pressure plate's front edge at each end (F21): plate_lead_in by 45 degrees, y0 to y1."""
+    lead = p.plate_lead_in
+    out = None
+    for k in (-1, 1):
+        ze = k * z_end
+        tri = [(x0 - 1, ze - k * (lead + 1)), (x0 + lead + 1, ze + k), (x0 - 1, ze + k)]
+        cut = cq.Workplane("XZ", origin=(0, y1 + 1, 0)).polyline(tri).close().extrude(y1 - y0 + 2)
+        out = cut if out is None else out.union(cut)
+    return out
+
+
 def pressure_plate(p: Params = DEFAULT, lock: bool = False) -> cq.Workplane:
     """Floats along x: half the channel behind the film at SLIDE, `lock_shift` toward it at LOCK.
 
-    plate_clear inside the floor, the lid and the side walls; its x, window and pads are as the mockup's.
+    plate_clear inside the sill, the lid and the side walls; its x, window and pads are as the mockup's, its front
+    edge led in at each end.
     """
     x0, c = p.x_film + p.channel / 2, p.plate_clear
-    plate = _wall_x(p, x0, p.x_pp, p.wall + c, p.gh - p.wall - c, p.gw / 2 - p.wall - c, (p.win_w, p.win_h))
+    y0, y1, z_end = p.sill_y + c, p.gh - p.wall - c, p.gw / 2 - p.wall - c
+    plate = _wall_x(p, x0, p.x_pp, y0, y1, z_end, (p.win_w, p.win_h))
+    if p.plate_lead_in:
+        plate = plate.cut(_lead_ins(p, x0, y0, y1, z_end))
     for zc in (-p.pad_z, p.pad_z):
         for yc in (p.axis - p.pad_dy, p.axis + p.pad_dy):
             plate = plate.union(_pad(p, zc, yc))

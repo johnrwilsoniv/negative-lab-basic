@@ -151,7 +151,8 @@ def test_the_film_slot_starts_at_the_front_plates_rear_face():
     p = DEFAULT
     assert p.x_front_plate == pytest.approx(p.x_film - p.channel / 2 - p.plate_t) == pytest.approx(233.9)
     assert p.film_slot_x0 == pytest.approx(p.x_front_plate + p.plate_t) == pytest.approx(235.7)
-    assert p.film_slot_x0 + p.film_slot_w == pytest.approx(238.9)     # the slot's far edge has not moved
+    assert p.film_slot_x0 + p.channel == pytest.approx(p.x_film + p.channel / 2)    # at the wall's inner face it is the channel
+    assert p.film_slot_x0 + p.film_slot_mouth == pytest.approx(237.7)                 # (F21), and at its outer face this
 
 
 def test_ks_perforations_and_frame_pitch():

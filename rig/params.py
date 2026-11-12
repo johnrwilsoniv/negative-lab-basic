@@ -80,7 +80,8 @@ class Params:
     baffle_margin: float = 2      # no rib this close to either tube end
     plate_t: float = 1.8          # front plate and pressure plate thickness
     wedge_gap: float = 0.9        # pressure plate back face to wedge plate
-    film_slot_w: float = 3.2      # side walls' film slot, along x
+    film_slot_mouth: float = 2.0  # side walls' film slot along x at the wall's outer face: it tapers to `channel` at the
+                                  # inner face, so the strip can only go in between the gate front and the plate (F21)
     film_slot_clear: float = 0.2  # ... and along y: its floor is flush under the film's lower edge, which rests on it, and
                                   # its roof this far above the upper edge, so the strip slides (F13)
     rear_win_w: float = 46        # rear wall window, toward the light
@@ -90,13 +91,16 @@ class Params:
     slot_end: float = 3           # the lid slot runs this far past the tab's travel at each end
     pad: float = 4                # pressure plate pad footprint, square
     pad_z: float = 22             # pad centres at z = +-pad_z
-    pad_dy: float = 15.5          # ... and at y = axis +- pad_dy
+    pad_dy: float = 15            # ... and at y = axis +- pad_dy: the lower ones on the plate's strip under the window,
+                                  # which stands on the sill (F20)
     wedge_t: float = 2            # lock switch wedge plate thickness, x
     wedge_w: float = 70           # ... and width, z
     wedge_win_w: float = 52       # its window along z (the height is win_h): shifted +-sw_travel/2 it still clears win_w
     wedge_clear: float = 0.5      # its clearance to the gate's floor and to the lid's underside
-    wedge_back_clear: float = 0.05  # ... and to the backer behind it, a block on the gate body's floor (F12): the clamp
-                                    # pushes the plate back onto it, so this much of the preload is lost
+    wedge_back_clear: float = 0.05  # ... and to the backer behind it, a step on the gate body's sill (F12, F20): the
+                                    # clamp pushes the plate back onto it, so this much of the preload is lost
+    backer_step_d: float = 2      # ... the step's top, along x; under it a 45 degree slope down to the sill, so it prints
+    plate_lead_in: float = 0.6    # 45 degree lead-in on each end of the pressure plate's front edge (F21)
     tab_w: float = 4              # lock switch tab width, z (thickness is tab_t)
     tab_reach: float = 12.7       # ... and it sticks this far (1/2 inch) up out of the lid top: the grip that slides the
                                   # switch, in place of a knob (F15)
@@ -247,6 +251,20 @@ class Params:
     @property
     def film_slot_y0(self) -> float:    # ... from the film's lower edge, so the film stays centred on the window
         return self.axis - self.film_w / 2
+
+    @property
+    def sill_y(self) -> float:          # the sill's top (F20): the gate body is filled up to the film's lower edge, level
+        return self.film_slot_y0        # with the slots' floors, so the strip lies on it from wall to wall
+
+    @property
+    def backer_step_top(self) -> float:
+        """The backer's step (F20): up to the wedge plate's window edge once the plate has settled onto the sill, so it
+        never shows in the window, and with its top corner under the line from the frame's lower edge to the rear
+        window's lower edge at the lit face, so it takes no light the rear window lets through, whatever the lens."""
+        x0, y0 = self.x_ref + self.film_t, self.axis - self.frame_h / 2
+        x1, y1 = self.x_light, self.axis - self.rear_win_h / 2
+        corner = self.x_wedge + self.wedge_t + self.wedge_back_clear + self.backer_step_d
+        return min(self.axis - self.win_h / 2 - self.wedge_clear, y0 + (y1 - y0) * (corner - x0) / (x1 - x0))
 
     @property
     def frame_pitch(self) -> float:     # frame to frame along the film: 38, so 2 of unexposed film between frames

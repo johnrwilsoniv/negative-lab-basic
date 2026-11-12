@@ -87,12 +87,17 @@ SOLIDS = {
     ),
     "gate_body": (
         "2b", "Gate body", FILM_GROUP, 0.2,
-        "Floor, side walls and rear wall, with four screw pillars outside the walls, and a backer below the film that "
-        "the wedge plate is wedged against at LOCK. Joins to the gate front's rear face.",
+        "Floor, side walls and rear wall, with four screw pillars outside the walls; a sill up to the film's lower edge "
+        "that the strip lies on and both plates stand on (F20), and a step on it, the backer, that the wedge plate is "
+        "wedged against at LOCK. Joins to the gate front's rear face.",
         [
             "Rear wall on the bed. Walls, pillars and the film notches all rise straight up: no bridges, no supports.",
             "The film slots are notches open at the top of the print; the gate front closes them, so the film's "
             "front face only ever touches the bed-printed reference plane.",
+            "Each slot is only 0.6 deep where it meets the inside of the gate (F21), the top 0.6 of the print. At "
+            "0.12 layers that is 5 layers; at 0.2 the body's top and the slot's floor are each half a layer off, so it "
+            "can print 0.4–0.8. Check a strip goes in edgewise.",
+            "The backer's step has a 45° slope under it, so it prints without support.",
         ],
     ),
     "gate_lid": (
@@ -107,6 +112,7 @@ SOLIDS = {
         "Floats along the optical axis; its four sloped pads ride the wedge plate's ramps.",
         [
             "<b>Film face on the bed.</b> The face that presses the film is the first layer. No bridge over the window.",
+            "The 0.6 lead-ins at the ends of that face (F21) rise from the bed at 45°: no supports.",
             "The pads' 1:17 slopes are now the top layers, so they print stepped. Use 0.12 or finer layers and ironing "
             "on top surfaces; tune <code>ramp_rise</code> if the clamp is off.",
         ],
@@ -152,6 +158,9 @@ SEVERITIES = (
     ("trouble", "Likely trouble", "It may work as drawn; each is a real risk once it's plastic."),
     ("minor", "Minor", "Worth knowing. None of them stops a print."),
 )
+# Dimensions the review measured that have changed since (F20, F21): the findings and their drawings describe the design
+# as it was reviewed, and each one that has changed says so in its status.
+AS_REVIEWED = {"film_slot_w": 3.2}
 LAYERS = (0.12, 0.16, 0.2)      # the layer heights the page offers for the gate body
 CLEAN = (                       # checked in the review, and fine
     "Printability: apart from the adapter's ledge, the thread's flanks and the tube's ribs, every layer of every "
@@ -196,7 +205,7 @@ def _code(*names: str) -> str:
 def fig_params(p: Params) -> dict:
     """Every field and derived property of `p`, for the page's drawings."""
     names = [f.name for f in dataclasses.fields(p)] + [k for k, v in vars(Params).items() if isinstance(v, property)]
-    return {name: (round(v, 4) if isinstance(v := getattr(p, name), float) else v) for name in names}
+    return {**AS_REVIEWED, **{name: (round(v, 4) if isinstance(v := getattr(p, name), float) else v) for name in names}}
 
 
 def _to_layers(height: float, layer: float) -> list[float]:
@@ -238,6 +247,7 @@ def measures(p: Params) -> dict:
     shown = [z for z in p.perf_zs if abs(z) + p.perf_l / 2 <= p.win_w / 2]
     show = p.win_h / 2 - p.perf_inner
     slot_l, slot_w = 2 * (half + p.slot_end), p.tab_t + 2 * p.tab_clear
+    film_slot_w = AS_REVIEWED["film_slot_w"]
     return {
         "notch_gap": p.x_light - (p.x_gate + p.gate_d), "pocket": p.gate_d + p.dock_gate_clear,
         "room": room, "stack": stack, "squeeze": stack - room, "body_h": body_h, "backer_h": backer_h,
@@ -249,7 +259,7 @@ def measures(p: Params) -> dict:
         "covered": covered, "contact": covered * p.frame_h, "frame_area": p.frame_w * p.frame_h,
         "tilt": math.degrees(math.atan(p.film_slot_clear / p.wall)),
         "drop": (p.gw / 2 - p.wall + p.win_w / 2) * p.film_slot_clear / p.wall, "margin": (p.win_h - p.frame_h) / 2,
-        "behind": p.film_slot_w - p.channel - p.plate_t, "plate_edge": p.gw / 2 - p.wall - p.plate_clear,
+        "behind": film_slot_w - p.channel - p.plate_t, "plate_edge": p.gw / 2 - p.wall - p.plate_clear,
         "lit": lit, "past": past, "past_pct": 100 * past / lit, "side": (p.csl_lit_w - p.gw) / 2, "above": lit_y1 - p.gh,
         "tab_slot": slot_l * slot_w, "tab_open": slot_l * slot_w - p.tab_t * p.tab_w,
         "lid_slit_l": p.gw - 2 * p.wall, "lid_slit": p.lid_clear * (p.gw - 2 * p.wall),
@@ -272,6 +282,7 @@ def feedback(p: Params) -> dict:
     """
     n, m = _n, measures(p)
     half = p.sw_travel / 2
+    film_slot_w = AS_REVIEWED["film_slot_w"]
     squeezes = "; ".join(
         f"{n(row['layer'])} layers: " + " or ".join(f"{v:+.3f}" for v in row["squeeze"]) for row in m["layers"]
     )
@@ -356,20 +367,30 @@ def feedback(p: Params) -> dict:
                     f"{m['tilt']:.1f}° of tilt: about {m['drop']:.1f} at the window's far edge.",
             "risk": f"The window has {n(m['margin'])} of margin round the frame, so an end frame can hang out of it.",
             "basis": "Clearances measured; the behaviour is inferred.",
-            "where": ["params.py · film_slot_w, film_slot_clear", "parts/film_gate/model.py · _side_wall"],
+            "where": ["params.py · film_slot_clear", "parts/film_gate/model.py · _side_wall, _sill (F20)"],
+            "status": f"Changed in CAD 2026-11-11 (F20), not yet printed: the gate body is filled up to the film's lower "
+                      f"edge (y {n(p.sill_y)}, the slots' floors), so the strip lies on the sill from wall to wall and an "
+                      f"end frame cannot droop. The pressure plate and the wedge plate stand on it, the pads moved to "
+                      f"pad_dy {n(p.pad_dy)}, and a step on the sill backs the wedge plate's lower ramps. "
+                      "Fixed once a strip has been fed through the printed gate.",
         },
         {
             "id": "misfeed", "sev": "trouble", "title": "A strip can go the wrong side of the pressure plate",
             "parts": ["gate_body", "pressure_plate"],
-            "nums": [num("slot", p.film_slot_w), num("channel", p.channel), num("plate's edge", p.plate_t, "bad"),
+            "nums": [num("slot", film_slot_w), num("channel", p.channel), num("plate's edge", p.plate_t, "bad"),
                      num("behind the plate", m["behind"], "bad")],
-            "what": f"Each slot is {n(p.film_slot_w)} wide along the axis (x {n(p.film_slot_x0)}–"
-                    f"{n(p.film_slot_x0 + p.film_slot_w)}), but the channel is only {n(p.channel)} of it. The pressure "
+            "what": f"Each slot is {n(film_slot_w)} wide along the axis (x {n(p.film_slot_x0)}–"
+                    f"{n(p.film_slot_x0 + film_slot_w)}), but the channel is only {n(p.channel)} of it. The pressure "
                     f"plate's square edge (at z {n(m['plate_edge'])}, no lead-in) blocks {n(p.plate_t)}, and the last "
                     f"{n(m['behind'])} leads behind the plate, into the pads and ramps.",
             "risk": "With no springs the plate can also lie on the gate front and close the entry altogether.",
             "basis": "Geometry measured; the behaviour is inferred.",
-            "where": ["params.py · film_slot_w", "parts/film_gate/model.py · pressure_plate"],
+            "where": ["params.py · film_slot_mouth, plate_lead_in (F21)", "parts/film_gate/model.py · _side_wall, pressure_plate"],
+            "status": f"Changed in CAD 2026-11-11 (F21), not yet printed: each slot is {n(p.channel)} deep at the wall's "
+                      f"inner face, the channel and no more, widening to {n(p.film_slot_mouth)} (film_slot_mouth) at the "
+                      f"outer face, so nothing leads to the plate's edge or behind it. Each end of the plate's front edge "
+                      f"has a {n(p.plate_lead_in)} × 45° lead-in, so a plate lying forward is pushed back by the strip's "
+                      "tip. Fixed once a strip has been fed through the printed gate.",
         },
         {
             "id": "light", "sev": "minor", "title": "Openings on the light side that PLAN doesn't list",
@@ -379,7 +400,7 @@ def feedback(p: Params) -> dict:
                      num("tab slot", f"{n(m['tab_slot'])} mm²"), num("lid slits", f"{n(m['lid_slit'])} mm² each")],
             "what": f"The tab's slot is {n(m['tab_slot'])} mm², {n(m['tab_open'])} of it open round the tab. The slit behind the "
                     f"lid is {n(p.lid_clear)} × {n(m['lid_slit_l'])} = {m['lid_slit']:.0f} mm², the same as the documented one "
-                    f"in front. The film slots are {n(p.film_slot_w)} × {n(p.film_slot_h)} each. And of the CS-Lite's "
+                    f"in front. The film slots are {n(film_slot_w)} × {n(p.film_slot_h)} each. And of the CS-Lite's "
                     f"{n(m['lit'])} mm² lit area about {round(m['past'], -2):.0f} ({m['past_pct']:.0f}%) shines past the gate: "
                     f"{n(m['side'])} each side, {n(m['above'])} above the lid.",
             "risk": "Rays cast from the frame's light-side face (1.92 M per case) escape at SLIDE only within 1.1° of the "

@@ -14,6 +14,7 @@ preview of a design branch):
     files/nlb-scan-rig*.zip    all of them, the STLs, the STEPs
     files/mesh/<hash>.stl      the meshes the two pages draw, named by their content so they cache forever
     slots.js                   the branch switcher in every page's nav: lists the published slots from /slots/
+    proposals/<name>/index.html  each design proposal in proposals/ (standalone drawings), with the site's icons
 
 and, for main only, at the site root: site-out/index.html, the same home page, and the icons from icons/
 (make_icons.py): favicon.ico, favicon-96x96.png, apple-touch-icon.png, the PWA icons and site.webmanifest, at the names
@@ -45,6 +46,7 @@ REPO = "https://github.com/johnrwilsoniv/negative-lab-basic"
 SLOT = re.compile(r"[a-z0-9][a-z0-9-]{0,39}")
 ICONS = ROOT / "icons"
 SWITCHER = ROOT / "slots.js"
+PROPOSALS = ROOT / "proposals"
 INLINE_ICON = re.compile(r'<link rel="icon"(?: type="[^"]*")? href="data:[^"]*">')
 ICON_TAGS = """<link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="icon" href="/favicon-96x96.png" type="image/png" sizes="96x96">
@@ -140,6 +142,12 @@ def write(p: Params, slot: str = "main", out: Path = OUT, exports: Path = build.
     (here / "index.html").write_text(home)
     (here / "print-preview").mkdir()
     (here / "print-preview" / "index.html").write_text(fill(print_preview.TEMPLATE, print_preview.MARK, preview, tags))
+    for page in sorted(PROPOSALS.glob("*.html")):
+        html = page.read_text()
+        if html.count("</head>") != 1:
+            raise ValueError(f"{page} has no single </head> for the site's icons")
+        (here / "proposals" / page.stem).mkdir(parents=True)
+        (here / "proposals" / page.stem / "index.html").write_text(html.replace("</head>", ICON_TAGS + "\n</head>"))
     if slot == "main":
         (out / "index.html").write_text(home)
         for icon in ICONS.iterdir():

@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Film Path Fixes</title>
+<meta name="description" content="Proposed fixes for review findings FB5 (the strip is guided only by two 3 mm ledges) and FB6 (a strip can go the wrong side of the pressure plate), with before and after drawings.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">
+<style>
+/* Proposal for FB5 and FB6 (PLAN.md "Latest feedback"). The drawing kit and its classes are copied from
+   mockup/print-preview.html, so the drawings read like the feedback tab's. Not built in CAD yet. */
+:root {
+  --bg: #e8ebe9; --panel: #f5f7f6; --stage: #dde2df; --fg: #1a1f1d; --muted: #5a6460; --line: #cbd3cf;
+  --print: #d4891f; --cut: #8a5512; --layer: #f2c14e; --over: #c2362b; --bed: #b9c2be; --ok: #2f8a5c;
+  --f-ui: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111413; --panel: #171b1a; --stage: #0d100f; --fg: #e3e8e5; --muted: #95a19c; --line: #2a312e;
+    --print: #e9a23b; --cut: #7a4a10; --layer: #ffd36b; --over: #f2665a; --bed: #2b322f; --ok: #5cc28d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111413; --panel: #171b1a; --stage: #0d100f; --fg: #e3e8e5; --muted: #95a19c; --line: #2a312e;
+  --print: #e9a23b; --cut: #7a4a10; --layer: #ffd36b; --over: #f2665a; --bed: #2b322f; --ok: #5cc28d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--f-ui); }
+code { font: 12.5px var(--f-num); }
+main { max-width: 1180px; margin: 0 auto; padding: 22px 16px 48px; }
+header.top h1 { font: 700 26px/1.1 var(--f-ui); margin: 0 0 4px; letter-spacing: -0.01em; }
+header.top .meta { font: 12px var(--f-num); color: var(--muted); margin: 0 0 14px; }
+.lead { font: 500 17px/1.45 var(--f-ui); margin: 0 0 10px; max-width: 72ch; }
+.lead b { color: var(--ok); font-weight: 600; }
+p { max-width: 76ch; }
+h2 { font: 700 22px/1.15 var(--f-ui); margin: 34px 0 6px; letter-spacing: -0.01em; }
+h2 .cn { font: 500 14px var(--f-num); color: var(--print); margin-right: 8px; }
+h3 { font: 600 17px/1.25 var(--f-ui); margin: 0; }
+.sub { color: var(--muted); margin: 0 0 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); gap: 14px; align-items: start; }
+.card { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--muted); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+.card.now { border-left-color: var(--over); }
+.card.rec { border-left-color: var(--ok); }
+.card.alt { border-left-color: var(--print); }
+.card header { display: flex; gap: 10px; align-items: flex-start; }
+.card header h3 { flex: 1; }
+.badge { flex: none; font: 600 10.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px 8px; margin-top: 2px; white-space: nowrap; color: var(--muted); }
+.now .badge { color: var(--over); border-color: var(--over); }
+.rec .badge { color: var(--ok); border-color: var(--ok); }
+.alt .badge { color: var(--print); border-color: color-mix(in srgb, var(--print) 50%, var(--line)); }
+.card > p { margin: 8px 0 0; font-size: 14px; }
+.card ul.chg { margin: 8px 0 0; padding-left: 18px; font-size: 13.5px; display: flex; flex-direction: column; gap: 3px; }
+.vals { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.vals li { display: inline-flex; gap: 6px; align-items: baseline; padding: 4px 8px; border-radius: 4px; background: var(--bg); font-size: 12px; color: var(--muted); }
+.vals b { font: 500 13.5px var(--f-num); font-variant-numeric: tabular-nums; color: var(--fg); }
+.vals li.bad b { color: var(--over); }
+.vals li.good b { color: var(--ok); }
+.tw { overflow-x: auto; margin-top: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 560px; }
+th, td { text-align: left; padding: 7px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+thead th { border-top: 0; font: 600 11px/1.3 var(--f-ui); text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+tbody th { font-weight: 500; color: var(--muted); }
+td.n { font: 500 12.5px var(--f-num); font-variant-numeric: tabular-nums; }
+td.bad { color: var(--over); }
+td.good { color: var(--ok); }
+.rec-col { background: color-mix(in srgb, var(--ok) 7%, transparent); }
+ol.steps { padding-left: 20px; font-size: 14px; display: flex; flex-direction: column; gap: 6px; max-width: 90ch; }
+.foot { color: var(--muted); font-size: 12.5px; margin-top: 30px; }
+/* the drawings */
+.fig { margin: 10px 0; background: var(--bg); border-radius: 5px; padding: 10px 10px 8px; min-width: 0; }
+.fig .svgbox { width: 100%; min-height: 60px; overflow-x: auto; overscroll-behavior-x: contain; }
+.fig svg { display: block; overflow: visible; }
+.fig .note { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
+.fig ol { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.fig ol li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; }
+.fig ol li .m { font: 600 11px/18px var(--f-num); width: 18px; height: 18px; border-radius: 50%; text-align: center; color: var(--bg); background: var(--print); }
+.fig ol li.bad .m { background: var(--over); }
+.fig ol li.good .m { background: var(--ok); }
+
+/* SVG: printed parts orange-tinted, references dashed, the problem red, what is right green */
+.fig svg text { font: 500 11.5px var(--f-num); fill: var(--fg); }
+.fig svg .tag { font: 600 11px var(--f-ui); fill: var(--muted); }
+.fig svg .tag.num { fill: var(--fg); font: 500 11.5px var(--f-num); }
+.fig svg .tag.badt { fill: var(--over); font: 500 11.5px var(--f-num); }
+.fig svg .tag.onframe { fill: #c9c2b8; }
+.fig svg .pr { fill: color-mix(in srgb, var(--print) 26%, var(--panel)); stroke: var(--print); stroke-width: 1.2; }
+.fig svg .pr2 { fill: color-mix(in srgb, var(--print) 12%, var(--panel)); stroke: color-mix(in srgb, var(--print) 70%, var(--muted)); stroke-width: 1; }
+.fig svg .solid { fill: var(--print); stroke: var(--cut); stroke-width: 1; }
+.fig svg .see { fill: color-mix(in srgb, var(--print) 22%, transparent); stroke: var(--print); stroke-width: 1.2; }
+.fig svg .ref { fill: color-mix(in srgb, var(--muted) 10%, transparent); stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; }
+.fig svg .ghost { fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 5 3; }
+.fig svg .ghostln { fill: none; stroke: var(--muted); stroke-width: 1.4; stroke-dasharray: 5 3; }
+.fig svg .sup { fill: color-mix(in srgb, var(--muted) 16%, transparent); stroke: var(--muted); stroke-width: 0.8; stroke-dasharray: 2 2; }
+.fig svg .csl { fill: color-mix(in srgb, #9aa3a0 30%, var(--panel)); stroke: var(--muted); stroke-width: 1; }
+.fig svg .lit { fill: color-mix(in srgb, var(--layer) 60%, transparent); stroke: none; }
+.fig svg .litln { stroke: var(--layer); stroke-width: 4; }
+.fig svg .bare { fill: var(--layer); stroke: var(--over); stroke-width: 1.2; }
+.fig svg .film { fill: color-mix(in srgb, #b39466 60%, transparent); stroke: #b39466; stroke-width: 1; }
+.fig svg .filmln { stroke: #b39466; stroke-width: 3; }
+.fig svg .frame { fill: #2b2622; fill-opacity: 0.82; stroke: none; }
+.fig svg .perf { fill: var(--bg); stroke: none; }
+.fig svg .hole { fill: var(--bg); stroke: var(--print); stroke-width: 1; }
+.fig svg .win { fill: var(--stage); stroke: var(--print); stroke-width: 1; }
+.fig svg rect.bad, .fig svg polygon.bad { fill: color-mix(in srgb, var(--over) 45%, transparent); stroke: var(--over); stroke-width: 1.2; }
+.fig svg .badln { stroke: var(--over); stroke-width: 3; stroke-linecap: round; }
+.fig svg .zok { fill: color-mix(in srgb, var(--ok) 40%, var(--panel)); stroke: var(--ok); stroke-width: 1; }
+.fig svg .zbad { fill: color-mix(in srgb, var(--over) 40%, var(--panel)); stroke: var(--over); stroke-width: 1; }
+.fig svg .zref { fill: color-mix(in srgb, var(--muted) 30%, var(--panel)); stroke: var(--muted); stroke-width: 1; }
+.fig svg .zunk { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 2; }
+.fig svg .now { stroke: var(--fg); stroke-width: 2; }
+.fig svg .table { stroke: var(--fg); stroke-width: 1.6; }
+.fig svg .axisln { stroke: var(--muted); stroke-width: 0.8; stroke-dasharray: 10 3 2 3; }
+.fig svg .lim { stroke: var(--over); stroke-width: 1.2; stroke-dasharray: 5 3; }
+.fig svg .ext { stroke: var(--muted); stroke-width: 0.7; stroke-dasharray: 2 2; }
+.fig svg .flow { color: var(--muted); }
+.fig svg .flow.good { color: var(--ok); }
+.fig svg .flow.bad { color: var(--over); }
+.fig svg .flow.lit { color: var(--layer); }
+.fig svg .flow .ln { stroke: currentColor; stroke-width: 2; }
+.fig svg .flow .ah { fill: currentColor; }
+.fig svg .d { color: var(--print); }
+.fig svg .d.bad { color: var(--over); }
+.fig svg .d.good { color: var(--ok); }
+.fig svg .d .ln { stroke: currentColor; stroke-width: 1.3; fill: none; }
+.fig svg .d .ah { fill: currentColor; }
+.fig svg .d rect { fill: var(--panel); stroke: currentColor; stroke-width: 1.2; }
+.fig svg .d circle { fill: currentColor; }
+.fig svg .d circle + text { fill: var(--panel); font-weight: 600; font-size: 11px; }
+.fig svg .was { fill: none; stroke: var(--over); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.fig svg .ray { stroke: var(--layer); stroke-width: 2; stroke-dasharray: 6 3; }
+.fig svg .tag.goodt { fill: var(--ok); font: 500 11.5px var(--f-num); }
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <h1>FB5 · FB6: the film's path through the gate</h1>
+    <p class="meta">Proposal · branch proposal/fb5-fb6-film-path · params.py defaults, wd 111, axis 40.5 · 5A and 6A built in CAD on this branch (F20, F21), not yet printed</p>
+  </header>
+  <p class="lead">Recommended: <b>5A, the sill</b>, and <b>6A, a slot only as deep as the channel</b>. Together they give the strip
+    one floor to rest on across the whole gate and one way in, between the reference plane and the pressure plate.</p>
+  <p class="sub">Each drawing is computed from the same dimensions as the build, so the shapes and numbers are to scale unless
+    the caption says it is stretched. Red marks the problem, green marks new material or the fix, and dashed outlines show material that is removed or where a part used to be.</p>
+
+  <h2><span class="cn">FB5</span>The strip is guided only by two 3 mm ledges</h2>
+  <p class="sub">The film's lower edge rests on the floor of a slot in each side wall. Between the walls nothing is under it. With
+    the first or last frame of a strip in the window only one slot holds it, and the strip pivots on that slot's 3 mm floor.</p>
+  <div class="grid">
+    <article class="card now"><header><h3>Now</h3><span class="badge">The problem</span></header>
+      <figure class="fig" data-fig="front_now"></figure>
+      <figure class="fig" data-fig="side_now"></figure>
+      <ul class="vals" data-vals="v5now"></ul>
+    </article>
+    <article class="card rec"><header><h3>5A · A sill: raise the gate body's floor to the film's edge</h3><span class="badge">Recommended</span></header>
+      <figure class="fig" data-fig="front_a"></figure>
+      <figure class="fig" data-fig="side_a"></figure>
+      <ul class="vals" data-vals="v5a"></ul>
+      <p>The gate body is filled up to the film's lower edge (y 23, where the slot floors already are), from the reference plane
+        back to the backer. The strip then rests on one flat floor from the outer face of one wall to the other, and an end frame
+        cannot drop, however few slots it is in. The pressure plate and the wedge plate get 20 shorter and stand on the sill.</p>
+      <ul class="chg" data-list="chg5a"></ul>
+    </article>
+    <article class="card alt"><header><h3>5B · Longer, tighter slots</h3><span class="badge">Partial</span></header>
+      <figure class="fig" data-fig="front_b"></figure>
+      <ul class="vals" data-vals="v5b"></ul>
+      <p>The slot is carried out through a boss on each side wall, to the edge of the gate front (which still closes it), so each
+        guide is 12 long instead of 3. Only the gate body changes. But the strip still pivots, and to stay inside the 1 mm margin the clearance over
+        the strip must drop to 0.1, where a strip that is slightly wide or a slot that prints slightly narrow will jam.</p>
+      <ul class="chg" data-list="chg5b"></ul>
+    </article>
+  </div>
+  <div class="tw"><table data-table="t5"></table></div>
+
+  <h2><span class="cn">FB6</span>A strip can go the wrong side of the pressure plate</h2>
+  <p class="sub">Each side wall's slot is 3.2 along the axis, but the channel the film belongs in is only 0.6 of it. Behind the channel are
+    the pressure plate's square edge (1.8) and then 0.8 that leads behind the plate, into the pads and ramps.</p>
+  <div class="grid">
+    <article class="card now"><header><h3>Now</h3><span class="badge">The problem</span></header>
+      <figure class="fig" data-fig="top_now"></figure>
+      <ul class="vals" data-vals="v6now"></ul>
+    </article>
+    <article class="card rec"><header><h3>6A · Slot as deep as the channel, with a funnel and a lead-in</h3><span class="badge">Recommended</span></header>
+      <figure class="fig" data-fig="top_a"></figure>
+      <ul class="vals" data-vals="v6a"></ul>
+      <p>At the wall's inner face the notch is only as deep as the channel (0.6), and it widens to 2.0 at the outer face. The lens
+        side of the funnel stays the flat reference plane, so the strip goes in straight along the face it will lie on. A 0.6 × 45°
+        lead-in on each end of the pressure plate's front edge means that a plate lying forward (it has no springs) is pushed back by the strip's
+        tip instead of blocking it.</p>
+      <ul class="chg" data-list="chg6a"></ul>
+    </article>
+    <article class="card alt"><header><h3>6B · Close the back of the slot, chamfer the plate's whole edge</h3><span class="badge">Alternative</span></header>
+      <figure class="fig" data-fig="top_b"></figure>
+      <ul class="vals" data-vals="v6b"></ul>
+      <p>The slot keeps its wide mouth but stops at the pressure plate's back face, so nothing leads behind the plate. A 45°
+        chamfer across the plate's whole 1.8 edge steers a strip that enters anywhere in the slot forward into the channel.
+        The strip must then step sideways by up to 1.8 within about 2 mm of travel.</p>
+      <ul class="chg" data-list="chg6b"></ul>
+    </article>
+  </div>
+  <div class="tw"><table data-table="t6"></table></div>
+
+  <h2>Doing 5A and 6A</h2>
+  <p class="sub">What changed in the code on this branch, in the order it was built. After the change the assembly has no interference at SLIDE, only the
+    designed pad / ramp preload (0.1133) at LOCK, all 24 fits are as intended, and no part has an overhang in its print pose.</p>
+  <ol class="steps" data-list="plan"></ol>
+  <p class="sub">How these interact with the other findings: FB2's clamp stack and FB4's contact on the neighbouring frames are along
+    the axis, and neither fix changes them. 6A cuts FB7's film-slot opening from 113 to 21 mm² each. Under 5A the wedge plate settles onto
+    the sill instead of the floor, the same 0.5 drop as before, so FB8 is unchanged.</p>
+  <p class="foot">Assumed: the lens's pupil is 140 in front of the film (FB8 uses 140–170; 140 is the steeper ray). Not checked:
+    slicing, the real film's width tolerance, and how the strip behaves on a real sill.</p>
+</main>
+<script>
+(() => {
+  // ---- params.py defaults (wd 111, axis 40.5) and what the drawings need from them ----
+  const P = {
+    axis: 40.5, wall: 3, gw: 92, gh: 76.5, channel: 0.6, plate_t: 1.8, film_t: 0.13, film_w: 35, frame_w: 36, frame_h: 24,
+    win_w: 38, win_h: 26, rear_win_h: 34, plate_clear: 0.25, wedge_clear: 0.5, wedge_t: 2, wedge_back_clear: 0.05,
+    film_slot_w: 3.2, film_slot_clear: 0.2, pad: 4, pad_dy: 15.5, ramp_min: 0.1, ramp_rise: 0.7, ramp_len: 12, sw_travel: 10,
+    lid_clear: 0.2, gate_front_w: 110,
+  };
+  const A = P.axis;
+  const XR = 235.7;                                   // x_ref: lens_len 125 + wd 111 - channel / 2
+  const XPP = XR + P.channel + P.plate_t;             // x_pp 238.1, the pressure plate's back face
+  const XW = XPP + 0.9;                               // x_wedge 239.0 (wedge_gap 0.9)
+  const XL = 261;                                     // x_light, the gate body's rear face
+  const XB = XW + P.wedge_t + P.wedge_back_clear;     // the backer's front face, 241.05
+  const FY = A - P.film_w / 2;                        // the film's lower edge and the slot floors, 23
+  const SLOT_H = P.film_w + P.film_slot_clear;        // 35.2
+  const IN0 = P.gw / 2 - P.wall;                      // the side walls' inner face, 43
+  const EDGE = IN0 - P.plate_clear;                   // the pressure plate's end, 42.75
+  const rampT = (u) => P.ramp_min + P.ramp_rise * (P.ramp_len / 2 - u) / P.ramp_len;
+  const PAD_T = XW - rampT(P.sw_travel / 2) - XPP;    // 0.742
+  const REACH = IN0 + P.win_w / 2;                    // pivot (the slot's inner end) to the window's far edge, 62
+
+  // ---- the proposals ----
+  const S = {
+    sill: FY,                                         // 5A: the floor's new top
+    pad_dy: 15,                                       // 5A: pads 0.5 in, so the lower ones stay on the shortened plate
+    step_top: A - P.win_h / 2 - 0.5, step_d: 2,       // 5A: the backer's step behind the wedge plate's lower ramps, 45° under
+    boss_out: P.gate_front_w / 2,                     // 5B: the bosses reach the gate front's edge, 55
+    mouth: 2.0, lead: 0.6,                            // 6A: funnel at the wall's outer face; the plate's lead-in
+    pupil: 140,                                       // assumed, as FB8
+  };
+  const tiltOf = (clear, len) => Math.atan(clear / len);
+  const deg = (r) => r * 180 / Math.PI;
+  const M = {
+    tilt: tiltOf(P.film_slot_clear, P.wall), drop: REACH * P.film_slot_clear / P.wall, margin: (P.win_h - P.frame_h) / 2,
+    guideB: S.boss_out - IN0,
+  };
+  M.tiltB = tiltOf(P.film_slot_clear, M.guideB); M.dropB = REACH * P.film_slot_clear / M.guideB;
+  M.tiltB1 = tiltOf(0.1, M.guideB); M.dropB1 = REACH * 0.1 / M.guideB;
+  const rayY = (x) => A - P.frame_h / 2 - (x - XR) * (P.frame_h / 2) / S.pupil;   // lowest ray from the frame's bottom edge to the pupil
+  M.rayClear = rayY(XB + S.step_d) - S.step_top;
+  M.behind = P.film_slot_w - P.channel - P.plate_t;
+  const vol = {                                       // mm³
+    sill: (XB - XR) * (FY - P.wall) * 2 * IN0,
+    step: (S.step_d * (S.step_top - FY) + (S.step_top - FY) ** 2 / 2) * 2 * IN0,
+    plate: (FY - P.wall) * 2 * EDGE * P.plate_t,
+    wedge: (FY - P.wall) * 70 * P.wedge_t,
+  };
+  M.net = (vol.sill + vol.step - vol.plate - vol.wedge) / 1000;
+  M.slotArea = (w) => w * SLOT_H;
+
+  const num = (v) => String(+(+v).toFixed(3));
+  const f1 = (v) => (+v).toFixed(1), f2 = (v) => (+v).toFixed(2);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+  // ---- a little SVG kit: mm in, px out (y up), redrawn to the box's width so text stays 11.5 px ----
+  const NS = 'http://www.w3.org/2000/svg';
+  const CH = 6.9;                                     // IBM Plex Mono at 11.5 px: 0.6 em per character
+  function mk(tag, attrs, parent) {
+    const e = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) if (v !== undefined && v !== null) e.setAttribute(k, v);
+    if (parent) parent.append(e);
+    return e;
+  }
+  const arc = (cx, cy, r, a0, a1, n = 48) =>          // points along a circle from angle a0 to a1 (radians, y up)
+    Array.from({ length: n + 1 }, (_, i) => { const a = a0 + (a1 - a0) * i / n; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; });
+  function kit(svg, X, Y, s) {
+    const g0 = mk('g', {}, svg), g1 = mk('g', {}, svg), g2 = mk('g', {}, svg);   // shapes, arrows and extension lines, dimensions
+    const pts = (a) => a.map(([x, y]) => `${X(x).toFixed(1)},${Y(y).toFixed(1)}`).join(' ');
+    const head = (g, x, y, dx, dy) => {              // a filled arrowhead, its tip at (x, y) px, pointing along (dx, dy)
+      const L = 7, W = 3, px = -dy, py = dx;
+      mk('path', { class: 'ah', d: `M${x},${y} L${x - dx * L + px * W},${y - dy * L + py * W} L${x - dx * L - px * W},${y - dy * L - py * W}Z` }, g);
+    };
+    const label = (g, x, y, text, anchor = 'middle') => {   // a boxed label centred (or anchored) on (x, y) px
+      const w = text.length * CH + 10, h = 18;
+      const x0 = anchor === 'start' ? x : anchor === 'end' ? x - w : x - w / 2;
+      mk('rect', { x: x0, y: y - h / 2, width: w, height: h, rx: 3 }, g);
+      mk('text', { x: x0 + w / 2, y: y + 4, 'text-anchor': 'middle' }, g).textContent = text;
+    };
+    const group = (cls) => mk('g', { class: 'd' + (cls ? ' ' + cls : '') }, g2);
+    const ext = (x0, y0, x1, y1) => mk('line', { class: 'ext', x1: x0, y1: y0, x2: x1, y2: y1 }, g1);
+    return {
+      s, X, Y,
+      rect(x0, y0, x1, y1, cls) {
+        mk('rect', { class: cls, x: X(Math.min(x0, x1)), y: Y(Math.max(y0, y1)), width: Math.abs(x1 - x0) * s, height: Math.abs(y1 - y0) * s }, g0);
+      },
+      poly(a, cls, closed = true) { mk(closed ? 'polygon' : 'polyline', { class: cls, points: pts(a) }, g0); },
+      line(x0, y0, x1, y1, cls) { mk('line', { class: cls, x1: X(x0), y1: Y(y0), x2: X(x1), y2: Y(y1) }, g0); },
+      circle(cx, cy, r, cls) { mk('circle', { class: cls, cx: X(cx), cy: Y(cy), r: r * s }, g0); },
+      text(x, y, t, { cls = 'tag', anchor = 'middle', dx = 0, dy = 4 } = {}) {
+        mk('text', { class: cls, x: X(x) + dx, y: Y(y) + dy, 'text-anchor': anchor }, g1).textContent = t;
+      },
+      arrow(x0, y0, x1, y1, cls) {                   // a line from (x0, y0) to an arrowhead at (x1, y1)
+        const g = mk('g', { class: 'flow ' + cls }, g1);
+        const a = [X(x0), Y(y0)], b = [X(x1), Y(y1)], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        mk('line', { class: 'ln', x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, g);
+        head(g, b[0], b[1], (b[0] - a[0]) / L, (b[1] - a[1]) / L);
+      },
+      // horizontal dimension from x0 to x1, its line `off` px below (+) or above (-) height y; extension lines from ya, yb.
+      // Too short for its arrows, they point in from outside; a label that doesn't fit between them goes past the end.
+      hdim(x0, x1, y, off, text, { ya = y, yb = y, pos, cls } = {}) {
+        const g = group(cls), ly = Y(y) + off, a = X(x0), b = X(x1), sg = Math.sign(off) || 1;
+        const tiny = b - a < 18, w = text.length * CH + 10;
+        if (off) { ext(a, Y(ya), a, ly + sg * 4); ext(b, Y(yb), b, ly + sg * 4); }
+        mk('line', { class: 'ln', x1: tiny ? a - 14 : a, y1: ly, x2: tiny ? b + 14 : b, y2: ly }, g);
+        head(g, a, ly, tiny ? 1 : -1, 0); head(g, b, ly, tiny ? -1 : 1, 0);
+        const at = pos || (tiny || b - a < w + 18 ? 'end' : 'mid'), gap = tiny ? 18 : 5;
+        if (at === 'mid') label(g, (a + b) / 2, ly, text);
+        else if (at === 'end') label(g, b + gap, ly, text, 'start');
+        else if (at === 'start') label(g, a - gap, ly, text, 'end');
+        else label(g, (a + b) / 2, ly + (at === 'above' ? -15 : 15), text);
+      },
+      // vertical dimension from y0 up to y1 at x, `off` px right (+) or left (-); the label beside it (l / r) or past an end (t / b)
+      vdim(y0, y1, x, off, text, { xa = x, xb = x, pos = off < 0 ? 'l' : 'r', cls } = {}) {
+        const g = group(cls), lx = X(x) + off, a = Y(y0), b = Y(y1), tiny = a - b < 18;
+        if (off) { ext(X(xa), a, lx + Math.sign(off) * 4, a); ext(X(xb), b, lx + Math.sign(off) * 4, b); }
+        mk('line', { class: 'ln', x1: lx, y1: tiny ? a + 14 : a, x2: lx, y2: tiny ? b - 14 : b }, g);
+        head(g, lx, a, 0, tiny ? -1 : 1); head(g, lx, b, 0, tiny ? 1 : -1);
+        const mid = (a + b) / 2;
+        if (pos === 'l') label(g, lx - 6, mid, text, 'end');
+        else if (pos === 'r') label(g, lx + 6, mid, text, 'start');
+        else if (pos === 't') label(g, lx, b - (tiny ? 26 : 14), text);
+        else label(g, lx, a + (tiny ? 26 : 14), text);
+      },
+      // a lettered marker at (mx, my) mm + (dx, dy) px, with a leader to the target (tx, ty) mm
+      call(key, [tx, ty], [mx, my, dx = 0, dy = 0], cls) {
+        const g = group(cls), x = X(mx) + dx, y = Y(my) + dy;
+        mk('line', { class: 'ln', x1: X(tx), y1: Y(ty), x2: x, y2: y, 'stroke-dasharray': '3 2' }, g);
+        mk('circle', { cx: X(tx), cy: Y(ty), r: 2.2 }, g);
+        mk('circle', { cx: x, cy: y, r: 9 }, g);
+        mk('text', { x, y: y + 4, 'text-anchor': 'middle' }, g).textContent = key;
+      },
+    };
+  }
+
+  const box = (z0, z1, ya, yb) => [[z0, ya], [z1, ya], [z1, yb], [z0, yb]];
+
+  // From the camera, the gate front left out: the last frame of a strip in the window, the strip in the +z slot only.
+  function front(kind) {
+    const len = kind === 'b' ? M.guideB : P.wall, out = IN0 + len;
+    const t = kind === 'a' ? 0 : tiltOf(P.film_slot_clear, len), drop = kind === 'a' ? 0 : REACH * P.film_slot_clear / len;
+    return {
+      maxH: 300,
+      note: () => ({
+        now: `From the camera, the gate front left out. The last frame of a strip is in the window, so the strip is in one slot only and droops. Dashed: where it should lie.`,
+        a: `The same view with the sill (green) under the strip from wall to wall. Red dashed: where the strip droops to now.`,
+        b: `The same view with a boss (green) on each wall carrying the slot out to ${num(S.boss_out)}. The droop is drawn at 0.2 over the strip.`,
+      })[kind],
+      bounds: () => ({ x0: -58, x1: 58, y0: A - 26, y1: A + 22, pad: () => ({ l: 8, r: 8, t: kind === 'b' ? 24 : 8, b: 8 }) }),
+      draw(d) {
+        const y0 = A - 26, y1 = A + 22, top = FY + SLOT_H;
+        const rot = (a) => ([z, y]) => [IN0 + (z - IN0) * Math.cos(a) - (y - FY) * Math.sin(a), FY + (z - IN0) * Math.sin(a) + (y - FY) * Math.cos(a)];
+        d.rect(-IN0, y0, IN0, y1, 'pr2');
+        if (kind === 'a') d.rect(-IN0, y0, IN0, FY, 'zok');
+        d.rect(-P.win_w / 2, A - P.win_h / 2, P.win_w / 2, A + P.win_h / 2, 'win');
+        if (kind === 'a') d.poly(box(-21, 58, FY, FY + P.film_w).map(rot(M.tilt)), 'was');
+        else d.poly(box(-21, 58, FY, FY + P.film_w), 'ghost');
+        d.poly(box(-21, 57, FY, FY + P.film_w).map(rot(t)), 'film');
+        d.poly(box(-P.frame_w / 2, P.frame_w / 2, A - P.frame_h / 2, A + P.frame_h / 2).map(rot(t)), 'frame');
+        for (const k of [-1, 1]) {
+          d.rect(k * IN0, y0, k * (IN0 + P.wall), FY, 'pr');
+          d.rect(k * IN0, top, k * (IN0 + P.wall), y1, 'pr');
+          if (kind === 'b') {
+            d.rect(k * (IN0 + P.wall), FY - 3, k * out, FY, 'zok');
+            d.rect(k * (IN0 + P.wall), top, k * out, top + 3, 'zok');
+          }
+        }
+        if (kind === 'a') {
+          d.text(0, (y0 + FY) / 2, 'sill', { cls: 'tag goodt' });
+          d.call('a', [-30, FY], [-30, FY - 5.5], 'good');
+          d.call('b', [0, A - P.frame_h / 2], [10, A - P.frame_h / 2 + 5], 'good');
+          return;
+        }
+        d.vdim(FY - drop, FY, -P.win_w / 2, -12, f1(drop) + (kind === 'b' ? '' : ''), { cls: 'bad' });
+        d.text(IN0 - 14, FY - (kind === 'b' ? 2.5 : 4.5), `${deg(t).toFixed(kind === 'b' ? 2 : 1)}°`, { cls: 'tag badt' });
+        if (kind === 'b') {
+          d.hdim(IN0, out, top + 3, -12, `guide ${num(len)}`, { cls: 'good', pos: 'start' });
+          d.call('a', [IN0 + P.wall + 4, FY - 1.5], [IN0 + P.wall + 4, FY - 7], 'good');
+          d.call('b', [-P.win_w / 2, FY - drop], [-P.win_w / 2 - 12, FY - drop - 3], 'bad');
+          return;
+        }
+        d.call('a', [IN0 + P.wall / 2, FY], [IN0 + P.wall / 2 + 7, FY - 5], 'bad');
+        d.call('b', [10, FY - 1.2], [10, FY - 5.5]);
+        d.call('c', [-IN0 - P.wall / 2, A], [-IN0 + 8, A + 6]);
+      },
+      calls: () => ({
+        now: [
+          ['a', `Held here only: a ${num(P.wall)} ledge with ${num(P.film_slot_clear)} over the strip's top edge, so it tilts ${deg(M.tilt).toFixed(1)}°`, 'bad'],
+          ['b', `Nothing under the strip's lower edge between the walls`],
+          ['c', `The other slot: the strip's end hasn't reached it`],
+        ],
+        a: [
+          ['a', `The sill's top is the slot floors' height, y ${num(FY)}: the strip's lower edge lies on it across the full ${num(P.gw)}`, 'good'],
+          ['b', `The end frame stays level and centred: 0 drop, with the window's ${num(M.margin)} margin intact`, 'good'],
+        ],
+        b: [
+          ['a', `A boss on each wall, out to the gate front's edge (z ±${num(S.boss_out)}), so the slot is ${num(M.guideB)} long`, 'good'],
+          ['b', `Still ${f2(M.dropB)} of droop at the window's far edge, against ${num(M.margin)} of margin; ${f2(M.dropB1)} if the clearance is cut to 0.1`, 'bad'],
+        ],
+      })[kind],
+    };
+  }
+
+  // Section along the axis through the lower pads, stretched ×2 along x (left: the gate front; right: the rear wall and the light).
+  function side(kind) {
+    const a = kind === 'a', X0 = 231, U = (x) => (x - X0) * 2;
+    return {
+      maxH: 460,
+      note: () => a
+        ? `The same section with the sill and the step (green). Dashed: what comes off the two plates. Yellow: the lowest ray the lens takes from the frame's bottom edge (pupil ${num(S.pupil)} assumed); at the frame it passes through the plates' windows, which are outside this cut.`
+        : `Section along the axis through the lower pads, stretched ×2 along the axis. The lens is to the left and the light to the right. The strip's lower edge (y ${num(FY)}) is over open space.`,
+      bounds: () => ({ x0: 0, x1: U(XL) + 1, y0: -1, y1: P.gh + 1, pad: () => ({ l: 8, r: 8, t: 8, b: 8 }) }),
+      draw(d) {
+        const R = (x0, y0, x1, y1, cls) => d.rect(U(x0), y0, U(x1), y1, cls);
+        const dy = a ? S.pad_dy : P.pad_dy, yp = a ? FY + P.plate_clear : P.wall + P.plate_clear, yw = a ? FY + P.wedge_clear : P.wall + P.wedge_clear;
+        R(X0, 0, XR, P.gh, 'pr2');                                    // gate front
+        R(XR, 0, XL - P.wall, P.wall, 'pr2');                         // floor
+        R(XL - P.wall, 0, XL, P.gh, 'pr2');                           // rear wall
+        R(XL - P.wall, A - P.rear_win_h / 2, XL, A + P.rear_win_h / 2, 'hole');
+        R(XR + P.lid_clear, P.gh - P.wall, XL - P.wall - P.lid_clear, P.gh, 'pr2');   // lid
+        R(XB, P.wall, XL - P.wall, FY, 'pr2');                        // backer
+        if (a) {
+          R(XR, P.wall, XB, FY, 'zok');
+          d.poly([[U(XB), FY], [U(XB), S.step_top], [U(XB + S.step_d), S.step_top], [U(XB + S.step_d + S.step_top - FY), FY]], 'zok');
+          R(XR + P.channel, P.wall + P.plate_clear, XPP, yp, 'ghost');
+          R(XW, P.wall + P.wedge_clear, XW + P.wedge_t, yw, 'ghost');
+        }
+        R(XR + P.channel, yp, XPP, P.gh - P.wall - P.plate_clear, 'pr');   // pressure plate
+        R(XW, yw, XW + P.wedge_t, P.gh - P.wall - P.wedge_clear, 'pr');    // wedge plate
+        for (const yc of [A - dy, A + dy]) {
+          R(XPP, yc - P.pad / 2, XPP + PAD_T, yc + P.pad / 2, 'pr');       // pad
+          R(XPP + PAD_T, yc - P.pad / 2, XW, yc + P.pad / 2, 'solid');     // ramp
+        }
+        d.line(U(XR + P.film_t / 2), FY, U(XR + P.film_t / 2), FY + P.film_w, 'filmln');
+        if (!a) R(XR, P.wall, XR + P.channel, FY, 'bad');
+        if (a) d.line(U(XR), rayY(XR), U(XL - P.wall), rayY(XL - P.wall), 'ray');
+        d.line(0, 0, U(XL) + 1, 0, 'table');
+        if (a) {
+          d.call('a', [U(XR + 0.3), FY], [U(XR) - 8, FY - 6], 'good');
+          d.call('b', [U(XR + P.channel + 0.9), yp + 4], [U(XR) - 8, yp + 12]);
+          d.call('c', [U(XB + 1), S.step_top - 1], [U(XB + 6), S.step_top + 9], 'good');
+          d.call('d', [U(XB + S.step_d), rayY(XB + S.step_d)], [U(XB + 8), rayY(XB + 8) + 14]);
+          d.vdim(P.wall, FY, U(XR + 2.6), 0, `sill ${num(FY - P.wall)}`, { pos: 'r', cls: 'good' });
+        } else {
+          d.call('a', [U(XR + 0.3), 12], [U(XR) - 8, 12], 'bad');
+          d.call('b', [U(XR + P.channel + 0.9), 10], [U(XR) - 8, 22]);
+          d.call('c', [U(XB + 8), 12], [U(XB + 8), 30]);
+        }
+        d.text(U(XR + 0.06), FY + P.film_w + 3, 'film', { anchor: 'start', dx: 2 });
+      },
+      calls: () => a ? [
+        ['a', `The sill, the gate body filled from the floor to y ${num(FY)} between the gate front and the backer. The film's lower edge rests on it.`, 'good'],
+        ['b', `The pressure plate and the wedge plate are ${num(FY - P.wall)} shorter and stand on the sill. The pads move ${num(P.pad_dy - S.pad_dy)} in (pad_dy ${num(P.pad_dy)} → ${num(S.pad_dy)}), so the lower ones stay on the plate.`],
+        ['c', `A step on the backer, ${num(S.step_d)} deep and up to y ${num(S.step_top)}, backs the wedge plate's lower ramps (F12). Its underside is at 45° so it prints rear wall down.`, 'good'],
+        ['d', `The lowest ray clears the step by ${f2(M.rayClear)} and the wedge plate's window edge as it does now`],
+      ] : [
+        ['a', `Under the film: open for ${num(FY - P.wall)}, from the floor up to the strip's edge, across the whole gate`, 'bad'],
+        ['b', `The pressure plate and the wedge plate run down to the floor`],
+        ['c', `The backer (F12), behind the wedge plate only`],
+      ],
+    };
+  }
+
+  // From above, cut at the film's height, stretched ×3 along the axis. The strip comes in from the right, through the side wall.
+  function top(kind) {
+    const v = (x) => -(x - XR) * 3, ch = v(XR + P.channel), pp = v(XPP), zo = P.gw / 2;
+    return {
+      maxH: 420,
+      note: () => ({
+        now: `From above, cut at the film's height, stretched ×3 along the axis. The strip comes in from the right through the side wall's slot (${num(P.film_slot_w)} wide).`,
+        a: `The same cut with 6A. Green: the wall that now closes the slot behind the channel. Dashed: the pressure plate lying fully forward on the gate front, the worst case with no springs.`,
+        b: `The same cut with 6B. Green: the wall that now closes the slot behind the plate.`,
+      })[kind],
+      bounds: () => ({ x0: 35, x1: 49.5, y0: -13.5, y1: 4.5, pad: () => ({ l: 8, r: 150, t: 10, b: 10 }) }),
+      draw(d) {
+        d.rect(35, 0, 49.5, 4.5, 'pr2');
+        d.text(41, 2.25, 'gate front');
+        if (kind === 'now') {
+          const end = v(XR + P.film_slot_w);
+          d.rect(zo - P.wall, end, zo, -13.5, 'pr');
+          d.rect(35, ch, EDGE, pp, 'pr');
+          d.rect(35, 0, 49.5, v(XR + P.film_t), 'film');
+          d.line(EDGE, ch, EDGE, pp, 'badln');
+          d.text(38.6, (ch + pp) / 2, 'pressure plate');
+          d.text(35.4, (pp + end) / 2, '← pads, ramps', { anchor: 'start' });
+          d.arrow(49.2, ch / 2 - 0.25, 35.6, ch / 2 - 0.25, 'good');
+          d.arrow(49.2, (pp + end) / 2, 40.5, (pp + end) / 2, 'bad');
+          d.vdim(ch, 0, 49.5, 14, `channel ${num(P.channel)}`, { xa: zo, xb: zo, cls: 'good' });
+          d.vdim(pp, ch, 49.5, 14, `plate's edge ${num(P.plate_t)}`, { xa: zo, xb: zo, cls: 'bad' });
+          d.vdim(end, pp, 49.5, 14, `behind it ${num(M.behind)}`, { xa: zo, xb: zo, cls: 'bad' });
+          d.call('a', [EDGE, (ch + pp) / 2 + 1], [EDGE + 2.2, (ch + pp) / 2 + 1], 'bad');
+        } else if (kind === 'a') {
+          const inner = v(XR + P.channel), outer = v(XR + S.mouth), L = S.lead;
+          d.poly([[IN0, inner], [zo, outer], [zo, -13.5], [IN0, -13.5]], 'pr');
+          d.poly([[IN0, inner], [zo, outer], [zo, v(XR + P.film_slot_w)], [IN0, v(XR + P.film_slot_w)]], 'zok');
+          const plate = (dx) => [[35, v(XR + P.channel - dx)], [EDGE - L, v(XR + P.channel - dx)], [EDGE, v(XR + P.channel + L - dx)], [EDGE, v(XPP - dx)], [35, v(XPP - dx)]];
+          d.poly(plate(0), 'pr');
+          d.poly(plate(P.channel), 'ghost');
+          d.rect(35, 0, 49.5, v(XR + P.film_t), 'film');
+          d.text(38.6, (ch + pp) / 2, 'pressure plate');
+          d.text(35.4, -12.4, '← pads, ramps: closed off', { anchor: 'start' });
+          d.arrow(49.2, ch / 2 - 0.25, 35.6, ch / 2 - 0.25, 'good');
+          d.vdim(ch, 0, 49.5, 14, `slot = channel ${num(P.channel)}`, { xa: IN0, xb: IN0, cls: 'good' });
+          d.vdim(outer, 0, 49.5, 84, `mouth ${num(S.mouth)}`, { xa: zo, xb: zo, cls: 'good', pos: 'b' });
+          d.call('a', [IN0, inner - 0.4], [IN0 + 1.3, inner - 5.2], 'good');
+          d.call('b', [zo - 0.6, (inner + outer) / 2 - 0.9], [zo + 2.4, -8.5], 'good');
+          d.call('c', [EDGE - L / 2, v(XR + P.channel + L / 2)], [EDGE - 4.2, -9.6], 'good');
+        } else {
+          const end = v(XPP);
+          d.poly([[IN0, end], [zo, end], [zo, -13.5], [IN0, -13.5]], 'pr');
+          d.rect(IN0, end, zo, v(XR + P.film_slot_w), 'zok');
+          const c = P.plate_t;
+          d.poly([[35, ch], [EDGE - c, ch], [EDGE, pp], [35, pp]], 'pr');
+          d.rect(35, 0, 49.5, v(XR + P.film_t), 'film');
+          d.text(38.4, (ch + pp) / 2, 'pressure plate');
+          const xin = XR + P.channel + P.plate_t / 2, zin = EDGE - c + (xin - XR - P.channel);
+          d.arrow(49.2, v(xin), zin + 0.25, v(xin), 'good');
+          d.arrow(zin, v(xin), EDGE - c + 0.2, ch - 0.15, 'good');
+          d.arrow(EDGE - c - 0.4, ch / 2 - 0.25, 35.6, ch / 2 - 0.25, 'good');
+          d.vdim(end, 0, 49.5, 14, `slot ${num(P.channel + P.plate_t)}`, { xa: zo, xb: zo, cls: 'good' });
+          d.call('a', [IN0 + 1.5, end - 0.6], [IN0 + 1.5, end - 4.5], 'good');
+          d.call('b', [EDGE - c / 2, (ch + pp) / 2], [EDGE - c / 2 - 4.5, (ch + pp) / 2 - 3.5], 'good');
+          d.call('c', [zin, v(xin)], [zin + 3.6, v(xin) + 3.2], 'bad');
+        }
+      },
+      calls: () => ({
+        now: [
+          ['a', `The pressure plate's edge: square, at z ${num(EDGE)}, no lead-in. A strip that misses the channel hits it or passes behind it, into the pads and ramps.`, 'bad'],
+        ],
+        a: [
+          ['a', `At the wall's inner face the slot ends at the pressure plate's front face: 0 leads behind the plate (now ${num(M.behind)})`, 'good'],
+          ['b', `The funnel, ${num(S.mouth)} at the outer face down to ${num(P.channel)}. Its lens side is the reference plane, so the strip goes in straight.`, 'good'],
+          ['c', `A ${num(S.lead)} × 45° lead-in on each end of the plate's front edge. Lying forward (dashed), the plate is pushed back by the strip's tip.`, 'good'],
+        ],
+        b: [
+          ['a', `The slot stops at the plate's back face: ${num(P.channel + P.plate_t)} deep, and 0 leads behind the plate`, 'good'],
+          ['b', `A 45° chamfer across the plate's whole ${num(P.plate_t)} edge steers the strip forward into the channel`, 'good'],
+          ['c', `A strip that comes in behind the channel must step up to ${num(P.plate_t)} sideways in about 2 mm. It can stub on the chamfer, or crease.`, 'bad'],
+        ],
+      })[kind],
+    };
+  }
+
+  const FIGS = {
+    front_now: front('now'), front_a: front('a'), front_b: front('b'),
+    side_now: side('now'), side_a: side('a'),
+    top_now: top('now'), top_a: top('a'), top_b: top('b'),
+  };
+
+  // ---- the numbers, tables and lists ----
+  const V = {
+    v5now: [['support under the strip', `${2 * P.wall} of ${P.gw}`, 'bad'], ['end-frame tilt', `${deg(M.tilt).toFixed(1)}°`, 'bad'],
+            ['drop at the window\'s far edge', f1(M.drop), 'bad'], ['window margin', num(M.margin)]],
+    v5a: [['support', `${P.gw} of ${P.gw}`, 'good'], ['tilt', '0°', 'good'], ['drop', '0', 'good'],
+          ['ray clearance at the step', f2(M.rayClear)], ['plastic, net', `+${f1(M.net)} cm³`]],
+    v5b: [['guide', `${num(M.guideB)}, was ${P.wall}`], ['tilt', `${deg(M.tiltB).toFixed(2)}°`],
+          ['drop', `${f2(M.dropB)} (0.1 over: ${f2(M.dropB1)})`, 'bad'], ['window margin', num(M.margin)]],
+    v6now: [['slot', num(P.film_slot_w)], ['channel', num(P.channel)], ['plate\'s edge', num(P.plate_t), 'bad'], ['behind the plate', num(M.behind), 'bad']],
+    v6a: [['slot at the inner face', num(P.channel), 'good'], ['mouth', num(S.mouth)], ['behind the plate', '0', 'good'],
+          ['lead-in', `${num(S.lead)} × 45°`], ['slot opening', `${Math.round(M.slotArea(P.channel))} mm²`, 'good']],
+    v6b: [['slot', num(P.channel + P.plate_t)], ['behind the plate', '0', 'good'], ['chamfer', `${num(P.plate_t)} × 45°`],
+          ['sideways step', `up to ${num(P.plate_t)}`, 'bad']],
+  };
+  const TABLES = {
+    t5: {
+      head: ['', 'Now', '5A · sill', '5B · longer slots'], rec: 2,
+      rows: [
+        ['Under the strip\'s lower edge', [`${2 * P.wall} of ${P.gw} (two slots)`, 'bad'], [`all ${P.gw}`, 'good'], `${2 * M.guideB} of ${2 * S.boss_out}, in the slots only`],
+        ['End frame: tilt', [`${deg(M.tilt).toFixed(1)}°`, 'bad'], ['0°', 'good'], `${deg(M.tiltB).toFixed(2)}° (${deg(M.tiltB1).toFixed(2)}° at 0.1 over)`],
+        ['Drop at the window\'s far edge (margin 1)', [f1(M.drop), 'bad'], ['0', 'good'], [`${f2(M.dropB)} (${f2(M.dropB1)})`, 'bad']],
+        ['Parts that change', '—', 'gate body, pressure plate, wedge plate', 'gate body'],
+        ['Print', '—', `+${f1(M.net)} cm³ net; the step's underside is 45°`, 'two bosses each side, standing on the bed'],
+        ['Risk', '—', 'the sill is one more face the film\'s edge rubs on', 'a 0.1 clearance jams on a wide strip or a slot that prints narrow'],
+      ],
+    },
+    t6: {
+      head: ['', 'Now', '6A · slot = channel', '6B · fence + chamfer'], rec: 2,
+      rows: [
+        ['Slot at the wall\'s inner face', num(P.film_slot_w), [num(P.channel), 'good'], num(P.channel + P.plate_t)],
+        ['Leads behind the plate', [num(M.behind), 'bad'], ['0', 'good'], ['0', 'good']],
+        ['Square plate edge in the way', [num(P.plate_t), 'bad'], ['0', 'good'], ['0', 'good']],
+        ['Plate lying forward (no springs)', ['closes the entry', 'bad'], ['the lead-in pushes it back', 'good'], ['the chamfer pushes it back', 'good']],
+        ['Strip\'s path', 'straight, if aimed', ['straight', 'good'], ['may step up to 1.8 sideways', 'bad']],
+        ['Each film slot\'s opening (FB7)', `${Math.round(M.slotArea(P.film_slot_w))} mm²`, [`${Math.round(M.slotArea(P.channel))} mm²`, 'good'], `${Math.round(M.slotArea(P.channel + P.plate_t))} mm²`],
+        ['Parts that change', '—', 'gate body (notch), pressure plate (two small chamfers)', 'gate body, pressure plate'],
+        ['Print', '—', '0.6 is 3 layers at 0.2 and 5 at 0.12; the funnel is a sloped top face', 'the chamfer is a 45° overhang on the plate\'s bed side'],
+      ],
+    },
+  };
+  const LISTS = {
+    chg5a: [
+      `<code>film_gate._floor</code> or a new <code>_sill</code>: solid from y ${num(P.wall)} to <code>film_slot_y0</code> (${num(FY)}), from <code>x_ref</code> back to the backer, wall to wall`,
+      `<code>_backer</code>: a step ${num(S.step_d)} deep up to y ${num(S.step_top)} (<code>axis − win_h/2 − 0.5</code>), its underside at 45°`,
+      `<code>pressure_plate</code>: the bottom edge at <code>film_slot_y0 + plate_clear</code>; <code>pad_dy</code> ${num(P.pad_dy)} → ${num(S.pad_dy)}`,
+      `<code>lock_switch._plate</code>: the bottom edge at <code>film_slot_y0 + wedge_clear</code>; the ramps follow <code>pad_dy</code>`,
+    ],
+    chg5b: [
+      `<code>film_gate._pillars</code>: a boss on each side wall, z ${num(IN0 + P.wall)}–${num(S.boss_out)}, y ${num(FY - 3)}–${num(FY + SLOT_H + 3)}, the body's whole depth`,
+      `<code>_side_wall</code>: the notch is cut through the boss as well`,
+      `<code>film_slot_clear</code> ${num(P.film_slot_clear)} → 0.1, to get under the 1 mm margin`,
+    ],
+    chg6a: [
+      `<code>_side_wall</code>: the notch becomes a wedge-shaped prism, <code>channel</code> deep at the inner face and a new <code>film_slot_mouth</code> (${num(S.mouth)}) at the outer face`,
+      `<code>film_slot_w</code> is no longer a free param: the slot's inner depth is the channel`,
+      `<code>pressure_plate</code>: a new <code>plate_lead_in</code> (${num(S.lead)}) 45° chamfer on the front edge at each z end`,
+    ],
+    chg6b: [
+      `<code>film_slot_w</code> ${num(P.film_slot_w)} → <code>channel + plate_t</code> (${num(P.channel + P.plate_t)})`,
+      `<code>pressure_plate</code>: a ${num(P.plate_t)} × 45° chamfer on the front edge at each z end`,
+    ],
+    plan: [
+      `<b>params.py</b>: <code>film_slot_w</code> 3.2 became <code>film_slot_mouth</code> 2.0, the slot's depth at the wall's outer face; at the inner face it is <code>channel</code>. New: <code>plate_lead_in</code> 0.6, <code>backer_step_d</code> 2, and the derived <code>sill_y</code> (the film's lower edge) and <code>backer_step_top</code> (the wedge window's settled edge). <code>pad_dy</code> 15.5 → 15.`,
+      `<b>film_gate/model.py</b>: <code>_sill</code> fills the gate body from the floor to <code>sill_y</code>, the reference plane to the rear wall; <code>_backer</code> is now the step on it with its 45° underside; <code>_side_wall</code> cuts the tapered notch; <code>pressure_plate</code> stands on the sill and has its two lead-ins.`,
+      `<b>lock_switch/model.py</b>: the wedge plate stands on the sill; its ramps follow <code>pad_dy</code>.`,
+      `<b>fits.py</b>: the plate faces and the clearances are probed above the sill, and the plate's bottom clearance is now "pressure plate / sill".`,
+      `<b>Tests</b>: the sill under the strip across the full gate width, the slot's depth at three points across the wall, the step and its slope, the lowest ray over the step (0.87, pupil 140 assumed), the lead-ins, the new plate sizes and volumes, and the print poses.`,
+      `<b>print_preview.py</b>: FB5 and FB6 keep the review's numbers (the slot's 3.2 is kept as it was reviewed) and gain a status: changed in CAD, not yet printed. They are fixed once a strip has been fed through the printed gate.`,
+      `<b>PLAN.md</b>: rulings F20 (the sill) and F21 (the slot and the lead-in).`,
+    ],
+  };
+
+  for (const el of document.querySelectorAll('[data-vals]'))
+    el.innerHTML = V[el.dataset.vals].map(([l, v, c]) => `<li${c ? ` class="${c}"` : ''}><span>${esc(l)}</span><b>${esc(v)}</b></li>`).join('');
+  for (const el of document.querySelectorAll('[data-list]')) el.innerHTML = LISTS[el.dataset.list].map((t) => `<li>${t}</li>`).join('');
+  for (const el of document.querySelectorAll('[data-table]')) {
+    const t = TABLES[el.dataset.table];
+    const cell = (c, i) => { const [text, cls] = Array.isArray(c) ? c : [c, '']; return `<td class="${/^[\d+−-]/.test(text) ? 'n ' : ''}${cls}${i === t.rec ? ' rec-col' : ''}">${esc(text)}</td>`; };
+    el.innerHTML = `<thead><tr>${t.head.map((h, i) => `<th${i === t.rec ? ' class="rec-col"' : ''}>${esc(h)}</th>`).join('')}</tr></thead>` +
+      `<tbody>${t.rows.map(([h, ...cs]) => `<tr><th>${esc(h)}</th>${cs.map((c, i) => cell(c, i + 1)).join('')}</tr>`).join('')}</tbody>`;
+  }
+
+  const figs = [];
+  for (const el of document.querySelectorAll('.fig')) {
+    const f = FIGS[el.dataset.fig];
+    const calls = f.calls ? `<ol>${f.calls().map(([k, t, cls]) => `<li${cls ? ` class="${cls}"` : ''}><span class="m">${k}</span><span>${esc(t)}</span></li>`).join('')}</ol>` : '';
+    el.innerHTML = `<div class="svgbox"></div><figcaption class="note">${esc(f.note())}</figcaption>${calls}`;
+    figs.push({ f, box: el.querySelector('.svgbox'), title: el.closest('.card').querySelector('h3').textContent });
+  }
+  function drawFig({ f, box, title }) {
+    if (!box.clientWidth) return;
+    const W = Math.max(box.clientWidth, f.minW || 0);
+    const b = f.bounds(), pl = b.pad(1);
+    let s = (W - pl.l - pl.r) / (b.x1 - b.x0);
+    let pad = b.pad(s);
+    const maxH = f.maxH || 440;
+    if ((b.y1 - b.y0) * s + pad.t + pad.b > maxH) { s = (maxH - pad.t - pad.b) / (b.y1 - b.y0); pad = b.pad(s); }
+    const H = Math.ceil((b.y1 - b.y0) * s + pad.t + pad.b);
+    const ox = pad.l + (W - pad.l - pad.r - (b.x1 - b.x0) * s) / 2;
+    const svg = mk('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'aria-label': title });
+    f.draw(kit(svg, (x) => ox + (x - b.x0) * s, (y) => pad.t + (b.y1 - y) * s, s));
+    box.replaceChildren(svg);
+  }
+  const drawAll = () => { for (const g of figs) drawFig(g); };
+  new ResizeObserver(drawAll).observe(document.querySelector('main'));
+  drawAll();
+})();
+</script>
+</body>
+</html>

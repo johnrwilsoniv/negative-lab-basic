@@ -152,16 +152,19 @@ def test_film_has_two_rows_of_48_ks_perforations_through_it(slide):
     assert cadutil.is_valid(film)
 
 
+BELOW_WINDOW = (p.sill_y + 1, p.axis - p.win_h / 2 - 0.5)     # plate only: over the sill (F20), under the window
+
+
 def test_film_lies_against_the_gate_fronts_rear_face(slide):
     plate = cadutil.common_bounds(
-        slide["gate_front"], cadutil.probe(p.x_film - 6, p.x_film + 6, 4, 8, -10, 10)
+        slide["gate_front"], cadutil.probe(p.x_film - 6, p.x_film + 6, *BELOW_WINDOW, -10, 10)
     )
     assert cadutil.bounds(slide["film"])[0] == pytest.approx(plate[1], abs=EPS)
 
 
-def test_film_rests_on_the_film_slots_floors(slide):
+def test_film_rests_on_the_film_slots_floors_and_the_sill_between_them(slide):
     """F13: each side wall's film slot has its floor flush under the film's lower edge, and the film is still centred on
-    the window."""
+    the window. F20: between the walls the sill is flush under it too, so the strip lies on plastic from wall to wall."""
     film, body = slide["film"], slide["gate_body"]
     x0, x1, y0, y1, _, _ = cadutil.bounds(film)
     assert (y0 + y1) / 2 == pytest.approx(p.axis, abs=EPS)
@@ -169,6 +172,8 @@ def test_film_rests_on_the_film_slots_floors(slide):
     for z in (-(p.gw - p.wall) / 2, (p.gw - p.wall) / 2):                # mid-wall
         under = cadutil.probe(x0, x1, y0 - 0.05, y0, z - 1, z + 1)
         assert cadutil.common_volume(body, under) == pytest.approx(cadutil.volume(under), rel=1e-6)
+    under = cadutil.probe(x0, x1, y0 - 0.05, y0, -p.gw / 2, p.gw / 2)    # the whole width of the gate body
+    assert cadutil.common_volume(body, under) == pytest.approx(cadutil.volume(under), rel=1e-6)
 
 
 def test_cs_lite_is_165_by_112_by_20_standing_on_the_docks_floor(slide):
@@ -236,18 +241,18 @@ def test_lock_film_is_touched_by_both_plates_and_overlapped_by_neither(lock):
     assert cadutil.common_volume(film, lock["gate_body"]) < 1e-3
     # touched: the pressure plate's front face is the film's rear face; the gate front's rear face is its front face
     plate_front = cadutil.common_bounds(
-        lock["pressure_plate"], cadutil.probe(p.x_film - 6, p.x_film + 6, 4, 8, -10, 10)
+        lock["pressure_plate"], cadutil.probe(p.x_film - 6, p.x_film + 6, *BELOW_WINDOW, -10, 10)
     )[0]
     assert plate_front == pytest.approx(cadutil.bounds(film)[1], abs=EPS)
     front_plate_rear = cadutil.common_bounds(
-        lock["gate_front"], cadutil.probe(p.x_film - 6, p.x_film + 6, 4, 8, -10, 10)
+        lock["gate_front"], cadutil.probe(p.x_film - 6, p.x_film + 6, *BELOW_WINDOW, -10, 10)
     )[1]
     assert front_plate_rear == pytest.approx(cadutil.bounds(film)[0], abs=EPS)
 
 
 def test_slide_leaves_the_film_free_of_the_pressure_plate(slide):
     plate_front = cadutil.common_bounds(
-        slide["pressure_plate"], cadutil.probe(p.x_film - 6, p.x_film + 6, 4, 8, -10, 10)
+        slide["pressure_plate"], cadutil.probe(p.x_film - 6, p.x_film + 6, *BELOW_WINDOW, -10, 10)
     )[0]
     assert plate_front - cadutil.bounds(slide["film"])[1] == pytest.approx(p.channel - p.film_t, abs=EPS)
 
@@ -530,7 +535,7 @@ def test_the_measured_numbers_are_the_designs(report):
     assert got["tab / lid slot, x clearance, rear"] == pytest.approx(0.5, abs=1e-5)
     assert got["tab / lid slot, z clearance to the end, SLIDE"] == pytest.approx(1.0, abs=1e-5)
     assert got["tab / lid slot, z clearance to the end, LOCK"] == pytest.approx(1.0, abs=1e-5)
-    assert got["pressure plate / floor, clearance"] == pytest.approx(0.25, abs=1e-5)
+    assert got["pressure plate / sill, clearance"] == pytest.approx(0.25, abs=1e-5)
     assert got["pressure plate / lid, clearance"] == pytest.approx(0.25, abs=1e-5)
     assert got["pressure plate / side walls, clearance (the smaller)"] == pytest.approx(0.25, abs=1e-5)
     assert got["lid / gate front, x clearance"] == pytest.approx(0.2, abs=1e-5)
@@ -564,7 +569,7 @@ def test_the_fits_measure_the_solids_not_the_params(slide, lock):
 
 
 @pytest.mark.parametrize("label, name, moved, measured", [
-    ("pressure plate / floor, clearance", "pressure_plate", (0, -0.1, 0), 0.15),
+    ("pressure plate / sill, clearance", "pressure_plate", (0, -0.1, 0), 0.15),
     ("pressure plate / lid, clearance", "pressure_plate", (0, 0.1, 0), 0.15),
     ("pressure plate / side walls, clearance (the smaller)", "pressure_plate", (0, 0, -0.1), 0.15),
     ("lid / gate front, x clearance", "gate_lid", (-0.05, 0, 0), 0.15),

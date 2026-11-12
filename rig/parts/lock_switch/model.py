@@ -36,8 +36,8 @@ def _shift(p: Params, lock: bool) -> float:
 
 
 def _plate(p: Params) -> cq.Workplane:
-    """x_wedge .. +wedge_t, z +-wedge_w/2, between the floor and the lid, with the window on the axis."""
-    y0, y1 = p.wall + p.wedge_clear, p.gh - p.wall - p.wedge_clear
+    """x_wedge .. +wedge_t, z +-wedge_w/2, between the gate body's sill (F20) and the lid, with the window on the axis."""
+    y0, y1 = p.sill_y + p.wedge_clear, p.gh - p.wall - p.wedge_clear
     return (
         cq.Workplane("YZ", origin=(p.x_wedge, 0, 0))
         .moveTo((y0 + y1) / 2, 0).rect(y1 - y0, p.wedge_w)

@@ -74,6 +74,10 @@ class Params:
     fit_clear: float = 0.3        # radial clearance of the tube in its sockets
     plate_clear: float = 0.25     # pressure plate to the floor, the lid and each side wall: it drops in and floats
     lid_clear: float = 0.2        # gate lid to the front wall and to the rear wall, at each end
+    lid_side_clear: float = 0.2   # ... and to the rail beside each side, which stops it along z, so the switch's tab
+                                  # can't drag it (F22)
+    lid_rail_w: float = 3         # ... the rails on the upper screw pillars, along the body's whole depth, flush with the
+                                  # lid's top
     csl_clear: float = 0.5        # CS-Lite slot between the dock's lips, beyond the panel's thickness (all behind it)
     baffle_h: float = 1.0         # tube baffle rib height; tube_ri - baffle_h is the adapter bore, so no vignetting
     baffle_pitch: float = 8       # rib to rib along the tube

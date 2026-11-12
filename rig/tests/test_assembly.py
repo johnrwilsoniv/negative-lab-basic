@@ -540,6 +540,7 @@ def test_the_measured_numbers_are_the_designs(report):
     assert got["pressure plate / side walls, clearance (the smaller)"] == pytest.approx(0.25, abs=1e-5)
     assert got["lid / gate front, x clearance"] == pytest.approx(0.2, abs=1e-5)
     assert got["lid / rear wall, x clearance"] == pytest.approx(0.2, abs=1e-5)
+    assert got["lid / rails, z clearance (the smaller)"] == pytest.approx(0.2, abs=1e-5)
     assert got["wedge plate / backer, x clearance"] == pytest.approx(0.05, abs=1e-5)
     assert got["CS-Lite slot, width less the panel"] == pytest.approx(0.5, abs=1e-5)
     assert got["gate body / dock notch, z clearance (the smaller)"] == pytest.approx(0.2, abs=1e-5)
@@ -574,6 +575,7 @@ def test_the_fits_measure_the_solids_not_the_params(slide, lock):
     ("pressure plate / side walls, clearance (the smaller)", "pressure_plate", (0, 0, -0.1), 0.15),
     ("lid / gate front, x clearance", "gate_lid", (-0.05, 0, 0), 0.15),
     ("lid / rear wall, x clearance", "gate_lid", (-0.05, 0, 0), 0.25),
+    ("lid / rails, z clearance (the smaller)", "gate_lid", (0, 0, 0.05), 0.15),
     ("wedge plate / backer, x clearance", "wedge_plate", (0.02, 0, 0), 0.03),
     ("gate body / dock notch, z clearance (the smaller)", "light_dock", (0, 0, 0.05), 0.15),
     ("gate body rear face / CS-Lite lit face", "cs_lite", (0.05, 0, 0), 0.05),

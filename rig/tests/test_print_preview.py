@@ -74,7 +74,7 @@ def test_the_measures_are_the_reviews_at_its_wd_and_axis():
         assert m[name] == pytest.approx(value, abs=0.51 * 10 ** -digits), name
     assert m["past"] == pytest.approx(8100, abs=50)
     assert m["ledge_area"] == pytest.approx(676.7, abs=0.5)         # the review measured the mesh
-    assert m["on_ramp"] == {"lock": 3, "tab": 2, "wall": 0}
+    assert m["on_ramp"] == {"lock": 3, "tab": 2, "wall": 0, "lid": pytest.approx(1.8)}      # "lid": since F22
 
 
 def test_the_clamp_is_rounded_to_whole_layers():

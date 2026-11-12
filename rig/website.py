@@ -8,7 +8,7 @@ Writes site-out/<slot>/, served at nlb.jrwiv.com/<slot>/ (slot main is the site 
 preview of a design branch):
 
     index.html                 viewer.py's page: the assembled CAD, with the abstract and the site's links
-    print-preview/index.html   print_preview.py's page: each part on the bed, and "Dimensions to confirm"
+    print-preview/index.html   print_preview.py's page: each part on the bed, and "Latest feedback"
     files/index.html           files_page.py's page: every STL and STEP by subassembly, and the zips
     files/stl/, files/step/    every print-pose STL and STEP in exports/, to download
     files/nlb-scan-rig*.zip    all of them, the STLs, the STEPs

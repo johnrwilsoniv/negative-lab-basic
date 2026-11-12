@@ -27,9 +27,14 @@ together: a ▲ on the gate front's socket floor, padlocks either side of the li
 each plate. 2026-11-11: the seam groove across the gate front / body joint is gone (the user didn't
 like it); the gate front's ▲ took its place.
 
-**Before printing anything, go through "Check before printing" below** (also the print preview's
-"Dimensions to confirm" tab): the sizes that come from the camera, lens, CS-Lite, film, screws and
-printer, most of them still guesses or assumptions.
+2026-11-11, later: a design review of every part and the assembly (measured on the built solids, apart
+from the tests). Nothing will certainly fail; six things are likely trouble and ten are minor. They
+are "Latest feedback" below, and the print preview's **Latest feedback** tab, which replaced
+"Dimensions to confirm" (F19).
+
+**Before printing anything, go through "Latest feedback" and "Check before printing" below**: the
+review's findings, and the sizes that come from the camera, lens, CS-Lite, film, screws and printer,
+most of them still guesses or assumptions.
 
 Run it from `rig/`:
 - `uv run pytest`: the checks on the built solids (about a minute).
@@ -211,7 +216,7 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
 
 **Gate body** (prints rear wall down):
 - Floor (3), side walls (3) and the rear wall (3, with a 46 × 34 window toward the light),
-  from `x_ref` back to the CS-Lite's lit face (F10): 25.3 deep, 92 wide, 76.5 tall. Open at the top for the lid and open at the
+  from `x_ref` back to the CS-Lite's lit face (F10): 25.3 deep, 92 wide (110 with the screw pillars), 76.5 tall. Open at the top for the lid and open at the
   front, where the gate front closes it.
 - Film slots: 3.2 (along x) × 35.2 (along y) notches in the side walls, open toward the gate front.
   Each floor is flush under the film's lower edge, so the strip rests on it; the roof is 0.2
@@ -295,8 +300,9 @@ the film plane.
   edge (69.7 at the default).
 - **Front wall** (F11): 4 thick, full width, 62 tall, 0.2 in front of the gate front. A U 1 clear
   of the tube (a half circle below the axis, straight up above it) lets the tube through. The half
-  circle goes on down through the floor under the wall (F17): at axis 40.5 it leaves a trough 3.5
-  above the table, 1 under the tube. The gate
+  circle is cut from the floor under the wall too (F17). Since the tube went to Ø68 (R8) the U's
+  bottom is axis − 35, at or above the floor's top at every allowed axis, so the cut takes nothing
+  from the floor: at axis 40.5 it is 5.5 above the table, 1 under the tube. The gate
   front and the gate body are held between it and the CS-Lite, with 0.2 play. It covers the gate
   front's two lower screw heads: lift the gate out to reach them.
 - **Lips:** front and back, 12 tall. Together they make a 20.5 wide slot for the light: its
@@ -328,7 +334,7 @@ rig/
 ├── fits.py                 the mating fits, measured on the assembled solids
 ├── viewer.py               writes exports/nlb-scan-rig.html (the assembly)
 ├── print_preview.py        writes exports/nlb-rig-print-preview.html (print direction per part, and the
-│                           "Dimensions to confirm" checklist)
+│                           "Latest feedback" findings)
 ├── website.py              writes site-out/<slot>/: both pages for nlb.jrwiv.com, the STLs as files
 ├── publish.sh              build.py + website.py, then rsync to bunbun (nlb.jrwiv.com)
 ├── deploy/                 the site's compose.yaml and nginx.conf, as they run on bunbun
@@ -441,7 +447,7 @@ number.
   reverses R16, which kept the slot at exactly 20. `fits.py` measures each one.
 - **Lowest axis 39 (F2).** `Params` refuses an `axis` below `adapter_r`: the Ø78 adapter would
   hit the table. Lower still,
-  the tube (36) and the gate hole (36.3) reach the table too.
+  the tube (34) and the gate hole (34.3) reach the table too.
 - **Film slots start at the front plate (F3).** Each side-wall slot runs from the front
   plate's rear face (`film_slot_x0`) to x 257.9, 3.2 along x. Centred on the film, as in the
   mockup, it opened a 0.4 × 37 slit into the lens-side chamber. Started at the plate's front
@@ -527,6 +533,8 @@ number.
   `build.py`, and refuses STLs built at others (it reads the tube's height and the gate front's from
   the STLs). Each item's "Changes" list is checked by rebuilding with its params nudged
   (`tests/test_print_preview.py`). Keep this section and `print_preview.checks` in step.
+  Replaced by F19 on 2026-11-11: the tab, its drawings and `print_preview.checks` are gone. The
+  checklist itself stays, as "Check before printing" below.
 
 - **The U goes through the dock's floor too (F17).** The user asked for it. At the measured axis
   40.5 the bottom of the front wall's U (axis − 37, so 3.5) was below the floor's top (4): the floor
@@ -536,6 +544,8 @@ number.
   depth, so the tube is 1 clear at every axis; above 41 the cut takes nothing. At 40.5 it removes a
   16 mm³ sliver and leaves 3.5 of floor under the tube; the trough opens upward, so it prints
   without support. `tests/test_light_dock.py` checks the clearance at axis 39, 40.5, 42.5 and 50.
+  2026-11-10: with the tube at Ø68 (R8) the U's bottom is axis − 35, so the cut takes nothing from
+  the floor at any allowed axis (39 and up). It stays in the model as a guard.
 
 - **Assembly marks on the film gate (F18).** The user asked for small, sparse, inconspicuous marks so
   the gate goes together without instructions. Every mark is `mark_depth` (0.36: 3 layers at 0.12,
@@ -556,6 +566,18 @@ number.
   on 2026-11-11: the user didn't like it. `mark_depth` 0 leaves them all off.
   `tests/test_marks.py` checks where each is, its depth, and that none reaches the film band.
 
+- **"Latest feedback" replaces "Dimensions to confirm" (F19).** The user asked for it. The print
+  preview's second tab now shows the last design review: the verdict, a tally by severity, and one
+  card per finding (FB1–FB16), each with a drawing that points at the problem, the numbers, what was
+  found, the risk, how it is known and where in the code it comes from; then what came out clean,
+  what PLAN already lists as unfinished, and what wasn't checked. The findings are
+  `print_preview.feedback`; the numbers that follow from the dimensions are worked out from the built
+  `Params` (`print_preview.measures`) and tested against what the review measured, and the drawings
+  (the template's `FIGS`, one per finding id) are drawn from the same `Params`. Links to
+  `#tab=dims` open the new tab. Keep "Latest feedback" below and `print_preview.feedback` in step
+  (`tests/test_print_preview.py`). When a finding is fixed, give it a `status`; replace the lot at
+  the next review.
+
 ## Mockup differences to republish
 
 The CAD differs from the mockup on purpose here. The mockup's shapes haven't been changed (the local
@@ -568,6 +590,7 @@ at 130 and 42.5): republishing it is the user's call.
 | Gate floor | full gate depth, under the front and rear walls | between the front and rear walls |
 | Pressure plate | 86 × 72.5, flat pads `padT` thick | 85.5 × 70 (0.25 clearance), pads sloped like the ramps |
 | Tube | plain ring | baffle ribs inside |
+| Tube OD | Ø72 (`TUBE_RO` 36) | Ø68 (`tube_ro` 34, R8): the socket stays 1.7 under the gate front's top |
 | Film slots | centred on the film plane, x 252.5–257.5 | notches from the reference plane, x 235.7–238.9 |
 | Gate | one box with a thin front plate and a chamber in front of it | gate front (solid, flared light passage) + gate body, M3 screws through side pillars, 110 wide |
 | Lettering | on the lid | none |
@@ -576,14 +599,72 @@ at 130 and 42.5): republishing it is the user's call.
 | CS-Lite slot | 20, dock 35 long | 20.5; the dock runs forward under the gate to a front wall, 69.7 long |
 | `axis` | slider 30–60 | 39 at least |
 
+## Latest feedback
+
+The design review of 2026-11-11 (at wd 111, axis 40.5, commit `0e836e1`): every part and the
+assembly, measured on the built solids with scripts apart from the repo's tests. No slicer was run, so print
+effects are inferred. The print preview's **Latest feedback** tab shows each finding with a drawing and its
+numbers (`print_preview.feedback`, F19); this list is numbered the same. Nothing will certainly fail.
+
+### Likely trouble
+
+- **FB1 · The gate has no clearance at the dock floor's notch end.** The gate body's rear face and the
+  floor's notch end are both at x 261; the gate front has 0.2 to the front wall. Both corners print on
+  the bed, so first-layer flare lands on a zero gap.
+- **FB2 · The clamp's margin is smaller than one layer.** Room 5.35 from the reference plane to the
+  backer, stack 5.413 at LOCK: 0.063 of squeeze, on two print heights (25.3, 19.95) that sit off the
+  layer grid. About 0.1 thin and it never clamps.
+- **FB3 · The loose lid is the lock's only travel stop.** The tab meets the slot's end at s = ±6 and then
+  drags the lid, which nothing locates along z. The next stop is the side wall at ±8, with the pads off
+  the ramps.
+- **FB4 · Plastic touches the image area of the neighbouring frames.** 840 of 864 mm² of each frame
+  beside the window lies on the gate front's rear face, pressed there at LOCK and dragged through 0.47 at
+  SLIDE. No relief over the image band.
+- **FB5 · The strip is guided only by two 3 mm ledges.** Nothing is under the strip between the side
+  walls. With an end frame in the window one slot holds it: 0.2 over a 3 wall is 3.8°, about 4.1 at the
+  window's far edge, against 1 of margin.
+- **FB6 · A strip can go the wrong side of the pressure plate.** The slot is 3.2 along the axis, the
+  channel 0.6 of it. The pressure plate's square edge blocks 1.8, and 0.8 leads behind the plate into the
+  pads and ramps.
+
+### Minor
+
+- **FB7 · Openings on the light side that PLAN doesn't list.** The tab slot (48 mm², 40 open), a slit
+  behind the lid like the one in front (0.2 × 86), the film slots (3.2 × 35.2), and 57% of the panel's
+  lit area shining past the gate. Nothing reaches the frame.
+- **FB8 · The wedge plate is modelled floating 0.5 above the floor.** Settled on the floor its window
+  edge is 12.5 above the axis (frame edge 12) and the tab stands 12.2 proud. It may shade the top 0.1–0.4
+  of the frame, for an assumed pupil.
+- **FB9 · The perforations show in the frame window.** Their inner edges are at 12.7, the window's at 13:
+  0.3 of each row shows, 16 perforations, 9.5 mm² of bare light.
+- **FB10 · The adapter's socket ledge prints as a ceiling, and the tube seats on it.** Thread up, the
+  socket floor is a 3.3 wide ceiling 9 above the bed: it prints on supports, and it is the face the
+  tube's end seats on.
+- **FB11 · Nothing checks wd, or an axis that is too high.** Axis under 39 is refused in one line. Axis
+  63 or more, wd 30 or less and wd 234 or more end in tracebacks or a failed check. wd 40–233 and axis
+  39–62 build.
+- **FB12 · Notes still written for the Ø72 tube.** F17's trough, the 5.3 ledge and the 36 / 36.3 radii
+  were left from before the tube went to Ø68. Fixed 2026-11-11.
+- **FB13 · The film sits 0.3 in front of x_film.** x_film is the channel's middle; the film lies on the
+  reference plane, 110.7 from the lens rim.
+- **FB14 · The thinnest sections.** 1.7 over the tube socket, 1.25 round the counterbores, and a 4 × 5.5
+  strip under the U joining the halves of the dock's front wall.
+- **FB15 · The tube's baffle flanks are exactly 45°.** They pass `cadutil.overhangs` only by its 1e-6
+  tolerance.
+- **FB16 · PLAN never names a filament.** Light-tightness through 2 and 1.7 walls needs an opaque, matte
+  black one.
+
+Came out clean: printability (bar the adapter's ledge, the thread and the tube's ribs), the lens side's
+light-tightness, the optics, the lock's travel, the assembly order, and wd 40–233 with axis 39–62. Not
+checked: slicing, the real hardware, illumination clipping, flex, the pages, and STEP import into Onshape.
+
 ## Check before printing
 
 Nothing has been printed yet. These are the sizes that come from outside the CAD (the camera and its
 base, the lens, the CS-Lite, the film, the screws and the printer) and that the prints depend on.
-Each is a param in `params.py`; the numbers below are at the defaults. The print preview's
-**Dimensions to confirm** tab draws them, dimensioned from the build, with this list as a checklist,
-numbered the same (F16). "Changes" lists the printed solids whose shape changes with the value;
-`tests/test_print_preview.py` rebuilds to prove each list. Most important first.
+Each is a param in `params.py`; the numbers below are at the defaults. Until F19 the print preview
+drew them on a "Dimensions to confirm" tab (F16); this list is now the only copy. "Changes" lists
+the printed solids whose shape changes with the value. Most important first.
 
 ### Before printing anything
 
@@ -694,7 +775,7 @@ After printing, tune `ramp_rise` and `wedge_back_clear` against the parts ("Tuni
   (0.9) and hit the pressure plate's body: "pressure_plate and wedge_plate intersect" at
   SLIDE. At 0.57 the preload is only 0.005.
 - **`thread_clear`** builds valid solids from 0.05 to 0.3. Print the coupon to choose.
-- **Supports:** only the adapter's socket ledge (a 5.3 wide annular overhang in the thread-up
+- **Supports:** only the adapter's socket ledge (a 3.3 wide annular overhang in the thread-up
   pose).
 - **First layer:** the gate front's and the pressure plate's first layers are the film's
   surfaces. Level the bed, keep the plate clean, and turn off or compensate elephant's foot,

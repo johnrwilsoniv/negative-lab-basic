@@ -110,7 +110,7 @@ input[type=range].v {
 .tree input { margin: 0; accent-color: var(--print); width: 15px; height: 15px; cursor: pointer; flex: none; }
 .tree .grp { margin-top: 4px; }
 .tree .grp > label { font-weight: 600; }
-.tree ul { list-style: none; margin: 0; padding: 0 0 2px 22px; }
+.tree ul { list-style: none; margin: 0; padding: 0 0 2px; }
 .tree .sw { flex: none; }
 .tree .all { font-weight: 600; }
 /* per part, a see-through switch beside its checkbox */
@@ -129,6 +129,15 @@ input[type=range].v {
 .tree .pill[aria-pressed="true"] { background: color-mix(in srgb, var(--print) 30%, transparent); border-color: var(--print); }
 .tree .pill[aria-pressed="true"]::after { transform: translateX(11px); background: var(--print); }
 .tree .pill:focus-visible { outline: 2px solid var(--print); outline-offset: 2px; }
+/* per part, left of its checkbox, a magnifier that shows that part alone (again: back to what was shown) */
+.tree .solo {
+  flex: none; width: 16px; height: 16px; padding: 0; border: 0; border-radius: 3px; background: none; cursor: pointer;
+  color: var(--muted); opacity: 0.55; display: grid; place-items: center; transition: opacity 0.15s, color 0.15s;
+}
+.tree .solo svg { width: 13px; height: 13px; }
+.tree li:hover .solo, .tree .solo:hover { opacity: 1; }
+.tree .solo[aria-pressed="true"] { color: var(--print); opacity: 1; }
+.tree .solo:focus-visible { outline: 2px solid var(--print); outline-offset: 1px; opacity: 1; }
 
 .toolbar { position: absolute; left: max(12px, env(safe-area-inset-left, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px)); right: 120px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .toolbar button, .toolbar .seg {
@@ -720,7 +729,9 @@ body.tab-fb .fb { display: block; }
         <b>Show</b><small id="tCount"></small></button>
       <div class="row"><label class="all"><input type="checkbox" id="tAll">All parts</label><small>See-through</small></div><div class="body" id="tBody">` +
       groups.map((g, i) => `<div class="grp"><label><input type="checkbox" data-group="${i}">${g.label}</label><ul>` +
-        g.parts.map((p) => `<li><label><input type="checkbox" data-part="${p.name}"><i class="sw" style="background:${p.colour}"></i>${p.label}</label>` +
+        g.parts.map((p) => `<li><button type="button" class="solo" data-solo="${p.name}" aria-pressed="false" title="Show only this part" aria-label="Show only: ${p.label}">` +
+          `<svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="5.8" cy="5.8" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.8 8.8L12.6 12.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>` +
+          `<label><input type="checkbox" data-part="${p.name}"><i class="sw" style="background:${p.colour}"></i>${p.label}</label>` +
           `<button type="button" class="pill" data-clear="${p.name}" aria-pressed="false" title="See-through" aria-label="See-through: ${p.label}"></button></li>`).join('') +
         '</ul></div>').join('') + '</div>';
     tree.dataset.built = '1';
@@ -732,7 +743,17 @@ body.tab-fb .fb { display: block; }
     };
     $('tToggle').addEventListener('click', () => fold(!tree.classList.contains('closed')));
     fold(stage.clientWidth < 700);
-    const set = (names, on) => { for (const n of names) on ? state.hidden.delete(n) : state.hidden.add(n); applyVisible(); hash(); };
+    const all = groups.flatMap((g) => g.parts.map((p) => p.name));
+    let before = null;                       // what was hidden before a solo, to put back when it's undone
+    const set = (names, on) => { before = null; for (const n of names) on ? state.hidden.delete(n) : state.hidden.add(n); applyVisible(); hash(); };
+    for (const btn of tree.querySelectorAll('button[data-solo]')) {
+      btn.addEventListener('click', () => {
+        const n = btn.dataset.solo, alone = all.every((x) => (x === n) !== state.hidden.has(x));
+        if (alone) { state.hidden = before || new Set(); before = null; }
+        else { before ??= new Set(state.hidden); state.hidden = new Set(all.filter((x) => x !== n)); }
+        applyVisible(); hash();
+      });
+    }
     $('tAll').addEventListener('change', (e) => set(groups.flatMap((g) => g.parts.map((p) => p.name)), e.target.checked));
     for (const box of tree.querySelectorAll('input[data-group]')) {
       box.addEventListener('change', () => set(groups[+box.dataset.group].parts.map((p) => p.name), box.checked));
@@ -762,6 +783,9 @@ body.tab-fb .fb { display: block; }
     for (const pill of tree.querySelectorAll('button[data-clear]')) pill.setAttribute('aria-pressed', String(state.clear.has(pill.dataset.clear)));
     for (const box of tree.querySelectorAll('input[data-group]')) mark(box, groups[+box.dataset.group].parts.map((p) => p.name));
     const all = groups.flatMap((g) => g.parts.map((p) => p.name));
+    for (const btn of tree.querySelectorAll('button[data-solo]')) {
+      btn.setAttribute('aria-pressed', String(all.every((x) => (x === btn.dataset.solo) !== state.hidden.has(x))));
+    }
     mark($('tAll'), all);
     $('tCount').textContent = `${all.filter((n) => !state.hidden.has(n)).length} / ${all.length}`;
   }

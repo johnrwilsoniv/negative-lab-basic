@@ -99,7 +99,7 @@ def test_values_and_wording_follow_the_params():
 def test_the_drawings_get_every_param():
     props = {name for name, v in vars(Params).items() if isinstance(v, property)}
     got = pp.fig_params(DEFAULT)
-    assert set(got) == FIELDS | props
+    assert set(got) == FIELDS | props | set(pp.AS_REVIEWED)       # and what the review measured that has changed since
     assert got["x_film"] == DEFAULT.x_film and got["fit_r"] == DEFAULT.fit_r and len(got["screw_points"]) == 4
 
 

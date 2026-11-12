@@ -133,26 +133,26 @@ def test_lock_moves_the_switch_sw_travel_along_z_and_nothing_else(switch, switch
 
 
 def test_wedge_plate_bounds_at_slide(wedge):
-    # plate 2 x 69.5 x 70 plus the 0.8 ramps in front and the tab above, 12.7 past the lid top: 2.8 x 85.7 x 70
-    assert cadutil.bounds(wedge) == pytest.approx((238.2, 241, 3.5, TAB_TOP, -40, 30), abs=EPS)
-    assert cadutil.size(wedge) == pytest.approx((2.8, 85.7, 70), abs=EPS)
+    # plate 2 x 49.5 x 70 on the sill (F20), plus the 0.8 ramps in front and the tab above, 12.7 past the lid top
+    assert cadutil.bounds(wedge) == pytest.approx((238.2, 241, 23.5, TAB_TOP, -40, 30), abs=EPS)
+    assert cadutil.size(wedge) == pytest.approx((2.8, 65.7, 70), abs=EPS)
 
 
-def test_the_plate_is_2_thick_70_wide_and_69_5_tall(wedge):
+def test_the_plate_is_2_thick_70_wide_and_49_5_tall(wedge):
     # the plate proper: behind the ramps' root and below the tab
     plate = cadutil.common_bounds(wedge, probe(p.x_wedge, 251, 0, 73, -50, 50))
-    assert plate == pytest.approx((239, 241, 3.5, 73, -40, 30), abs=EPS)
-    assert plate[3] - plate[2] == pytest.approx(69.5, abs=EPS)                   # gh - 7
+    assert plate == pytest.approx((239, 241, 23.5, 73, -40, 30), abs=EPS)
+    assert plate[3] - plate[2] == pytest.approx(49.5, abs=EPS)                   # sill + 0.5 to the lid - 0.5
     assert plate[5] - plate[4] == pytest.approx(70, abs=EPS)
-    assert_full(wedge, p.x_wedge, p.x_wedge + 2, 3.5, 23, -40, 30)                # below the ramps and the window
+    assert_full(wedge, p.x_wedge, p.x_wedge + 2, 23.5, 27.5, -40, 30)             # below the window: the lower ramps' strip
     assert_full(wedge, p.x_wedge + p.mark_depth, p.x_wedge + 2, 58.5, 73, -40, 30)  # above them, behind the ▲ (F18)
     assert_void(wedge, p.x_wedge - 5, p.x_wedge - 0.9, 0, 80, -50, 50)           # nothing farther than the thickest ramp
 
 
-def test_the_plate_clears_the_floor_and_the_lid_by_half_a_millimetre(wedge, gate):
-    floor_top, lid_bottom = p.wall, p.gh - p.wall
+def test_the_plate_clears_the_sill_and_the_lid_by_half_a_millimetre(wedge, gate):
+    sill_top, lid_bottom = p.sill_y, p.gh - p.wall                              # it stands on the sill (F20)
     plate = cadutil.common_bounds(wedge, probe(p.x_wedge, p.x_wedge + 2, 0, 80, 10, 25))      # away from the tab
-    assert plate[2] - floor_top == pytest.approx(0.5, abs=EPS)
+    assert plate[2] - sill_top == pytest.approx(0.5, abs=EPS)
     assert lid_bottom - plate[3] == pytest.approx(0.5, abs=EPS)
     assert cadutil.common_volume(wedge, gate["gate_lid"]) < 1e-3
     assert cadutil.common_volume(wedge, gate["gate_body"]) < 1e-3
@@ -241,7 +241,7 @@ def test_ramps_are_the_mockups(wedge):
 
 
 def test_wedge_plate_volume_is_the_plate_less_the_window_plus_the_tab_and_four_ramps(wedge):
-    plate = 2 * 70 * 69.5 - 2 * 52 * 26
+    plate = 2 * 70 * 49.5 - 2 * 52 * 26
     tab = 2 * 4 * (3.5 + 12.7)
     ramps = 4 * (4 * 12 * 0.45)
     mark = 3 * 3 / 2 * 0.36                                                       # the ▲ (F18)
@@ -371,8 +371,8 @@ def test_fits_the_bed_in_print_pose(switch, name):
 
 
 def test_print_pose_sizes(switch):
-    # the wedge plate lies flat, 70 x 85.7 (tab included) and 2.8 tall with the ramps
-    assert cadutil.size(cadutil.print_pose(switch["wedge_plate"], "-x")) == pytest.approx((70, 85.7, 2.8), abs=EPS)
+    # the wedge plate lies flat, 70 x 65.7 (tab included) and 2.8 tall with the ramps
+    assert cadutil.size(cadutil.print_pose(switch["wedge_plate"], "-x")) == pytest.approx((70, 65.7, 2.8), abs=EPS)
 
 
 def test_wedge_plate_prints_flat_on_its_back_with_nothing_over_air(switch):
@@ -380,7 +380,7 @@ def test_wedge_plate_prints_flat_on_its_back_with_nothing_over_air(switch):
     # and the ramps are the top layers.
     posed = cadutil.print_pose(switch["wedge_plate"], model.PRINT_UP["wedge_plate"])
     sl = cadutil.solid(posed).intersect(cadutil.solid(probe(-100, 100, -100, 100, 0, 0.01)))
-    plate = 70 * (p.gh - 2 * p.wall - 2 * p.wedge_clear) - 52 * 26
+    plate = 70 * (p.gh - p.wall - p.sill_y - 2 * p.wedge_clear) - 52 * 26
     assert sl.Volume() / 0.01 == pytest.approx(plate + 4 * (3.5 + 12.7), rel=1e-4)    # the plate and the tab (4 x 16.2)
     assert cadutil.overhangs(posed) == []
     assert cadutil.overhangs(cadutil.print_pose(switch["wedge_plate"], "+y"))      # on edge, the window bridged
@@ -398,7 +398,7 @@ def test_switch_follows_wd_and_axis(q):
     built = model.build(q)
     assert all(cadutil.is_valid(s) for s in built.values())
     assert cadutil.bounds(built["wedge_plate"]) == pytest.approx(
-        (q.x_wedge - 0.8, q.x_wedge + 2, q.wall + 0.5, q.gh + q.tab_reach, -40, 30), abs=EPS
+        (q.x_wedge - 0.8, q.x_wedge + 2, q.sill_y + 0.5, q.gh + q.tab_reach, -40, 30), abs=EPS
     )
     for zc, yc in [(zc, q.axis + dy) for zc in (-q.pad_z, q.pad_z) for dy in (-q.pad_dy, q.pad_dy)]:
         zr = zc - q.sw_travel / 2

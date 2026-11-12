@@ -143,7 +143,7 @@ ol.steps { padding-left: 20px; font-size: 14px; display: flex; flex-direction: c
 <main>
   <header class="top">
     <h1>FB5 · FB6: the film's path through the gate</h1>
-    <p class="meta">Proposal · branch proposal/fb5-fb6-film-path · params.py defaults, wd 111, axis 40.5 · not built in CAD yet</p>
+    <p class="meta">Proposal · branch proposal/fb5-fb6-film-path · params.py defaults, wd 111, axis 40.5 · 5A and 6A built in CAD on this branch (F20, F21), not yet printed</p>
   </header>
   <p class="lead">Recommended: <b>5A, the sill</b>, and <b>6A, a slot only as deep as the channel</b>. Together they give the strip
     one floor to rest on across the whole gate and one way in, between the reference plane and the pressure plate.</p>
@@ -208,8 +208,8 @@ ol.steps { padding-left: 20px; font-size: 14px; display: flex; flex-direction: c
   <div class="tw"><table data-table="t6"></table></div>
 
   <h2>Doing 5A and 6A</h2>
-  <p class="sub">What would change in the code, in the order to build it. Nothing here has been built yet: each step should be checked against the assembly at
-    SLIDE and LOCK, and the overhang test, before the next.</p>
+  <p class="sub">What changed in the code on this branch, in the order it was built. After the change the assembly has no interference at SLIDE, only the
+    designed pad / ramp preload (0.1133) at LOCK, all 24 fits are as intended, and no part has an overhang in its print pose.</p>
   <ol class="steps" data-list="plan"></ol>
   <p class="sub">How these interact with the other findings: FB2's clamp stack and FB4's contact on the neighbouring frames are along
     the axis, and neither fix changes them. 6A cuts FB7's film-slot opening from 113 to 21 mm² each. Under 5A the wedge plate settles onto
@@ -629,12 +629,13 @@ ol.steps { padding-left: 20px; font-size: 14px; display: flex; flex-direction: c
       `<code>pressure_plate</code>: a ${num(P.plate_t)} × 45° chamfer on the front edge at each z end`,
     ],
     plan: [
-      `<b>params.py</b>: add <code>film_slot_mouth</code> 2.0, <code>plate_lead_in</code> 0.6 and the step's <code>backer_step_d</code> 2; set <code>pad_dy</code> 15; derive the slot's inner depth from <code>channel</code>.`,
-      `<b>film_gate/model.py</b>: the sill and the backer's step in <code>gate_body</code>; the tapered notch in <code>_side_wall</code>; the pressure plate's shorter outline and lead-ins.`,
-      `<b>lock_switch/model.py</b>: the wedge plate's bottom edge on the sill; the ramps at the new <code>pad_dy</code>.`,
-      `<b>Tests</b>: no interference at SLIDE or LOCK; the overhang check passes with the step; the film's lower edge lies on the sill across the full gate width; the slot's inner depth equals the channel.`,
-      `<b>print_preview.py</b>: re-measure FB5, FB6 and FB7. Mark FB5 and FB6 fixed only once the parts are printed and a strip has been fed through.`,
-      `<b>PLAN.md</b>: a ruling for each change, F20 (the sill) and F21 (the slot and lead-in).`,
+      `<b>params.py</b>: <code>film_slot_w</code> 3.2 became <code>film_slot_mouth</code> 2.0, the slot's depth at the wall's outer face; at the inner face it is <code>channel</code>. New: <code>plate_lead_in</code> 0.6, <code>backer_step_d</code> 2, and the derived <code>sill_y</code> (the film's lower edge) and <code>backer_step_top</code> (the wedge window's settled edge). <code>pad_dy</code> 15.5 → 15.`,
+      `<b>film_gate/model.py</b>: <code>_sill</code> fills the gate body from the floor to <code>sill_y</code>, the reference plane to the rear wall; <code>_backer</code> is now the step on it with its 45° underside; <code>_side_wall</code> cuts the tapered notch; <code>pressure_plate</code> stands on the sill and has its two lead-ins.`,
+      `<b>lock_switch/model.py</b>: the wedge plate stands on the sill; its ramps follow <code>pad_dy</code>.`,
+      `<b>fits.py</b>: the plate faces and the clearances are probed above the sill, and the plate's bottom clearance is now "pressure plate / sill".`,
+      `<b>Tests</b>: the sill under the strip across the full gate width, the slot's depth at three points across the wall, the step and its slope, the lowest ray over the step (0.87, pupil 140 assumed), the lead-ins, the new plate sizes and volumes, and the print poses.`,
+      `<b>print_preview.py</b>: FB5 and FB6 keep the review's numbers (the slot's 3.2 is kept as it was reviewed) and gain a status: changed in CAD, not yet printed. They are fixed once a strip has been fed through the printed gate.`,
+      `<b>PLAN.md</b>: rulings F20 (the sill) and F21 (the slot and the lead-in).`,
     ],
   };
 

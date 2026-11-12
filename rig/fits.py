@@ -102,8 +102,9 @@ def _radial_clearance(
 
 
 def _face(wp: cq.Workplane, p: Params, back: bool) -> float:
-    """x of a plate's front (back=False) or back face, probed below the window where there is only plate."""
-    hit = _slice_bounds(wp, p.x_film - 6, p.x_film + 6, p.wall + 1, p.wall + 5, -10, 10)
+    """x of a plate's front (back=False) or back face, probed below the window where there is only plate: above the
+    gate body's sill (F20), on which the pressure plate stands."""
+    hit = _slice_bounds(wp, p.x_film - 6, p.x_film + 6, p.sill_y + 1, p.axis - p.win_h / 2 - 0.5, -10, 10)
     return hit[1] if back else hit[0]
 
 
@@ -148,17 +149,17 @@ def _gap(lower: cq.Workplane, upper: cq.Workplane, axis: int, *ranges: float) ->
 
 
 def _plate_clearances(solids: Solids, p: Params) -> dict[str, float]:
-    """The pressure plate's clearance to the floor, to the lid, and to the nearer side wall, each probed in the
-    plate's own shadow: its x and z span for the floor and lid; its x span, below the film slots, for the walls."""
+    """The pressure plate's clearance to the sill (F20), to the lid, and to the nearer side wall, each probed in the
+    plate's own shadow: its x and z span for the sill and lid; its x span, above the film slots, for the walls."""
     plate, box, lid = solids["pressure_plate"], solids["gate_body"], solids["gate_lid"]
     x0, x1, y0, y1, z0, z1 = cadutil.bounds(plate)
-    low = (p.wall + 1, p.wall + 5)              # under the film slots (and the window), as `_face` probes
+    high = (p.film_slot_y0 + p.film_slot_h + 1, p.film_slot_y0 + p.film_slot_h + 5)    # over the slots, under the lid
     return {
-        "floor": _gap(box, plate, 1, x0, x1, y0 - REACH, y1, z0, z1),
+        "sill": _gap(box, plate, 1, x0, x1, y0 - REACH, y1, z0, z1),
         "lid": _gap(plate, lid, 1, x0, x1, y0, y1 + REACH, z0, z1),
         "side": min(
-            _gap(plate, box, 2, x0, x1, *low, 0, z1 + REACH),
-            _gap(box, plate, 2, x0, x1, *low, z0 - REACH, 0),
+            _gap(plate, box, 2, x0, x1, *high, 0, z1 + REACH),
+            _gap(box, plate, 2, x0, x1, *high, z0 - REACH, 0),
         ),
     }
 
@@ -239,7 +240,7 @@ def report(p: Params, slide: Solids, lock: Solids) -> list[Fit]:
         )))
     plate = functools.cache(lambda: _plate_clearances(slide, p))      # measured once for its three rows
     out += [
-        _fit("pressure plate / floor, clearance", p.plate_clear, lambda: plate()["floor"]),
+        _fit("pressure plate / sill, clearance", p.plate_clear, lambda: plate()["sill"]),
         _fit("pressure plate / lid, clearance", p.plate_clear, lambda: plate()["lid"]),
         _fit("pressure plate / side walls, clearance (the smaller)", p.plate_clear, lambda: plate()["side"]),
     ]
@@ -253,7 +254,7 @@ def report(p: Params, slide: Solids, lock: Solids) -> list[Fit]:
         _fit("tab / lid slot, x clearance, rear", p.tab_clear, lambda: _tab_slot(slide, p)["rear"]),
         _fit("lid / gate front, x clearance", p.lid_clear, lambda: lid()["front"]),
         _fit("wedge plate / backer, x clearance", p.wedge_back_clear, lambda: _gap(
-            slide["wedge_plate"], slide["gate_body"], 0, p.x_film, p.x_light, p.wall + 2, p.axis - p.film_w / 2 - 2, -20, 20)),
+            slide["wedge_plate"], slide["gate_body"], 0, p.x_film, p.x_light, p.sill_y + 0.5, p.backer_step_top - 0.5, -20, 20)),
         _fit("lid / rear wall, x clearance", p.lid_clear, lambda: lid()["rear"]),
     ]
     for name, solids in both.items():

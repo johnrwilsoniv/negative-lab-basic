@@ -32,6 +32,12 @@ from the tests). Nothing will certainly fail; six things are likely trouble and 
 are "Latest feedback" below, and the print preview's **Latest feedback** tab, which replaced
 "Dimensions to confirm" (F19).
 
+2026-11-11, branch `proposal/fb5-fb6-film-path`: the fixes for FB5 and FB6 are in the CAD, not yet printed. The gate
+body is filled up to the film's lower edge (the sill, F20), so the strip lies on plastic from wall to wall; the
+pressure plate and the wedge plate are 20 shorter and stand on it, and the backer is a step on it. Each film slot is
+only as deep as the channel at the wall's inner face, and the pressure plate's front edge is led in at each end (F21).
+The drawings are `proposals/fb5-fb6.html`, published with the branch at `nlb.jrwiv.com/<slot>/proposals/fb5-fb6/`.
+
 **Before printing anything, go through "Latest feedback" and "Check before printing" below**: the
 review's findings, and the sizes that come from the camera, lens, CS-Lite, film, screws and printer,
 most of them still guesses or assumptions.
@@ -218,27 +224,33 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
 - Floor (3), side walls (3) and the rear wall (3, with a 46 × 34 window toward the light),
   from `x_ref` back to the CS-Lite's lit face (F10): 25.3 deep, 92 wide (110 with the screw pillars), 76.5 tall. Open at the top for the lid and open at the
   front, where the gate front closes it.
-- Film slots: 3.2 (along x) × 35.2 (along y) notches in the side walls, open toward the gate front.
-  Each floor is flush under the film's lower edge, so the strip rests on it; the roof is 0.2
-  (`film_slot_clear`) over its upper edge (F13).
+- Film slots: 35.2 (along y) notches in the side walls, open toward the gate front. Along x each is 0.6
+  (`channel`) at the wall's inner face and 2.0 (`film_slot_mouth`) at its outer face, a funnel whose lens
+  side is the reference plane, so the strip can only reach the channel (F21). Each floor is flush under
+  the film's lower edge, so the strip rests on it; the roof is 0.2 (`film_slot_clear`) over its upper
+  edge (F13).
+- **Sill** (F20): the body filled from the floor up to the film's lower edge (y 23, `sill_y`), from the
+  reference plane to the rear wall, wall to wall. Level with the slots' floors, so the strip lies on it
+  across the whole gate. The pressure plate and the wedge plate stand on it.
 - Four 9 × 9 screw pillars outside the side walls, the body's whole depth so they stand on the
   bed: two at the floor, two just under the lid. Ø2.5 pilots, 12 deep, for the M3 screws to
   self-tap (`pilot_d` 4.0 for heat-set inserts).
-- **Backer** (F12): a block on the floor behind the wedge plate, from 0.05 (`wedge_back_clear`)
-  behind its back face to the rear wall, side wall to side wall, up to the film's bottom edge
-  (y 23), so it stays out of the light path. At LOCK the plate is wedged between the pressure
-  plate's pads and the backer.
+- **Backer** (F12, F20): a step on the sill behind the wedge plate's lower ramps, its face 0.05
+  (`wedge_back_clear`) behind the plate's back face, side wall to side wall, up to y 27
+  (`backer_step_top`), 2 deep (`backer_step_d`), with a 45° slope under it down to the sill. At LOCK the
+  plate is wedged between the pressure plate's pads and the backer.
 
 **Lid:** 3 thick, on the side walls, 0.2 short of the gate front and of the rear wall. Slot
 3 × 16 for the lock switch's tab. Two padlocks on its top (F18): open at the −z end of the slot
 (SLIDE), shut at the +z end (LOCK).
 
 **Pressure plate:**
-- 1.8 thick, with a 38 × 26 window. Floats along x only. 0.25 clearance to the floor, the
-  lid and the side walls (F1).
+- 1.8 thick, 85.5 × 50, with a 38 × 26 window. Floats along x only. 0.25 clearance to the sill
+  (F20), the lid and the side walls (F1).
+- A 0.6 × 45° lead-in (`plate_lead_in`) on each end of its front edge (F21).
 - Prints flat with the face that presses the film on the bed (F7).
 - Sits `CHANNEL/2` behind the film plane.
-- Four pads on its back face, 4 × 4, at z = ±22 and y = axis ± 15.5. Pad thickness is
+- Four pads on its back face, 4 × 4, at z = ±22 and y = axis ± 15 (15.5 until F20). Pad thickness is
   computed in the mockup (`padT`).
 - A 3 mm ▲ on its back face, top centre (F18): points up, faces the light.
 
@@ -248,7 +260,7 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
   SLIDE: nothing else pulls it off the film.
 - **Guides** that let the pressure plate move along x but stop it moving along y or z.
 - **Grooves** that guide the wedge plate along z. Below the film the backer (F12) now carries the
-  clamp's reaction in x with 0.05 play. Above the film nothing does: the upper ramps (y 56) push
+  clamp's reaction in x with 0.05 play. Above the film nothing does: the upper ramps (y 55.5) push
   on a 2 thick plate held only by its tab, which has 0.5 play each side in the lid slot, more
   than the 0.47 stroke. The upper ramps need backing too, outside the light path: at the sides
   (|z| > 26, beside the wedge window) or a lid-side rail.
@@ -449,7 +461,7 @@ number.
   hit the table. Lower still,
   the tube (34) and the gate hole (34.3) reach the table too.
 - **Film slots start at the front plate (F3).** Each side-wall slot runs from the front
-  plate's rear face (`film_slot_x0`) to x 257.9, 3.2 along x. Centred on the film, as in the
+  plate's rear face (`film_slot_x0`) to x 257.9, 3.2 along x (F21 cut it to the channel). Centred on the film, as in the
   mockup, it opened a 0.4 × 37 slit into the lens-side chamber. Started at the plate's front
   face (5 along x), the side wall and the plate met only along an edge: a non-manifold solid
   that Onshape marked faulty. From the rear face the side wall covers the plate's end, and the
@@ -496,7 +508,7 @@ number.
   without overhangs. The gate front and body are trapped between that wall and the CS-Lite, and
   the dock is a closed frame instead of two cantilevered arms. The dock is 69.7 long. `fits.py`
   measures the wall's clearance to the gate front and to the tube. The M3 screws stay.
-- **A backer behind the wedge plate (F12).** The user asked for it. The gate body's floor rises
+- **A backer behind the wedge plate (F12).** Since F20 it is a step on the sill. The user asked for it. The gate body's floor rises
   into a block that fills the 17 behind the wedge plate, from 0.05 behind it to the rear wall,
   wall to wall, up to the film's bottom edge (y 25, half a millimetre under the rear window), so
   no light is cut. At LOCK the pads push the plate back onto it, so the clamp holds instead of
@@ -578,6 +590,31 @@ number.
   (`tests/test_print_preview.py`). When a finding is fixed, give it a `status`; replace the lot at
   the next review.
 
+- **A sill under the film (F20).** The user asked for it, for FB5 (branch `proposal/fb5-fb6-film-path`,
+  `proposals/fb5-fb6.html`, option 5A). The strip lay only on the two slots' floors, 3 each: with an end
+  frame in the window one slot held it, and 0.2 over a 3 wall let it tilt 3.8°, about 4.1 at the window's
+  far edge against 1 of margin. The gate body is now filled from the floor up to the film's lower edge
+  (`sill_y`, the slots' floors) from the reference plane to the rear wall, so the strip lies on plastic from
+  wall to wall and cannot droop however few slots hold it. The pressure plate and the wedge plate are 20
+  shorter and stand on it, `plate_clear` and `wedge_clear` above it as they were above the floor. The pads and
+  ramps moved 0.5 in (`pad_dy` 15.5 → 15): the lower ones now fill the plates' strip between the sill and the
+  window. The backer (F12) is a step on the sill behind the lower ramps, up to the wedge window's settled edge
+  (27) and with its top corner under the line from the frame's lower edge to the rear window's lower edge at
+  the lit face (0.066 under at the defaults), so it takes no light the rear window lets through. A 45° slope
+  under it lets it print rear wall down. A sill on the gate front or the pressure plate would have made the
+  bed face a ceiling, a bridged one spanned 86, and one on the wedge plate moved under the film. Net about
+  +4.7 cm³ of plastic (+5.1 with F21's shallower slots). Not yet printed: FB5 is fixed once a strip has been fed through.
+- **The film slot only as deep as the channel, and a lead-in on the pressure plate (F21).** The user asked
+  for it, for FB6 (option 6A). Each slot was 3.2 along x, the 0.6 channel, the plate's square 1.8 edge and
+  0.8 that led behind the plate into the pads and ramps. Now each is 0.6 (`channel`) at the wall's inner face
+  and widens to 2.0 (`film_slot_mouth`, which replaced `film_slot_w`) at the outer face; the funnel's lens
+  side is the reference plane, so the strip goes in along the face it lies on, and nothing leads behind the
+  plate. The slot opening at the inner face is 21 mm², was 113 (FB7). Each end of the plate's front edge has a
+  0.6 × 45° lead-in (`plate_lead_in`): with no springs the plate can lie forward on the gate front, and then
+  the strip's tip pushes it back instead of hitting its edge. The lead-ins print at 45°, on the bed. The
+  0.6 is a whole number of layers at 0.2 and 0.12 only. Not yet printed: FB6 is fixed once a strip has been
+  fed through.
+
 ## Mockup differences to republish
 
 The CAD differs from the mockup on purpose here. The mockup's shapes haven't been changed (the local
@@ -588,10 +625,11 @@ at 130 and 42.5): republishing it is the user's call.
 |---|---|---|
 | Gate lid | full gate depth, over the front and rear walls (it overlaps the tube) | between the front and rear walls, 0.2 short of each |
 | Gate floor | full gate depth, under the front and rear walls | between the front and rear walls |
-| Pressure plate | 86 × 72.5, flat pads `padT` thick | 85.5 × 70 (0.25 clearance), pads sloped like the ramps |
+| Pressure plate | 86 × 72.5, flat pads `padT` thick | 85.5 × 50 (0.25 clearance, on the sill, F20), pads sloped like the ramps, lead-ins (F21) |
+| Gate interior | open from the floor up | filled up to the film's lower edge (the sill, F20) |
 | Tube | plain ring | baffle ribs inside |
 | Tube OD | Ø72 (`TUBE_RO` 36) | Ø68 (`tube_ro` 34, R8): the socket stays 1.7 under the gate front's top |
-| Film slots | centred on the film plane, x 252.5–257.5 | notches from the reference plane, x 235.7–238.9 |
+| Film slots | centred on the film plane, x 252.5–257.5 | notches from the reference plane, x 235.7–236.3 at the inner face, to 237.7 at the outer (F21) |
 | Gate | one box with a thin front plate and a chamber in front of it | gate front (solid, flared light passage) + gate body, M3 screws through side pillars, 110 wide |
 | Lettering | on the lid | none |
 | Knob | 10 × 12 on the tab, grip ridges | none: the tab sticks 12.7 out of the lid and is the grip |
@@ -627,10 +665,11 @@ numbers (`print_preview.feedback`, F19); this list is numbered the same. Nothing
   channel 0.6 of it. The pressure plate's square edge blocks 1.8, and 0.8 leads behind the plate into the
   pads and ramps.
 
-Proposed for FB5 and FB6 (branch `proposal/fb5-fb6-film-path`, not built): **5A**, a sill (the gate body filled up to the
-film's lower edge, the plates 20 shorter and standing on it), and **6A**, the slot only as deep as the channel at the
-wall's inner face, flaring to 2.0 at the outer face, with a 0.6 × 45° lead-in on each end of the pressure plate. Drawings
-and the alternatives (5B, longer slots; 6B, a fence and a chamfer): `proposals/fb5-fb6.html`.
+Changed in CAD for FB5 and FB6 (branch `proposal/fb5-fb6-film-path`, not yet printed): **5A**, a sill (the gate body
+filled up to the film's lower edge, the plates 20 shorter and standing on it, F20), and **6A**, the slot only as deep as
+the channel at the wall's inner face, flaring to 2.0 at the outer face, with a 0.6 × 45° lead-in on each end of the
+pressure plate (F21). Drawings and the alternatives (5B, longer slots; 6B, a fence and a chamfer):
+`proposals/fb5-fb6.html`. The findings above, and the print preview's, keep the review's numbers.
 
 ### Minor
 
@@ -742,8 +781,10 @@ sheet. These set most of the plastic, or decide whether it prints at all.
   it won't go in or cracks the socket; loose and the gate and lens aren't on one axis, and light gets
   in at the joint. **Changes:** adapter, gate front.
 - **C8 · Film slots: `film_w` 35, `film_slot_clear` 0.2 (slot 35.2, F13). Before the gate body.**
-  Calipers across a strip of your film. There's no slot coupon: model a 35.2 × 3.2 slot in a small
-  block in the slicer, print it on its end like the gate body, and slide the strip through. FDM prints
+  Calipers across a strip of your film. There's no slot coupon: model a 35.2 × 0.6 slot in a small
+  block in the slicer, print it on its end like the gate body, and slide the strip through. Since F21
+  the slot is only the channel's 0.6 deep where it meets the gate, so check the strip goes in edgewise
+  without catching, as well as across. FDM prints
   slots narrow, so the strip drags; too wide and it wanders in the window. **Changes:** gate body.
 - **C9 · Film thickness and the first layer: `film_t` 0.13 in the 0.6 `channel`. Before the gate front
   and the pressure plate.** Calipers or a micrometer on a strip, in a few places. Film thicker or

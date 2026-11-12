@@ -136,6 +136,22 @@ def test_the_iphone_icon_is_180px_and_opaque():
         assert im.size == (180, 180) and im.mode == "RGB"
 
 
+def test_each_proposal_is_a_page_of_its_own_with_the_sites_icons(tmp_path, exports, monkeypatch):
+    proposals = tmp_path / "proposals"
+    proposals.mkdir()
+    (proposals / "fb1-fix.html").write_text("<!doctype html><html><head><title>Fix</title></head><body>drawings</body></html>")
+    monkeypatch.setattr(website, "PROPOSALS", proposals)
+    here = website.write(DEFAULT, "a-branch", tmp_path / "out", exports)
+    html = (here / "proposals" / "fb1-fix" / "index.html").read_text()
+    assert "drawings" in html and html.index('href="/favicon.ico"') < html.index("</head>")
+
+
+def test_the_repos_proposals_are_published():
+    assert website.PROPOSALS.is_dir() and sorted(website.PROPOSALS.glob("*.html"))
+    for page in website.PROPOSALS.glob("*.html"):
+        assert page.read_text().count("</head>") == 1, page.name
+
+
 def test_another_slot_leaves_the_root_alone_and_rebuilds_its_folder(tmp_path, exports):
     out = tmp_path / "out"
     (out / "fix-a" / "stale").mkdir(parents=True)

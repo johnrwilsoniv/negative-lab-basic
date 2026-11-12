@@ -166,13 +166,16 @@ def _plate_clearances(solids: Solids, p: Params) -> dict[str, float]:
 
 def _lid_ends(solids: Solids) -> dict[str, float]:
     """x clearance from the gate front to the lid's front end, and from the lid's rear end to the body's rear wall,
-    probed within the lid's thickness (where the body has only its rear wall) and below the gate front's lettering."""
+    and z clearance from each of its sides to the rail beside it (F22, the smaller), probed within the lid's thickness
+    (where the body has only its rear wall and the rails): the ends within the lid's width, the sides within its
+    length."""
     lid, front, body = solids["gate_lid"], solids["gate_front"], solids["gate_body"]
-    x0, x1, y0, y1, _, _ = cadutil.bounds(lid)
+    x0, x1, y0, y1, z0, z1 = cadutil.bounds(lid)
     mid, y = (x0 + x1) / 2, (y0 + 0.5, y1 - 0.5)
     return {
-        "front": _gap(front, lid, 0, x0 - REACH, mid, *y, -REACH, REACH),
-        "rear": _gap(lid, body, 0, mid, x1 + REACH, *y, -REACH, REACH),
+        "front": _gap(front, lid, 0, x0 - REACH, mid, *y, z0, z1),
+        "rear": _gap(lid, body, 0, mid, x1 + REACH, *y, z0, z1),
+        "side": min(_gap(lid, body, 2, x0, x1, *y, 0, z1 + REACH), _gap(body, lid, 2, x0, x1, *y, z0 - REACH, 0)),
     }
 
 
@@ -256,6 +259,7 @@ def report(p: Params, slide: Solids, lock: Solids) -> list[Fit]:
         _fit("wedge plate / backer, x clearance", p.wedge_back_clear, lambda: _gap(
             slide["wedge_plate"], slide["gate_body"], 0, p.x_film, p.x_light, p.sill_y + 0.5, p.backer_step_top - 0.5, -20, 20)),
         _fit("lid / rear wall, x clearance", p.lid_clear, lambda: lid()["rear"]),
+        _fit("lid / rails, z clearance (the smaller)", p.lid_side_clear, lambda: lid()["side"]),
     ]
     for name, solids in both.items():
         out.append(_fit(f"tab / lid slot, z clearance to the end, {name}", p.slot_end - p.tab_w / 2,

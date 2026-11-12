@@ -18,7 +18,8 @@ to the plate's settled window edge, so it stays out of the light path. At LOCK t
 so the plate is wedged between the pressure plate and the body rather than bending away into free space.
 
 The lid is its own solid resting on the side walls, `lid_clear` short of the gate front and of the
-rear wall. The pressure plate is `plate_clear` inside the sill, the lid and the side walls all round,
+rear wall. A rail on each upper screw pillar, the body's whole depth and up to the lid's top, stands `lid_side_clear`
+beside each of its sides (ruling F22), so the switch's tab can't drag it along z; it still lifts straight off. The pressure plate is `plate_clear` inside the sill, the lid and the side walls all round,
 so it drops in and floats; it prints with the face that meets the film on the bed (F7). Each end of that face has a
 45 degree lead-in (F21): a plate lying forward on the gate front is pushed back by the strip's tip, not struck by it.
 
@@ -32,7 +33,7 @@ end; and a ▲ on the pressure plate's back, pointing up and facing the light (t
 lens side).
 
 Not modelled (ruling R3): leaf springs, pressure plate guides, wedge plate z-grooves, the
-lid-slot detent bumps, and how the lid is fastened.
+lid-slot detent bumps, and anything holding the lid down.
 """
 
 import cadquery as cq
@@ -150,6 +151,13 @@ def _pillars(p: Params) -> list[cq.Workplane]:
     return out
 
 
+def _lid_rails(p: Params) -> list[cq.Workplane]:
+    """One on each upper pillar beside the lid (F22): from the side wall's outer face, lid_rail_w wide, up to the lid's
+    top, the body's whole depth so it stands on the bed. The lid is lid_side_clear inside each."""
+    x1, z0, z1 = p.x_gate + p.gate_d, p.gw / 2, p.gw / 2 + p.lid_rail_w
+    return [_box(p.x_ref, x1, p.gh - p.wall, p.gh, *sorted((k * z0, k * z1))) for k in (-1, 1)]
+
+
 def _sill(p: Params) -> cq.Workplane:
     """The reference plane to the rear wall, side wall to side wall, from the floor up to the film's lower edge (F20)."""
     return _box(p.x_ref, p.x_gate + p.gate_d - p.wall, p.wall, p.sill_y, -(p.gw / 2 - p.wall), p.gw / 2 - p.wall)
@@ -168,20 +176,21 @@ def _backer(p: Params) -> cq.Workplane:
 
 def gate_body(p: Params = DEFAULT) -> cq.Workplane:
     body = _rear_wall(p)
-    for part in (_floor(p), _side_wall(p, -1), _side_wall(p, 1), _sill(p), _backer(p), *_pillars(p)):
+    for part in (_floor(p), _side_wall(p, -1), _side_wall(p, 1), _sill(p), _backer(p), *_pillars(p), *_lid_rails(p)):
         body = body.union(part)
     return body.cut(_bores(p, p.x_ref - 1, p.x_ref + p.pilot_depth, p.pilot_d))
 
 
 def gate_lid(p: Params = DEFAULT) -> cq.Workplane:
-    """Between the gate front and the rear wall, lid_clear short of each, on the side walls, with the switch slot
-    (placed absolutely, not from the lid's ends)."""
+    """Between the gate front and the rear wall, lid_clear short of each, and between the rails, lid_side_clear inside
+    each (F22), on the side walls, with the switch slot (placed absolutely, not from the lid's ends)."""
     slot_x0 = p.x_wedge - p.tab_clear
     slot_w = p.tab_t + 2 * p.tab_clear
     slot_z = p.sw_travel / 2 + p.slot_end
     lid = _slab(
         "XZ", (0, p.gh, 0),
-        (p.x_ref + p.lid_clear, p.x_gate + p.gate_d - p.wall - p.lid_clear, -p.gw / 2, p.gw / 2),
+        (p.x_ref + p.lid_clear, p.x_gate + p.gate_d - p.wall - p.lid_clear, -p.gw / 2 + p.lid_side_clear,
+         p.gw / 2 - p.lid_side_clear),
         (slot_x0, slot_x0 + slot_w, -slot_z, slot_z),
         p.wall,
     )

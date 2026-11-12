@@ -89,7 +89,8 @@ SOLIDS = {
         "2b", "Gate body", FILM_GROUP, 0.2,
         "Floor, side walls and rear wall, with four screw pillars outside the walls; a sill up to the film's lower edge "
         "that the strip lies on and both plates stand on (F20), and a step on it, the backer, that the wedge plate is "
-        "wedged against at LOCK. Joins to the gate front's rear face.",
+        "wedged against at LOCK; a rail on each upper pillar beside the lid, so the lid can't slide along z (F22). Joins "
+        "to the gate front's rear face.",
         [
             "Rear wall on the bed. Walls, pillars and the film notches all rise straight up: no bridges, no supports.",
             "The film slots are notches open at the top of the print; the gate front closes them, so the film's "
@@ -98,11 +99,13 @@ SOLIDS = {
             "0.12 layers that is 5 layers; at 0.2 the body's top and the slot's floor are each half a layer off, so it "
             "can print 0.4–0.8. Check a strip goes in edgewise.",
             "The backer's step has a 45° slope under it, so it prints without support.",
+            "The lid's rails stand on the upper pillars the body's whole depth, so they rise straight from the bed too.",
         ],
     ),
     "gate_lid": (
         "2c", "Gate lid", FILM_GROUP, 0.2,
-        "Drops in between the gate front and the rear wall, on the side walls, with the switch tab's slot.",
+        "Drops in between the gate front and the rear wall and between the body's two rails, on the side walls, with "
+        "the switch tab's slot. 0.2 to the rails each side: pushing the tab can't drag it along z (F22).",
         [
             "Flat, top up.",
         ],
@@ -177,7 +180,7 @@ CLEAN = (                       # checked in the review, and fine
 KNOWN = (                       # already in PLAN.md as unfinished: not new findings
     "LOCK can't clamp flat: the upper ramps have no backing, and the tab's 0.5 play is more than the 0.47 stroke.",
     "No leaf springs, pressure-plate guides, wedge z-grooves or detents.",
-    "The lid is not retained, and the gate is not located along the tube.",
+    "Nothing holds the lid down (since F22 its rails stop it along z), and the gate is not located along the tube.",
     "The lid's front slit (0.2 × 86).",
     "The CS-Lite is not held forward (0.5 + 0.2 of play).",
     "The lower gate screws are hidden by the dock's front wall.",
@@ -255,7 +258,8 @@ def measures(p: Params) -> dict:
         "reach": stroke * p.ramp_len / p.ramp_rise, "reach_play": (stroke + p.wedge_back_clear) * p.ramp_len / p.ramp_rise,
         "layers": layers,
         "tab_stop": tab_stop, "wall_stop": wall_stop,
-        "on_ramp": {"lock": on_ramp(half), "tab": on_ramp(tab_stop), "wall": on_ramp(wall_stop)},
+        "on_ramp": {"lock": on_ramp(half), "tab": on_ramp(tab_stop), "wall": on_ramp(wall_stop),
+                    "lid": on_ramp(tab_stop + p.lid_side_clear)},
         "covered": covered, "contact": covered * p.frame_h, "frame_area": p.frame_w * p.frame_h,
         "tilt": math.degrees(math.atan(p.film_slot_clear / p.wall)),
         "drop": (p.gw / 2 - p.wall + p.win_w / 2) * p.film_slot_clear / p.wall, "margin": (p.win_h - p.frame_h) / 2,
@@ -338,7 +342,12 @@ def feedback(p: Params) -> dict:
                     f"{n(m['on_ramp']['tab'])} at ±{n(m['tab_stop'])}). PLAN lists lid retention as unfinished, but not that "
                     "the lid is the stop.",
             "basis": "Measured.",
-            "where": ["parts/film_gate/model.py · gate_lid", "params.py · slot_end"],
+            "where": ["parts/film_gate/model.py · gate_lid, _lid_rails (F22)", "params.py · slot_end, lid_side_clear"],
+            "status": f"Changed in CAD 2026-11-12 (F22), not yet printed: a rail on each of the gate body's upper pillars, "
+                      f"{n(p.lid_rail_w)} wide and up to the lid's top, stands {n(p.lid_side_clear)} beside each side of "
+                      f"the lid, so the lid moves at most {n(p.lid_side_clear)} along z and the slot's end stops the tab at "
+                      f"s = ±{n(m['tab_stop'] + p.lid_side_clear)}, with {n(m['on_ramp']['lid'])} of each pad still on its "
+                      "ramp. The lid still lifts straight off: nothing holds it down.",
         },
         {
             "id": "contact", "sev": "trouble", "title": "Plastic touches the image area of the neighbouring frames",

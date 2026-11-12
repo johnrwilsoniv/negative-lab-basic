@@ -38,6 +38,10 @@ pressure plate and the wedge plate are 20 shorter and stand on it, and the backe
 only as deep as the channel at the wall's inner face, and the pressure plate's front edge is led in at each end (F21).
 The drawings are `proposals/fb5-fb6.html`, published with the branch at `nlb.jrwiv.com/<slot>/proposals/fb5-fb6/`.
 
+2026-11-12, branch `feat/lid-rails`: the user found nothing held the lid when the tab slides the wedge plate (FB3). A
+rail on each of the gate body's upper pillars, beside the lid and up to its top, now stops the lid 0.2 along z (F22).
+Nothing holds it down yet.
+
 **Before printing anything, go through "Latest feedback" and "Check before printing" below**: the
 review's findings, and the sizes that come from the camera, lens, CS-Lite, film, screws and printer,
 most of them still guesses or assumptions.
@@ -239,8 +243,12 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
   (`wedge_back_clear`) behind the plate's back face, side wall to side wall, up to y 27
   (`backer_step_top`), 2 deep (`backer_step_d`), with a 45° slope under it down to the sill. At LOCK the
   plate is wedged between the pressure plate's pads and the backer.
+- **Lid rails** (F22): a 3 × 3 rail (`lid_rail_w`) on each upper pillar, from the side wall's outer face (z ±46 to
+  ±49), up to the lid's top (y 76.5), the body's whole depth so it stands on the bed. The lid sits 0.2
+  (`lid_side_clear`) inside each, so the tab can't drag it along z.
 
-**Lid:** 3 thick, on the side walls, 0.2 short of the gate front and of the rear wall. Slot
+**Lid:** 3 thick, on the side walls, 0.2 short of the gate front and of the rear wall, and 0.2 inside each rail
+(91.6 wide, z ±45.8; was 92, F22). Slot
 3 × 16 for the lock switch's tab. Two padlocks on its top (F18): open at the −z end of the slot
 (SLIDE), shut at the +z end (LOCK).
 
@@ -264,7 +272,8 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
   on a 2 thick plate held only by its tab, which has 0.5 play each side in the lid slot, more
   than the 0.47 stroke. The upper ramps need backing too, outside the light path: at the sides
   (|z| > 26, beside the wedge window) or a lid-side rail.
-- **Lid retention.** Nothing holds the lid on yet.
+- **Lid retention.** Since F22 the rails stop the lid along z; nothing holds it down. It lifts straight
+  off, which is how the plates go in, so a hold-down must leave that (a detent, a clip, or the dock).
 - **Gate position along the tube.** Nothing locates the gate along the tube. The socket is a
   slip fit, so the film plane sits wherever the gate is pushed.
 - **Light seal at the lid's front end.** The lid's 0.2 end clearance leaves a 0.2 × 86 slit
@@ -604,6 +613,18 @@ number.
   under it lets it print rear wall down. A sill on the gate front or the pressure plate would have made the
   bed face a ceiling, a bridged one spanned 86, and one on the wedge plate moved under the film. Net about
   +4.7 cm³ of plastic (+5.1 with F21's shallower slots). Not yet printed: FB5 is fixed once a strip has been fed through.
+- **Rails beside the lid (F22).** The user asked for it, from the print preview, for FB3: pushing the tab
+  past the slot's end dragged the lid, which nothing located along z, and the next stop was the wedge plate on
+  the side wall at s = ±8 with the pads off their ramps. A 3 × 3 rail on each upper screw pillar, z ±46 to ±49,
+  from the reference plane to the lit face and up to the lid's top, stands 0.2 (`lid_side_clear`) beside the
+  lid, which is 0.4 narrower (91.6) so the rails sit on the side walls' outer faces with no sub-nozzle slit
+  beside the rear wall. The lid moves 0.2 at most along z; the tab stops at s = ±6.2, 1.8 of each 4 pad still
+  on its ramp. The rails run the body's whole depth so they print standing on the bed (rear wall down); a rail
+  ending at the rear wall's inner face would start over air. They are level with the gate front's top and well
+  inside the dock (its cheeks are at ±83 and 62 tall), and the lid still drops in from above. No lip over the
+  lid: one would mean sliding the lid in along x, which the tab in its slot doesn't allow. The 0.2 × 21.9
+  gap at each side is behind a 3 rail and over a 3 wall: no light path. +0.46 cm³ on the body, −0.03 on the lid.
+  Not yet printed.
 - **The film slot only as deep as the channel, and a lead-in on the pressure plate (F21).** The user asked
   for it, for FB6 (option 6A). Each slot was 3.2 along x, the 0.6 channel, the plate's square 1.8 edge and
   0.8 that led behind the plate into the pads and ramps. Now each is 0.6 (`channel`) at the wall's inner face
@@ -623,7 +644,7 @@ at 130 and 42.5): republishing it is the user's call.
 
 | What | Mockup | CAD |
 |---|---|---|
-| Gate lid | full gate depth, over the front and rear walls (it overlaps the tube) | between the front and rear walls, 0.2 short of each |
+| Gate lid | full gate depth, over the front and rear walls (it overlaps the tube) | between the front and rear walls, 0.2 short of each, and between two rails on the body, 0.2 inside each (F22) |
 | Gate floor | full gate depth, under the front and rear walls | between the front and rear walls |
 | Pressure plate | 86 × 72.5, flat pads `padT` thick | 85.5 × 50 (0.25 clearance, on the sill, F20), pads sloped like the ramps, lead-ins (F21) |
 | Gate interior | open from the floor up | filled up to the film's lower edge (the sill, F20) |
@@ -670,6 +691,9 @@ filled up to the film's lower edge, the plates 20 shorter and standing on it, F2
 the channel at the wall's inner face, flaring to 2.0 at the outer face, with a 0.6 × 45° lead-in on each end of the
 pressure plate (F21). Drawings and the alternatives (5B, longer slots; 6B, a fence and a chamfer):
 `proposals/fb5-fb6.html`. The findings above, and the print preview's, keep the review's numbers.
+
+Changed in CAD for FB3 (branch `feat/lid-rails`, not yet printed): rails on the gate body beside the lid stop it 0.2
+along z, so the tab stops at s = ±6.2 (F22).
 
 ### Minor
 

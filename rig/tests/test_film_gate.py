@@ -148,6 +148,7 @@ BELOW_WINDOW = (SILL + 1, 27)   # where the plates are plate only: above the sil
 REF = 235.7                     # x_ref: the film reference plane, the gate front's rear face
 REAR = 261                      # the body's rear face: the CS-Lite's lit face (F10)
 PILLARS = [(0, 9, -55, -46), (0, 9, 46, 55), (64.5, 73.5, -55, -46), (64.5, 73.5, 46, 55)]     # y0 y1 z0 z1
+RAILS = [(-49, -46), (46, 49)]  # the lid's rails (F22), z0 z1: on the upper pillars, up to the lid's top
 
 
 def test_solid_names_and_print_directions(built):
@@ -174,6 +175,7 @@ def test_new_params_defaults():
     assert (p.ear_w, p.ear_h, p.joint_hole_d, p.cbore_d, p.cbore_depth, p.pilot_d, p.pilot_depth) == (9, 9, 3.4, 6.5, 3.5, 2.5, 12)
     assert (p.x_ref, p.gate_front_w) == (REF, 110)
     assert p.screw_points == [(4.5, -50.5), (4.5, 50.5), (69, -50.5), (69, 50.5)]
+    assert (p.lid_side_clear, p.lid_rail_w) == (0.2, 3)
 
 
 # ---- gate front ----------------------------------------------------------------------
@@ -340,7 +342,14 @@ def test_four_screw_pillars_stand_the_bodys_whole_depth_outside_the_side_walls(b
         assert_full(body, REF + 12 + 0.01, REAR, yc - 1.2, yc + 1.2, zc - 0.05, zc + 0.05)    # ... is blind
     assert sorted(((y0 + y1) / 2, (z0 + z1) / 2) for y0, y1, z0, z1 in PILLARS) == sorted(p.screw_points)
     assert_void(body, REF, REAR, 9.001, 64.499, 46.001, 55)                # nothing else outside the walls
-    assert_void(body, REF, REAR, 73.501, 76.5, 46.001, 55)                 # nor beside the lid
+    assert_void(body, REF, REAR, 73.501, 76.5, 49.001, 55)                 # nor beside the lid but its rails (F22)
+
+
+@pytest.mark.parametrize("z", RAILS)
+def test_a_rail_on_each_upper_pillar_beside_the_lid_the_bodys_whole_depth_up_to_the_lids_top(body, z):
+    assert_full(body, REF, REAR, 73.5, 76.5, *z)
+    assert_void(body, REF - 1, REAR + 1, 76.501, 80, -56, 56)              # nothing above the lid's top
+    assert cadutil.bounds(body)[3] == pytest.approx(76.5, abs=EPS)
 
 
 def test_body_volume_is_the_sum_of_its_walls_and_pillars(body):
@@ -349,9 +358,10 @@ def test_body_volume_is_the_sum_of_its_walls_and_pillars(body):
     sides = 2 * (22.3 * 70.5 * t - (0.6 + 2.0) / 2 * t * 35.2)           # less the tapered notch (F21)
     rear = 3 * 76.5 * 92 - 3 * 46 * 34
     pillars = 4 * (25.3 * 9 * 9 - 12 * math.pi * 1.25**2)
+    rails = 2 * 25.3 * 3 * 3                                              # F22: on the upper pillars, beside the lid
     sill = 22.3 * 20 * 86                                                 # the reference plane to the rear wall (F20)
     step = (2 * 4 + 4 * 4 / 2) * 86                                       # its top 2 deep, then the 45 degree slope
-    assert cadutil.volume(body) == pytest.approx(floor + sides + rear + pillars + sill + step, rel=1e-6)
+    assert cadutil.volume(body) == pytest.approx(floor + sides + rear + pillars + rails + sill + step, rel=1e-6)
 
 
 # ---- the sill under the film (F20) and the backer behind the wedge plate (F12) --------
@@ -573,8 +583,8 @@ def test_the_pads_are_the_same_for_the_two_pad_columns(plate):
 
 
 def test_lid_bounds_at_default(lid):
-    # 0.2 short of the gate front (x 235.7) and of the rear wall (x 258)
-    assert cadutil.bounds(lid) == pytest.approx((235.9, 257.8, 73.5, 76.5, -46, 46), abs=EPS)
+    # 0.2 short of the gate front (x 235.7) and of the rear wall (x 258), and of each rail (z +-46, F22)
+    assert cadutil.bounds(lid) == pytest.approx((235.9, 257.8, 73.5, 76.5, -45.8, 45.8), abs=EPS)
 
 
 def test_the_lid_rests_on_the_side_walls_and_drops_in_with_0_2_to_the_gate_front_and_the_rear_wall(front, body, lid):
@@ -586,6 +596,20 @@ def test_the_lid_rests_on_the_side_walls_and_drops_in_with_0_2_to_the_gate_front
     assert cadutil.common_volume(lid.translate((0.201, 0, 0)), body) > 1e-4
 
 
+def test_the_rails_stop_the_lid_0_2_along_z_so_the_tab_cannot_drag_it(body, lid):
+    # F22: before, the lid could move +-20 along z and the tab dragged it past the slot's end (FB3)
+    for dz in (-0.199, 0.199):
+        assert cadutil.common_volume(lid.translate((0, 0, dz)), body) < 1e-3, dz
+    for dz in (-0.201, 0.201):
+        assert cadutil.common_volume(lid.translate((0, 0, dz)), body) > 1e-4, dz
+    # and it still drops straight in from above
+    for dy in (1, 5, 20):
+        assert cadutil.common_volume(lid.translate((0, dy, 0)), body) < 1e-3, dy
+    # it still covers the side walls' tops (43 .. 46) but for the 0.2 beside each rail
+    assert_full(lid, 236, 257, 73.5, 76.5, -45.8, -43)
+    assert_full(lid, 236, 257, 73.5, 76.5, 43, 45.8)
+
+
 def test_lid_slot_is_3_by_16_for_the_tab(lid):
     # 0.5 each side of the 2 thick tab (x_wedge .. x_wedge + 2), and 3 beyond the +-5 switch travel at each end
     assert_opening(lid, across_y(73.5, 76.5), 3, 16, ca=p.x_wedge + 1, cb=0)
@@ -593,7 +617,7 @@ def test_lid_slot_is_3_by_16_for_the_tab(lid):
 
 def test_lid_volume_is_the_plate_less_the_slot():
     lid = model.gate_lid(Params(mark_depth=0))                          # the padlocks: tests/test_marks.py
-    assert cadutil.volume(lid) == pytest.approx(21.9 * 3 * 92 - 3 * 16 * 3, rel=1e-9)
+    assert cadutil.volume(lid) == pytest.approx(21.9 * 3 * 91.6 - 3 * 16 * 3, rel=1e-9)
 
 
 # ---- printing ------------------------------------------------------------------------
@@ -610,7 +634,7 @@ def test_print_pose_sizes(built):
     size = lambda name: cadutil.size(cadutil.print_pose(built[name], model.PRINT_UP[name]))
     assert size("gate_front") == pytest.approx((110, 76.5, 13.7), abs=EPS)
     assert size("gate_body") == pytest.approx((110, 76.5, 25.3), abs=EPS)
-    assert size("gate_lid") == pytest.approx((21.9, 92, 3), abs=EPS)
+    assert size("gate_lid") == pytest.approx((21.9, 91.6, 3), abs=EPS)
     assert size("pressure_plate") == pytest.approx((85.5, 50, 1.8 + p.pad_t + 2 * SLOPE), abs=FACE_TOL)
 
 
@@ -672,7 +696,7 @@ def test_gate_follows_wd_and_axis(q):
     assert all(cadutil.is_valid(s) for s in solids.values())
     assert cadutil.bounds(solids["gate_front"]) == pytest.approx((q.x_gate, q.x_ref, 0, q.gh, -55, 55), abs=EPS)
     assert cadutil.bounds(solids["gate_body"]) == pytest.approx((q.x_ref, q.x_light, 0, q.gh, -55, 55), abs=EPS)
-    assert cadutil.bounds(solids["gate_lid"]) == pytest.approx((q.x_ref + 0.2, q.x_light - 3.2, q.gh - 3, q.gh, -46, 46), abs=EPS)
+    assert cadutil.bounds(solids["gate_lid"]) == pytest.approx((q.x_ref + 0.2, q.x_light - 3.2, q.gh - 3, q.gh, -45.8, 45.8), abs=EPS)
     assert cadutil.bounds(solids["pressure_plate"])[2:] == pytest.approx((q.sill_y + 0.25, q.gh - 3.25, -42.75, 42.75), abs=EPS)
     # the film-plane geometry moves with x_film, the sill with the axis
     below = (q.sill_y + 1, q.axis - q.win_h / 2 - 0.5)

@@ -16,14 +16,14 @@ from dataclasses import dataclass
 class Params:
     """The rig's dimensions.
 
-    User inputs `wd` and `axis`: the mockup still tags them "guess", and PLAN.md says to ask
-    the user whether they were measured. Constructing one with `axis` below `axis_min` raises
-    ValueError: the lens adapter would go through the table.
+    User inputs `wd` and `axis`: measured by the user on 2026-11-09, with the dimensions and the framing
+    checked (C1, C2); after the first print (of main's clamp gate) the user set `wd` 5 longer (2026-11-14, F24).
+    Constructing one with `axis` below `axis_min` raises ValueError: the lens adapter would go through the table.
     """
 
     # ---- user inputs ----
-    wd: float = 130           # lens front to film plane
-    axis: float = 42.5        # table to lens centre
+    wd: float = 116           # lens front to film plane: measured 111, then 5 more after the first print (F24)
+    axis: float = 40.5        # table to lens centre (measured)
 
     # ---- known (datasheets) ----
     thread_major: float = 67        # Laowa filter thread M67 x 0.75: major diameter
@@ -52,7 +52,7 @@ class Params:
 
     # ---- picks (chosen, not measured) ----
     # lens adapter and tube
-    tube_ro: float = 36
+    tube_ro: float = 34.25     # Ø68.5, a friction fit in the Ø68.6 sockets (F23; Ø68 until then, R8): 2.25 wall
     tube_ri: float = 32
     flange: float = 3         # adapter flange thickness
     thread_len: float = 4.5
@@ -60,18 +60,21 @@ class Params:
     thread_lead_in: float = 45    # chamfer on the thread's free end, degrees from the axis
     adapter_r: float = 39         # adapter OD 78
     adapter_bore_r: float = 31    # adapter bore 62, clears the lens front element
-    socket_depth: float = 9
+    socket_depth: float = 9       # the adapter's socket
     coupon_grip: float = 2        # thread test coupon: grip ring thickness (Ø78 / Ø62, as the flange)
-    fit_clear: float = 0.3        # radial clearance of the tube in its sockets
+    fit_clear: float = 0.05       # radial clearance of the tube in its sockets: Ø68.6 sockets stay 1.7 under the gate
+                                  # front's top (R8); the tube's Ø68.5 makes it a friction fit (F23; 0.3 until then)
     baffle_h: float = 1.0         # tube baffle rib height; tube_ri - baffle_h is the adapter bore, so no vignetting
     baffle_pitch: float = 8       # rib to rib along the tube
     baffle_margin: float = 2      # no rib this close to either tube end
 
     # film gate: the gate front and the gate body (D2)
     gw: float = 92            # gate width, z: the front and the body
-    gate_front: float = 14    # gate front's front face to the film
+    gate_front: float = 24    # gate front's front face to the film: 14 until F24, which added 5 for the deeper
+                              # socket and 5 for wd
     gate_above_axis: float = 36   # gate height above the lens axis
-    front_wall: float = 4         # the tube socket's depth in the gate front
+    front_wall: float = 9         # the tube socket's depth in the gate front: 4 until F24, which added 5 toward
+                                  # the camera
     win_w: float = 38         # frame window, at the film, in the gate front
     win_h: float = 26
     win_depth: float = 1.8    # ... running straight this far forward from the reference plane, then flaring to the tube
@@ -123,8 +126,8 @@ class Params:
     gear_backlash: float = 0.15       # at the pitch circle, between two meshing gears
     knob_r: float = 10                # the knob on the idler
     knob_h: float = 10
-    mark_w: float = 1.2               # ... the radial groove on its top that counts turns
-    mark_depth: float = 0.6
+    knob_mark_w: float = 1.2          # ... the radial groove on its top that counts turns
+    knob_mark_depth: float = 0.6
     axle_hole_depth: float = 8        # the idler's axle presses this deep into the gate body's top, ...
     axle_top_clear: float = 1         # ... and ends this far under the knob's top
 
@@ -155,6 +158,11 @@ class Params:
     cheek_top: float = 62         # ... side cheeks, up to this y (above the table)
     cheek_clear: float = 0.5      # ... their inner faces this far from the CS-Lite's ends
     dock_gate_clear: float = 0.2  # ... the gate sits in a notch in its floor and front lip (F10), this much clear each side
+    dock_tube_clear: float = 1    # ... and a trough in the floor keeps it this far from the tube above it, at any axis (F17)
+
+    # assembly marks (F18)
+    mark_depth: float = 0.36      # this deep: 3 layers at 0.12, 2 at 0.2. 0 leaves them off
+    mark_tri: float = 3           # the gate front's ▲, this wide and tall
 
     # ---- reference solids in the assembly (not printed) ----
     film_strip_len: float = 124   # the straight run of film drawn through the gate, along z, centred on the window
@@ -226,7 +234,7 @@ class Params:
         return self.x_gate + self.front_wall
 
     @property
-    def tube_len(self) -> float:        # wd - 13
+    def tube_len(self) -> float:        # wd - 18
         return self.tube_x1 - self.tube_x0
 
     @property

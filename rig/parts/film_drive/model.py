@@ -1,4 +1,4 @@
-"""5 · Film drive: two sprockets that drive the film by its perforations, three gears that turn them together,
+"""4 · Film drive: two sprockets that drive the film by its perforations, three gears that turn them together,
 the deck the gears stand on, and the axle the knobbed idler turns on (rulings D3, D4).
 
 The sprockets stand upright in pockets in the gate body (film_gate), one each side of the window, on the light side
@@ -147,7 +147,7 @@ def idler(p: Params, turn: float = 0.0) -> cq.Workplane:
     knob = cadutil.cylinder_y(0, 0, p.knob_r, y_knob - 0.01, y_knob + p.knob_h)
     wp = blank.union(knob)
     wp = wp.cut(cadutil.cylinder_y(0, 0, p.shaft_d / 2 + p.bearing_clear, p.y_gear - 1, y_knob + p.knob_h + 1))
-    wp = wp.cut(box(0, p.knob_r + 1, y_knob + p.knob_h - p.mark_depth, y_knob + p.knob_h + 1, -p.mark_w / 2, p.mark_w / 2))
+    wp = wp.cut(box(0, p.knob_r + 1, y_knob + p.knob_h - p.knob_mark_depth, y_knob + p.knob_h + 1, -p.knob_mark_w / 2, p.knob_mark_w / 2))
     return wp.rotate((0, 0, 0), (0, 1, 0), -360 * turn).translate((x, 0, 0))
 
 

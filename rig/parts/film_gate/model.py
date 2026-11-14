@@ -1,4 +1,4 @@
-"""3 · Film gate: the gate front and the gate body, pressed together on four friction pegs (ruling D2).
+"""2 · Film gate: the gate front and the gate body, pressed together on four friction pegs (ruling D2).
 
 The film runs along z, flat, in a channel `channel` deep recessed into the gate body's front face, across
 the whole width of the body, so it enters at one side and leaves at the other. The gate front's rear face
@@ -7,8 +7,10 @@ film's front slides on is the smoothest there is. Nothing clamps: the channel is
 0.17, which holds it flat. The channel is `channel_clear` taller than the film, so its walls keep the strip
 straight in y, and it opens up over `lead_in` at each side so the film's end finds its way in.
 
-The gate front is a solid block from the gate's front face to the reference plane: the tube socket, then a
-light passage that narrows to the frame window, which runs straight for `win_depth` to the reference plane.
+The gate front is a solid block from the gate's front face to the reference plane: the tube socket, `front_wall`
+9 deep (F24) and a friction fit on the tube (F23), 1.7 under the top edge (R8); then a light passage that narrows to
+the frame window, which runs straight for `win_depth` to the reference plane. A ▲ `mark_depth` deep on the socket's
+floor points up (F18): the front prints -x up, so the floor is a top layer.
 Behind the channel the gate body is solid too, apart from:
   - the light passage, from `body_win` at its front face to `rear_win` on the CS-Lite's lit face;
   - the two sprocket pockets (D3), vertical, at z = +-sprocket_z, `r_pocket` round, from `y_pocket` up
@@ -74,7 +76,8 @@ def _relief(p: Params, sign: int, y_row: float) -> cq.Workplane:
 
 
 def gate_front(p: Params = DEFAULT) -> cq.Workplane:
-    """x_gate .. x_ref, gh tall, gw wide: the tube socket, the light passage, the peg holes, the tooth grooves."""
+    """x_gate .. x_ref, gh tall, gw wide: the tube socket (front_wall deep, 9 since F24, where the tube is a friction
+    fit, F23), the light passage, the peg holes, the tooth grooves, and the ▲ on the socket's floor (F18)."""
     block = box(p.x_gate, p.x_ref, 0, p.gh, -p.gw / 2, p.gw / 2)
     socket = cq.Workplane("YZ", origin=(p.x_gate - 1, 0, 0)).center(p.axis, 0).circle(p.fit_r).extrude(p.front_wall + 1)
     block = block.cut(socket).cut(_light_passage(p))
@@ -82,7 +85,16 @@ def gate_front(p: Params = DEFAULT) -> cq.Workplane:
     for sign in (-1, 1):
         for y_row in (p.axis - p.perf_dy, p.axis + p.perf_dy):
             block = block.cut(_relief(p, sign, y_row))
-    return block
+    return cadutil.cut_marks(block, [_front_triangle(p)] if p.mark_depth else [])
+
+
+def _front_triangle(p: Params) -> cq.Workplane:
+    """The gate front's ▲ (F18), pointing up on the socket floor, where the tube's end goes: centred between the
+    light passage's top and the tube's bore, so it shows down the tube. The front prints -x up, so the floor is a
+    top layer."""
+    floor = cadutil.face_plane((p.x_gate + p.front_wall, 0, 0), (-1, 0, 0), (0, 1, 0))
+    v = p.axis + (p.flare_scale * p.win_h / 2 + p.tube_ri) / 2
+    return cadutil.mark_triangle(floor, 0, v, p.mark_tri, p.mark_depth)
 
 
 def _channel(p: Params) -> cq.Workplane:

@@ -1,4 +1,5 @@
-"""2 · Tube: slides into the adapter socket at the camera end and the gate's front-wall hole at the other.
+"""1b · Tube: a friction fit (F23) in the adapter's socket at the camera end and the gate front's at the other,
+9 deep in each (F24).
 
 Mockup `rebuild()` lines 410-413 draw a plain ring; the sawtooth baffle ribs inside are ruling R12.
 The tube is one revolved (x, r) profile, so there are no booleans to go wrong.

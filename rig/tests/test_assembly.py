@@ -204,19 +204,20 @@ def test_cs_lite_is_165_by_112_by_20_standing_on_the_docks_floor(framed):
 
 
 def test_tube_starts_on_the_adapters_socket_floor(framed):
-    # the socket is radius 36.3, so material of the adapter at radius 33..35 ends at the floor
+    # the socket is radius 34.3, so material of the adapter at radius 32..34 ends at the floor
     floor = cadutil.common_bounds(
-        framed["adapter"], cadutil.probe(p.x_front, p.x_front + 20, p.axis + 33, p.axis + 35, -0.1, 0.1)
+        framed["adapter"], cadutil.probe(p.x_front, p.x_front + 20, p.axis + 32, p.axis + 34, -0.1, 0.1)
     )[1]
     assert cadutil.bounds(framed["tube"])[0] == pytest.approx(floor, abs=EPS)
 
 
 def test_tube_ends_on_the_gate_fronts_socket_floor(framed):
-    # the socket is radius 36.3, so material of the gate front at radius 33..35 (inside it, beyond the light
-    # passage's corners at 32) starts at the socket's floor
+    # the socket is radius 34.3, so material of the gate front at radius 32.5..34 (inside it, beyond the light
+    # passage's corners at 32) starts at the socket's floor, 9 in (F24)
     floor = cadutil.common_bounds(
-        framed["gate_front"], cadutil.probe(p.x_gate, p.x_gate + 10, p.axis - 35, p.axis - 33, -0.1, 0.1)
+        framed["gate_front"], cadutil.probe(p.x_gate, p.x_gate + 20, p.axis - 34, p.axis - 32.5, -0.1, 0.1)
     )[0]
+    assert floor == pytest.approx(p.x_gate + p.front_wall, abs=EPS)
     assert cadutil.bounds(framed["gate_front"])[0] == pytest.approx(p.x_gate, abs=EPS)
     assert cadutil.bounds(framed["tube"])[1] == pytest.approx(floor, abs=EPS)
 
@@ -448,8 +449,8 @@ def test_fit_labels_are_unique(report):
 def test_the_measured_numbers_are_the_designs(report):
     got = {f.label: f.measured for f in report}
     want = {
-        "tube / adapter socket, radial clearance": 0.3,
-        "tube / gate front socket, radial clearance": 0.3,
+        "tube / adapter socket, radial clearance": 0.05,
+        "tube / gate front socket, radial clearance": 0.05,
         "film channel, gate front to gate body": 0.3,
         "film / gate front (reference plane)": 0.085,
         "film channel height less the film": 0.2,
@@ -476,9 +477,10 @@ def test_the_measured_numbers_are_the_designs(report):
         assert got[label] == pytest.approx(value, abs=1e-5), label
 
 
-def test_the_gate_holes_open_top_is_noted(report):
+def test_the_gate_hole_is_closed_all_round(report):
+    # R8 closed: the r34.3 socket stays 1.7 under the gate front's top, so no side is noted open
     (hole,) = [f for f in report if f.label == "tube / gate front socket, radial clearance"]
-    assert "top" in hole.note
+    assert hole.note == ""
 
 
 def test_a_fit_that_is_off_is_not_ok():
@@ -488,10 +490,10 @@ def test_a_fit_that_is_off_is_not_ok():
 
 
 def test_the_fits_measure_the_solids_not_the_params(framed):
-    # a tube 0.1 too fat for its socket: the measured clearance drops, whatever params say
-    fat = cq.Workplane("YZ", origin=(p.tube_x0, p.axis, 0)).circle(p.tube_ro + 0.1).extrude(10)
+    # a tube 0.03 too fat for its socket: the measured clearance drops, whatever params say
+    fat = cq.Workplane("YZ", origin=(p.tube_x0, p.axis, 0)).circle(p.tube_ro + 0.03).extrude(10)
     report = by_label(fits.report(p, {**framed, "tube": fat}))
-    assert report["tube / adapter socket, radial clearance"].measured == pytest.approx(0.2, abs=1e-5)
+    assert report["tube / adapter socket, radial clearance"].measured == pytest.approx(0.02, abs=1e-5)
     assert not report["tube / adapter socket, radial clearance"].ok
 
 

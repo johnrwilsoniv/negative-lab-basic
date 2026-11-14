@@ -18,13 +18,14 @@ from parts.film_gate import model as gate_model
 from parts.light_dock import model
 from parts.film_drive import model as drive_model
 from parts.spools import model as spool_model
+from parts.tube import model as tube_model
 
 p = DEFAULT
 EPS = 1e-6
 HW = p.dock_w / 2                                   # 95.5
 CHEEK_IN = p.csl_l / 2 + 0.5                        # 83: cheek inner faces
 X0 = p.dock_x0                                      # the floor's front edge: 4 in front of the spools' flanges
-NX = 240.8                                          # where the notch starts: 0.2 in front of the gate front
+NX = 216.8                                          # where the notch starts: 0.2 in front of the gate front
 NOTCH = 46.2                                        # the notch's sides: the gate's 92, plus 0.2 each side
 SX = p.x_spool + p.pedestal_r + 0.01                # behind the spools' stands
 
@@ -90,11 +91,12 @@ def test_it_does_not_move_with_the_knob():
 
 def test_params_defaults():
     assert (p.floor_t, p.lip_h, p.lip_t, p.cheek_top, p.cheek_clear, p.dock_gate_clear) == (4, 12, 4, 62, 0.5, 0.2)
+    assert p.dock_tube_clear == 1                             # the floor's trough under the tube (F17)
     assert (p.dock_extra_w, p.dock_tail, p.csl_clear, p.dock_margin) == (26, 6, 0.5, 4)
     assert p.dock_w == p.csl_l + p.dock_extra_w == 191
-    assert p.dock_x1 == p.x_light + p.csl_t + p.csl_clear + p.dock_tail == 306.5
+    assert p.dock_x1 == p.x_light + p.csl_t + p.csl_clear + p.dock_tail == 292.5
     assert p.dock_x0 == pytest.approx(p.x_spool - p.spool_flange_r - 4)
-    assert p.gate_d == p.gate_front + p.gap == 39             # the gate reaches the lit face (F10)
+    assert p.gate_d == p.gate_front + p.gap == 49             # the gate reaches the lit face (F10)
     assert not hasattr(p, "dock_front_t")                     # no front wall (D5): the spools stand there
 
 
@@ -103,13 +105,13 @@ def test_params_defaults():
 
 def test_dock_bounds_at_defaults(dock):
     # x: in front of the spools .. 6 past the slot's back edge; y: floor underside .. the cheeks' top
-    assert cadutil.bounds(dock) == pytest.approx((X0, 306.5, 0, 62, -HW, HW), abs=EPS)
+    assert cadutil.bounds(dock) == pytest.approx((X0, 292.5, 0, 62, -HW, HW), abs=EPS)
 
 
 def test_floor_is_4_thick_and_191_wide_with_the_gate_notch_cut_into_it(dock):
-    floor = cadutil.common_bounds(dock, probe(200, 320, 0, 4, -100, 100))
-    assert floor == pytest.approx((X0, 306.5, 0, 4, -HW, HW), abs=EPS)
-    assert_full(dock, p.x_light, 306.5, 0, 4, -HW, HW)                  # behind the lit face, full width
+    floor = cadutil.common_bounds(dock, probe(X0 - 10, 320, 0, 4, -100, 100))
+    assert floor == pytest.approx((X0, 292.5, 0, 4, -HW, HW), abs=EPS)
+    assert_full(dock, p.x_light, 292.5, 0, 4, -HW, HW)                  # behind the lit face, full width
     assert_full(dock, X0, NX, 0, 4, -HW, HW)                            # in front of the gate, full width
     assert_full(dock, X0, p.x_light, 0, 4, NOTCH, HW)                   # the two arms beside the gate
     assert_full(dock, X0, p.x_light, 0, 4, -HW, -NOTCH)
@@ -128,17 +130,17 @@ def test_the_floor_ends_6_past_the_slots_back_edge(dock):
 
 
 def test_lips_are_12_tall_the_back_one_full_width_the_front_one_beside_the_notch(dock):
-    back = cadutil.common_bounds(dock, probe(290, 330, 4.001, 100, -CHEEK_IN + 0.001, CHEEK_IN - 0.001))
-    assert back == pytest.approx((300.5, 304.5, 4.001, 16, -CHEEK_IN + 0.001, CHEEK_IN - 0.001), abs=EPS)
-    assert_full(dock, 300.5, 304.5, 4, 16, -HW, HW)
+    back = cadutil.common_bounds(dock, probe(276, 330, 4.001, 100, -CHEEK_IN + 0.001, CHEEK_IN - 0.001))
+    assert back == pytest.approx((286.5, 290.5, 4.001, 16, -CHEEK_IN + 0.001, CHEEK_IN - 0.001), abs=EPS)
+    assert_full(dock, 286.5, 290.5, 4, 16, -HW, HW)
     for z in ((NOTCH, CHEEK_IN), (-CHEEK_IN, -NOTCH)):
         front = cadutil.common_bounds(dock, probe(SX, p.x_light, 4.001, 100, *z))
-        assert front == pytest.approx((276, 280, 4.001, 16, *z), abs=EPS)
+        assert front == pytest.approx((262, 266, 4.001, 16, *z), abs=EPS)
 
 
 def test_nothing_of_the_dock_stands_above_the_lips_between_the_cheeks(dock):
     assert_void(dock, SX, 310, 16.001, 100, -CHEEK_IN + 0.001, CHEEK_IN - 0.001)
-    assert_void(dock, SX, 276, 4.001, 100, -HW, HW)                    # the arms are floor only
+    assert_void(dock, SX, 262, 4.001, 100, -HW, HW)                    # the arms are floor only
 
 
 def test_the_slot_between_the_lips_is_the_cs_lites_20_and_half_a_millimetre(dock):
@@ -162,16 +164,16 @@ def test_the_cs_lite_drops_in_against_the_front_lip_with_half_a_millimetre_behin
 def test_cheeks_are_62_tall_from_the_cs_lites_end_plus_half_a_millimetre_to_the_floors_edge(dock, sign):
     z0, z1 = sorted((sign * CHEEK_IN, sign * HW))
     above_lips = cadutil.common_bounds(dock, probe(NX, 330, 16.001, 100, z0, z1))
-    assert above_lips == pytest.approx((276, 304.5, 16.001, 62, z0, z1), abs=EPS)
-    assert_full(dock, 276, 304.5, 4, 62, z0, z1)
+    assert above_lips == pytest.approx((262, 290.5, 16.001, 62, z0, z1), abs=EPS)
+    assert_full(dock, 262, 290.5, 4, 62, z0, z1)
     assert_void(dock, 220, 330, 62.001, 100, z0, z1)
     assert z1 - z0 == pytest.approx(12.5, abs=EPS)
 
 
 def test_cheeks_span_the_lips_and_the_slot_in_x(dock):
-    assert_full(dock, 276, 304.5, 4, 62, CHEEK_IN, HW)
-    assert_void(dock, NX, 275.999, 4.001, 62, CHEEK_IN, HW)
-    assert_void(dock, 304.501, 306.5, 4.001, 62, CHEEK_IN, HW)
+    assert_full(dock, 262, 290.5, 4, 62, CHEEK_IN, HW)
+    assert_void(dock, NX, 261.999, 4.001, 62, CHEEK_IN, HW)
+    assert_void(dock, 290.501, 292.5, 4.001, 62, CHEEK_IN, HW)
 
 
 def test_cheek_inner_faces_are_half_a_millimetre_clear_of_the_cs_lites_ends(dock):
@@ -183,8 +185,8 @@ def test_cheek_inner_faces_are_half_a_millimetre_clear_of_the_cs_lites_ends(dock
 
 
 def test_dock_volume_is_floor_plus_cheeks_plus_lips_less_the_notch_plus_the_stands(dock):
-    length = 306.5 - X0
-    floor = length * 4 * 191 - 39.2 * 4 * 92.4
+    length = 292.5 - X0
+    floor = length * 4 * 191 - 49.2 * 4 * 92.4
     cheeks = 2 * (28.5 * 58 * 12.5)
     lips = 4 * 12 * 166 + 4 * 12 * (166 - 92.4)            # between the cheeks; the front one less the notch
     stands = sum(cadutil.volume(s) for s in model._spool_stands(p)) - 2 * math.pi * p.pedestal_r ** 2 * 0.01  # sunk in
@@ -213,6 +215,38 @@ def test_the_spools_sit_on_their_pedestals_and_clear_everything(dock, others):
         assert cadutil.common_volume(dock, spool) < 1e-3, side
         assert cadutil.common_volume(dock, spool.translate((0, -0.01, 0))) > 1e-4, side     # standing on it
         assert cadutil.bounds(spool)[2] == pytest.approx(p.y_pedestal)
+
+
+# ---- the tube over the floor ---------------------------------------------------------
+
+
+@pytest.mark.parametrize("axis", [39, 40.5, 42.5, 50])
+def test_the_tube_is_1_clear_of_the_dock_at_every_axis(axis):
+    """A trough along the tube is cut from the floor in front of the gate (F17: on main it is the round of the front
+    wall's U), so the floor never comes within 1 of the tube. With the Ø68.5 tube (F23) it dips 0.25 into the floor's
+    top at axis 39, the lowest allowed, and nowhere else."""
+    q = Params(wd=p.wd, axis=axis)
+    d = model.build(q)["light_dock"]
+    x0, x1 = q.dock_x0, q.x_gate - q.dock_gate_clear
+    r = q.tube_ro + q.dock_tube_clear
+    clear = cq.Workplane("YZ", origin=(x0, 0, 0)).center(q.axis, 0).circle(r).extrude(x1 - x0)
+    assert cadutil.common_volume(d, clear) < 1e-3
+    assert cadutil.common_volume(d, tube_model.build(q)["tube"]) < 1e-3
+    # under the tube the floor is full up to the trough's bottom, or to its own top where the trough is above it,
+    # and void from there up: nothing else of the dock stands under the tube
+    under = min(q.floor_t, q.axis - r)
+    assert (under < q.floor_t) == (axis < 39.25)
+    assert_full(d, x0, x1, 0, under - 0.001, -1, 1)
+    assert_void(d, x0, x1, under + 0.02, q.axis, -1, 1)       # 0.02: the trough is round, 0.014 higher at z = +-1
+    # the trough is no wider than the tube's clearance: beside it the floor is whole, and it takes 23.7 mm3 at axis 39
+    assert_full(d, x0, x1, 0, q.floor_t, r, q.dock_w / 2 - 30)
+    under_tube = probe(x0, x1, 0, q.floor_t, -r, r)
+    cut = cadutil.volume(under_tube) - cadutil.common_volume(d, under_tube)
+    assert cut == pytest.approx(23.7 if axis < 39.25 else 0, abs=0.05)
+    # the spools' stands are whole
+    pr = q.pedestal_r / math.sqrt(2) - 0.01
+    for z in (-q.spool_z, q.spool_z):
+        assert_full(d, q.x_spool - pr, q.x_spool + pr, q.floor_t, q.y_pedestal, z - pr, z + pr)
 
 
 # ---- the gate in the dock ------------------------------------------------------------
@@ -269,7 +303,7 @@ def test_it_touches_none_of_the_other_printed_parts(dock, others):
 def test_dock_prints_floor_down_and_fits_the_bed(dock):
     posed = cadutil.print_pose(dock, model.PRINT_UP["light_dock"])
     assert cadutil.fits_bed(posed, p)
-    assert cadutil.size(posed) == pytest.approx((306.5 - X0, 191, 62), abs=EPS)
+    assert cadutil.size(posed) == pytest.approx((292.5 - X0, 191, 62), abs=EPS)
 
 
 def test_nothing_prints_over_air(dock):
@@ -285,7 +319,7 @@ def test_the_dock_and_gate_follow_wd_and_axis(q):
     assert cadutil.solid(d).isValid()
     top = max(q.cheek_top, model.pin_top(q))       # the spools' pins rise with the axis, past the cheeks at 50
     assert cadutil.bounds(d) == pytest.approx((q.dock_x0, q.dock_x1, 0, top, -q.dock_w / 2, q.dock_w / 2), abs=EPS)
-    assert q.dock_x1 - q.dock_x0 == pytest.approx(306.5 - X0, abs=EPS)
+    assert q.dock_x1 - q.dock_x0 == pytest.approx(292.5 - X0, abs=EPS)
     assert cadutil.common_volume(d, gate_model.gate_front(q)) < 1e-3
     assert cadutil.common_volume(d, csl(q)) < 1e-3
     assert cadutil.common_volume(d, csl(q).translate((-0.01, 0, 0))) > 1e-3
@@ -297,7 +331,7 @@ def test_the_dock_and_gate_follow_wd_and_axis(q):
     assert cadutil.common_volume(body.translate((0.01, 0, 0)), csl(q)) > 1e-3
 
 
-@pytest.mark.parametrize("wd, axis", list(product([100, 130, 150], [39, 42.5, 50])))      # 39: the lowest axis Params allows
+@pytest.mark.parametrize("wd, axis", list(product([100, 116, 130, 150], [39, 40.5, 42.5, 50])))      # 39: the lowest axis Params allows
 def test_valid_solids_across_the_range(wd, axis):
     q = Params(wd=wd, axis=axis)
     d = model.build(q)["light_dock"]

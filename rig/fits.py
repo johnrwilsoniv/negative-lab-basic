@@ -20,7 +20,7 @@ Solids = Mapping[str, cq.Workplane]
 TOL = 1e-5      # mm: measured against intended. The thin probes cost ~1e-8 on a curved face.
 SLICE = 0.001   # half the thickness of the probes that find an edge along a ray
 REACH = 100     # how far a ray looks
-TOP = "+y"      # the side the gate front's tube socket breaks through (ruling R8)
+TOP = "+y"      # the side the gate front's tube socket would break through if tube_ro grew (ruling R8)
 
 
 @dataclass(frozen=True)

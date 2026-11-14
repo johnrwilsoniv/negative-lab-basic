@@ -71,9 +71,9 @@ def test_the_knob_does_not_move_the_gate(built):
 
 
 def test_sizes(front, body):
-    assert cadutil.bounds(front) == pytest.approx((241, 254.85, 0, 78.5, -46, 46), abs=EPS)
+    assert cadutil.bounds(front) == pytest.approx((217, 240.85, 0, 76.5, -46, 46), abs=EPS)
     # the body from the reference plane to the lit face, and its pegs peg_len in front of it
-    assert cadutil.bounds(body) == pytest.approx((254.85 - 6, 280, 0, 78.5, -46, 46), abs=EPS)
+    assert cadutil.bounds(body) == pytest.approx((240.85 - 6, 266, 0, 76.5, -46, 46), abs=EPS)
 
 
 def test_front_and_body_meet_on_the_reference_plane_and_do_not_intersect(front, body):
@@ -95,11 +95,23 @@ def test_the_frame_window_is_38_by_26_at_the_reference_plane(front):
     assert_full(front, *x, p.axis - 5, p.axis + 5, -19 - T, -19)
 
 
-def test_the_tube_socket_is_4_deep(front):
-    r = p.fit_r - T
-    assert_void(front, p.x_gate, p.x_gate + 4 - T, p.axis - r / 2, p.axis + r / 2, -r / 2, r / 2)
+def test_the_tube_socket_is_9_deep(front):
+    r, d = p.fit_r - T, p.front_wall
+    assert d == 9                                                   # 4 until F24
+    assert_void(front, p.x_gate, p.x_gate + d - T, p.axis - r / 2, p.axis + r / 2, -r / 2, r / 2)
     # just outside the socket's radius there is wall
-    assert_full(front, p.x_gate, p.x_gate + 4, p.axis - 0.1, p.axis + 0.1, p.fit_r + T, p.fit_r + 0.5)
+    assert_full(front, p.x_gate, p.x_gate + d, p.axis - 0.1, p.axis + 0.1, p.fit_r + T, p.fit_r + 0.5)
+    # its floor, outside the light passage's flare: the ledge the tube's end stops on
+    assert_full(front, p.x_gate + d, p.x_gate + d + T, p.axis - 0.1, p.axis + 0.1, p.tube_ri + 0.5, p.fit_r - T)
+    assert_void(front, p.x_gate + d - T, p.x_gate + d, p.axis - 0.1, p.axis + 0.1, p.tube_ri + 0.5, p.fit_r - T)
+
+
+def test_the_socket_is_closed_all_round_with_1_7_above_it(front):
+    # the Ø68.6 socket stays under the gate front's top edge (R8, F23): no slit, solid wall over it
+    assert p.gh - p.axis - p.fit_r == pytest.approx(1.7)
+    top = p.axis + p.fit_r
+    assert_void(front, p.x_gate, p.x_gate + p.front_wall - T, top - 0.5, top - T, -0.1, 0.1)
+    assert_full(front, p.x_gate, p.x_gate + p.front_wall, top + T, p.gh, -0.1, 0.1)
 
 
 def test_the_peg_holes_run_right_through(front):

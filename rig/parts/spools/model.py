@@ -1,4 +1,4 @@
-"""6 · Spools: the supply spool the uncut roll is wound on, and the take-up spool it winds onto (ruling D5).
+"""5 · Spools: the supply spool the uncut roll is wound on, and the take-up spool it winds onto (ruling D5).
 
 Each spool stands upright on a pin on the light dock's floor, beside the gate, on the lens side of the film, at
 x_spool: there a half-wound roll is tangent to the film plane, so the film runs straight from the roll into the

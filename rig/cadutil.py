@@ -130,6 +130,55 @@ def probe(x0: float, x1: float, y0: float, y1: float, z0: float, z1: float) -> c
     return cq.Workplane("XY").box(x1 - x0, y1 - y0, z1 - z0, centered=False).translate((x0, y0, z0))
 
 
+# ---- assembly marks (F18): shallow recesses cut into a face that prints as a top layer, or along an upright one ----
+MARK_OVERCUT = 0.1          # each mark's cutter starts this far outside the face, so the cut leaves no skin
+
+
+def face_plane(origin: tuple[float, float, float], normal: tuple[float, float, float],
+               up: tuple[float, float, float]) -> cq.Plane:
+    """The plane of a face, MARK_OVERCUT outside it, with +u to the right and +v up for someone looking at the face."""
+    n, u = cq.Vector(normal), cq.Vector(up)
+    return cq.Plane(origin=(cq.Vector(origin) + n * MARK_OVERCUT).toTuple(), xDir=(-n).cross(u).toTuple(), normal=n.toTuple())
+
+
+def _into(wp: cq.Workplane, depth: float) -> cq.Workplane:
+    return wp.extrude(-(depth + MARK_OVERCUT))
+
+
+def mark_triangle(plane: cq.Plane, u: float, v: float, size: float, depth: float) -> cq.Workplane:
+    """A ▲ `size` wide and tall centred on (u, v), pointing +v, `depth` into the face."""
+    h = size / 2
+    return _into(cq.Workplane(plane).polyline([(u, v + h), (u - h, v - h), (u + h, v - h)]).close(), depth)
+
+
+def mark_padlock(plane: cq.Plane, u: float, v: float, depth: float, shut: bool) -> cq.Workplane:
+    """A padlock, shackle toward +v: a 4.4 x 3.4 body (0.6 corners) under a Ø3.2 shackle of 0.8 strokes (two 0.4
+    lines). Shut, both legs run into the body; open, the shackle stands 1 higher and its +u leg stops short. (u, v)
+    is 1.2 above the body's centre, so either one spans v - 2.9 .. v + 2.9 (shut) or v + 3.9 (open)."""
+    R, r, body_top = 1.6, 0.8, v + 0.5
+    ac = body_top + 0.8 + (0 if shut else 1.0)          # the shackle's centre
+    leg_w, leg_u = R - r, (R + r) / 2
+
+    def wp():
+        return cq.Workplane(plane)
+
+    def leg(lu: float, v0: float, v1: float) -> cq.Workplane:
+        return _into(wp().center(lu, (v0 + v1) / 2).rect(leg_w, v1 - v0), depth)
+
+    body = _into(wp().center(u, v - 1.2).sketch().rect(4.4, 3.4).vertices().fillet(0.6).finalize(), depth)
+    arc = _into(wp().center(u, ac).circle(R).circle(r), depth).intersect(
+        _into(wp().center(u, ac + R).rect(2 * R + 1, 2 * R), depth))
+    icon = body.union(arc).union(leg(u - leg_u, body_top - 0.3, ac))
+    return icon.union(leg(u + leg_u, (body_top - 0.3) if shut else (ac - 0.5), ac))
+
+
+def cut_marks(wp: cq.Workplane, marks: Sequence[cq.Workplane]) -> cq.Workplane:
+    """`wp` less each mark's cutter."""
+    for m in marks:
+        wp = wp.cut(m)
+    return wp
+
+
 def print_pose(wp: cq.Workplane, up: str) -> cq.Workplane:
     """Rotate so mockup direction `up` ("+x" ... "-z") points +Z.
 

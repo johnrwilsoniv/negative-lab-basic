@@ -10,7 +10,7 @@ from params import DEFAULT, Params
 
 def test_default_is_a_params_with_the_user_inputs():
     assert isinstance(DEFAULT, Params)
-    assert (DEFAULT.wd, DEFAULT.axis) == (130, 42.5)
+    assert (DEFAULT.wd, DEFAULT.axis) == (116, 40.5)        # measured 111 / 40.5 (C1, C2); wd 5 longer since F24
 
 
 def test_params_is_immutable():
@@ -21,7 +21,7 @@ def test_params_is_immutable():
 def test_callers_vary_inputs_by_constructing():
     p = Params(wd=150, axis=40)
     assert (p.wd, p.axis) == (150, 40)
-    assert DEFAULT.wd == 130
+    assert DEFAULT.wd == 116
 
 
 def test_plan_constants():
@@ -29,10 +29,10 @@ def test_plan_constants():
     assert (p.thread_major, p.thread_pitch, p.thread_len) == (67, 0.75, 4.5)
     assert p.thread_clear == 0.15
     assert (p.adapter_r, p.adapter_bore_r, p.socket_depth, p.flange) == (39, 31, 9, 3)
-    assert (p.tube_ro, p.tube_ri) == (36, 32)
-    assert (p.gw, p.gate_d, p.gate_front) == (92, 39, 14)     # gate_d = gate_front + gap (F10)
+    assert (p.tube_ro, p.tube_ri) == (34.25, 32)                # Ø68.5 (F23)
+    assert (p.gw, p.gate_d, p.gate_front) == (92, 49, 24)     # gate_d = gate_front + gap (F10); 24 since F24
     assert (p.win_w, p.win_h, p.win_depth, p.gap) == (38, 26, 1.8, 25)
-    assert (p.front_wall, p.fit_clear, p.gate_above_axis) == (4, 0.3, 36)
+    assert (p.front_wall, p.fit_clear, p.gate_above_axis) == (9, 0.05, 36)      # F24, F23
     assert (p.film_w, p.film_t, p.frame_w, p.frame_h) == (35, 0.13, 36, 24)
     assert (p.lens_len, p.lens_r) == (125, 37)
     assert (p.csl_l, p.csl_h, p.csl_t, p.csl_lit_w, p.csl_lit_h) == (165, 112, 20, 149, 95)
@@ -42,7 +42,7 @@ def test_plan_constants():
 def test_the_channel_is_fixed_and_the_film_runs_in_its_middle():
     p = DEFAULT
     assert (p.channel, p.channel_clear) == (0.3, 0.2)
-    assert p.x_ref == pytest.approx(254.85)                # the gate front's rear face and the gate body's front face
+    assert p.x_ref == pytest.approx(240.85)                # the gate front's rear face and the gate body's front face
     assert p.x_ref + p.channel / 2 == pytest.approx(p.x_film)
     assert p.channel_h == pytest.approx(35.2)
     assert p.channel - p.film_t == pytest.approx(0.17)      # the film's play front to back
@@ -68,21 +68,22 @@ def test_thread_profile():
 def test_rail_values_at_defaults():
     p = DEFAULT
     assert p.x_front == 125
-    assert p.x_film == 255
-    assert p.x_gate == 241
-    assert p.x_light == 280
-    assert p.gh == pytest.approx(78.5)
+    assert p.x_film == 241
+    assert p.x_gate == 217
+    assert p.x_light == 266
+    assert p.gh == pytest.approx(76.5)
     assert p.tube_x0 == 128
-    assert p.tube_x1 == 245
-    assert p.tube_len == 117
-    assert p.fit_r == pytest.approx(36.3)
+    assert p.tube_x1 == 226
+    assert p.tube_len == 98
+    assert p.fit_r == pytest.approx(34.3)             # Ø68.6 sockets, 1.7 under the gate front's top (R8)
+    assert p.gh - p.axis - p.fit_r == pytest.approx(1.7)
     assert p.dock_w == 191                            # 13 each side of the panel, for the spools
-    assert p.dock_x1 == 306.5
+    assert p.dock_x1 == 292.5
 
 
 def test_tube_len_tracks_wd():
     p = Params(wd=150)
-    assert p.tube_len == p.wd - 13 == 137
+    assert p.tube_len == p.wd - 18 == 132
     assert p.x_film == 275
     assert p.dock_x1 - p.dock_x0 == pytest.approx(DEFAULT.dock_x1 - DEFAULT.dock_x0)     # the dock moves, whole
 
@@ -120,11 +121,11 @@ def test_three_equal_gears_in_a_row_between_the_sprockets():
 
 def test_the_drive_stack_on_the_gate():
     p = DEFAULT
-    assert (p.y_deck, p.y_gear, p.y_shaft_top) == pytest.approx((78.5, 82.5, 87.5))
-    assert p.y_ring_lo == pytest.approx((25, 29.9)) and p.y_ring_hi == pytest.approx((55.1, 60))
+    assert (p.y_deck, p.y_gear, p.y_shaft_top) == pytest.approx((76.5, 80.5, 85.5))
+    assert p.y_ring_lo == pytest.approx((23, 27.9)) and p.y_ring_hi == pytest.approx((53.1, 58))
     assert p.y_ring_lo[1] - p.axis == pytest.approx(-p.ring_dy) and p.ring_dy < p.perf_inner     # just inside the perforations,
     assert p.ring_dy > p.frame_h / 2                                                # outside the frame
-    assert p.y_pocket == pytest.approx(25 - (p.r_ring - 3) - 0.4)
+    assert p.y_pocket == pytest.approx(23 - (p.r_ring - 3) - 0.4)
 
 
 def test_the_tooth_grooves_in_the_gate_front():
@@ -152,8 +153,8 @@ def test_baffles():
     p = DEFAULT
     assert (p.baffle_h, p.baffle_pitch, p.baffle_margin) == (1, 8, 2)
     assert p.tube_ri - p.baffle_h == p.adapter_bore_r     # the ribs never close in past the adapter bore
-    assert p.baffle_count == 15                           # (117 - 2*2 - 1) / 8 -> 14 pitches, 15 ribs
-    assert Params(wd=150).baffle_count == 17              # (137 - 4 - 1) / 8 = 16.5 -> 16 pitches
+    assert p.baffle_count == 12                           # (98 - 2*2 - 1) / 8 = 11.6 -> 11 pitches, 12 ribs
+    assert Params(wd=150).baffle_count == 16              # (132 - 4 - 1) / 8 = 15.9 -> 15 pitches
     assert Params(baffle_h=0).baffle_count == 0
 
 
@@ -183,12 +184,12 @@ def test_an_axis_too_low_for_the_adapter_is_refused_naming_the_minimum(axis):
 
 def test_a_bigger_adapter_raises_the_minimum():
     with pytest.raises(ValueError, match="adapter"):
-        Params(adapter_r=45)                          # the default axis 42.5 is now too low
+        Params(adapter_r=45)                          # the default axis 40.5 is now too low
 
 
 def test_the_peg_points_are_outside_the_channel_and_the_pockets():
     p = DEFAULT
-    assert p.peg_points == [(10, -41), (10, 41), (pytest.approx(70.5), -41), (pytest.approx(70.5), 41)]
+    assert p.peg_points == [(10, -41), (10, 41), (pytest.approx(68.5), -41), (pytest.approx(68.5), 41)]
     for y, z in p.peg_points:
         assert not (p.axis - p.channel_h / 2 - p.peg_d / 2 < y < p.axis + p.channel_h / 2 + p.peg_d / 2)
         assert abs(z) - p.peg_d / 2 > p.sprocket_z + p.r_pocket / math.sqrt(2)

@@ -139,7 +139,7 @@ def test_the_teeth_at_the_film_move_toward_plus_z_as_the_knob_turns():
 def test_the_idler_turns_the_other_way():
     # its turn-counting groove points +x with a frame centred; a quarter turn on, the idler has turned against the
     # sprockets (which turn right-handed about +y), so the groove points +z
-    y = p.y_gear + p.gear_t + p.knob_h - p.mark_depth / 2
+    y = p.y_gear + p.gear_t + p.knob_h - p.knob_mark_depth / 2
     xs = p.x_sprocket
     groove = lambda wp, x0, x1, z0, z1: filled(wp, x0, x1, y - 0.1, y + 0.1, z0, z1)     # noqa: E731
     at0, at_quarter = model.idler(p, 0.0), model.idler(p, 0.25)

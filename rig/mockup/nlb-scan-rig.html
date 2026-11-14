@@ -146,12 +146,12 @@ td.c { text-align: right; width: 1%; }
       <h2>Adjust</h2>
       <div class="ctl">
         <label for="wd">Lens front to film</label><output id="wdVal"></output>
-        <input id="wd" type="range" min="60" max="220" step="1" value="130">
-        <small>Sets the tube length. Guessed from your tape photo; the real number is where the frame fills the screen.</small>
+        <input id="wd" type="range" min="60" max="220" step="1" value="116">
+        <small>Sets the tube length. Measured at 1:1, with the frame filling the screen.</small>
       </div>
       <div class="ctl">
         <label for="axis">Lens centre height</label><output id="axisVal"></output>
-        <input id="axis" type="range" min="30" max="60" step="0.5" value="42.5">
+        <input id="axis" type="range" min="30" max="60" step="0.5" value="40.5">
         <small>Table to the middle of the lens, with the camera resting on its base. Sets how tall the gate box stands.</small>
       </div>
     </section>
@@ -187,8 +187,8 @@ td.c { text-align: right; width: 1%; }
           <tr><td>Film channel, slide mode</td><td class="v">0.6</td><td class="c"><span class="chip pick">my pick</span></td></tr>
           <tr><td>Switch travel / ramp rise</td><td class="v">10 / 0.58</td><td class="c"><span class="chip pick">my pick</span></td></tr>
           <tr><td>Film to light</td><td class="v">25</td><td class="c"><span class="chip pick">my pick</span></td></tr>
-          <tr><td>Lens front to film</td><td class="v" id="tWd"></td><td class="c"><span class="chip guess">guess</span></td></tr>
-          <tr><td>Lens centre height</td><td class="v" id="tAxis"></td><td class="c"><span class="chip guess">guess</span></td></tr>
+          <tr><td>Lens front to film</td><td class="v" id="tWd"></td><td class="c"><span class="chip known">measured</span></td></tr>
+          <tr><td>Lens centre height</td><td class="v" id="tAxis"></td><td class="c"><span class="chip known">measured</span></td></tr>
           <tr><td>Lens barrel</td><td class="v">Ø74 × 125</td><td class="c"><span class="chip guess">guess</span></td></tr>
         </tbody>
       </table>
@@ -228,7 +228,7 @@ td.c { text-align: right; width: 1%; }
   const rampT = u => RAMP_MIN + RAMP_RISE * (RAMP_LEN / 2 - u) / RAMP_LEN;   // thickness at u along a ramp
   const clampShift = s => Math.min(rampT(-s) - rampT(SW_TRAVEL / 2), CHANNEL - FILM_T);
 
-  const P = { wd: 130, axis: 42.5, exploded: true, cut: false, ref: true, lock: false };
+  const P = { wd: 116, axis: 40.5, exploded: true, cut: false, ref: true, lock: false };
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const $ = id => document.getElementById(id);
 

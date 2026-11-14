@@ -10,7 +10,28 @@ nothing intersects with a frame centred or half a sprocket tooth on, every fit m
 the gate front's four tooth grooves (2.8 wide) print as bridges. The sections below describe the new design;
 the rulings before D1 are history, and D1 lists which it supersedes.
 
-Status (2026-10-27): **the CAD exists; nothing has been printed yet.** Every printed part is
+**2026-11-14: main's changes since this branch left it (`aa85e34..ff0b049`) are ported onto the sprocket design,
+by hand, not merged.** What main did, and how it lands here:
+- 2026-11-09: `wd` and `axis` are measured, 111 and 40.5 (they were the guesses 130 and 42.5). At the lower axis
+  the dock's floor must stay clear of the tube (F17): here that is a trough in the floor, since this dock has no
+  front wall.
+- 2026-11-10: the tube went to Ø68 so the gate front's socket is closed all round, 1.7 under its top (R8), and the
+  gate got assembly marks (F18). Here only the gate front's ▲ has a part to go on.
+- 2026-11-11: a design review of main's clamp gate. Six of its sixteen findings concern parts this rig has; they
+  are "Latest feedback" below and the print preview's **Latest feedback** tab (F19). The fixes main made for the
+  others (the sill F20, the slot funnel F21, the lid rails F22) have no part to land on here.
+- 2026-11-14: **main's clamp gate was printed, and it works. This sprocket design has not been printed.** Two of
+  the three changes from that print are ported: the tube is Ø68.5, a friction fit in the Ø68.6 sockets (F23), and
+  the gate front's socket is 9 deep, not 4, with the film 5 further from the lens, so `wd` is 116 and the gate
+  front is 23.85 deep (F24). The third (F25, the lid's slot) has no lid here.
+- The pages are built for nlb.jrwiv.com (`website.py`, `publish.sh`), not pushed to tmp.jrwiv.com.
+
+The drive is unchanged by all of this: the sprockets, gears, idler, axle, deck, spools and gate body keep their
+shapes and only move 5 toward the light with the film (`tests/test_first_print.py`). Numbers in the rulings below
+are as they were when each was made, at the defaults of the time.
+
+Status (2026-10-27): **the CAD exists; nothing has been printed yet** (still true of this design: what was
+printed on 2026-11-14 was main's clamp gate). Every printed part is
 modelled in CadQuery from the three.js mockup, put together in an assembly, and checked: one
 STEP file per printed part that the user can import into Onshape and edit, plus STL files for
 slicing. Some mechanisms are still undesigned (each part's "Not designed yet" below). Until
@@ -26,17 +47,34 @@ the CS-Lite's lit face, and the body stands in a notch in the dock's floor and f
 dock grew a front wall (F11), so the whole gate is held between it and the CS-Lite. And the gate
 body got a backer behind the wedge plate (F12), so LOCK wedges the plate instead of bending it.
 
+**Before printing anything, go through "Latest feedback" and "Check before printing" below**: the
+review's findings that apply here, and the sizes that come from the camera, lens, CS-Lite, film and printer,
+most of them still guesses or assumptions.
+
 Run it from `rig/`:
 - `uv run pytest`: the checks on the built solids (about three minutes).
 - `uv run python build.py [--wd W] [--axis A]`: builds every part, writes `exports/`, and prints
   the sizes and volumes, the interference check with the knob at each of its two positions
   (`assembly.TURNS`: a frame centred, half a sprocket tooth on), the fit numbers and the bed
   margins. It exits non-zero if a check fails. An axis below 39 is refused with a one-line message.
-- `uv run python print_preview.py`: writes `exports/nlb-rig-print-preview.html`. **Whenever the
-  print preview changes** (the template, `print_preview.py`, or the parts it shows), rebuild it and
-  republish the webpage with `../../tmp-artifacts/bin/tmp-push exports/nlb-rig-print-preview.html`.
-  Keep the filename: re-pushing the same name replaces the page and keeps its URL
-  (https://tmp.jrwiv.com/a/nlb-rig-print-preview-a5yj677u).
+- `uv run python viewer.py` and `uv run python print_preview.py [--wd W] [--axis A]`: write the two pages
+  as standalone files, `exports/nlb-scan-rig.html` and `exports/nlb-rig-print-preview.html`, every STL
+  embedded. Give them the same `--wd` and `--axis` as `build.py`: the print preview refuses STLs built at
+  other values.
+- `./publish.sh [slot] [--wd W] [--axis A]`: runs `build.py`, then `website.py`, and puts the pages on
+  **https://nlb.jrwiv.com**. `main` is the site itself and is published only from a clean `main` branch; any
+  other slot (by default the current branch, so `rig-v2-sprocket-drive` here) is a preview at
+  `nlb.jrwiv.com/<slot>/`: the viewer as its home page, the print preview at `print-preview/`, and every STL
+  and STEP under `files/`. **Whenever a page changes** (a template, `viewer.py`, `print_preview.py`, or the
+  parts they show), publish again. The site is nginx in `~/dev/docker/nlb-site` on bunbun (`deploy/`), proxied
+  by NPM on eggo; `publish.sh` syncs its config too. The pages used to live on tmp.jrwiv.com
+  (`nlb-scan-rig-zh2mb48s`, `nlb-rig-print-preview-a5yj677u`); don't push them there any more.
+  `website.py` copies everything in `exports/stl/` and `exports/step/` to `files/` and its zips: `build.py`
+  doesn't remove another design's exports, so after switching branches clear out the solids this rig doesn't
+  have (main's `gate_lid`, `pressure_plate`, `wedge_plate`) before publishing.
+- `uv run make_icons.py`: scales `icon-source.png` (the film canister) to every icon format (`icons/`:
+  favicon.ico, favicon-96x96.png, the iPhone's apple-touch-icon, the PWA icons and `site.webmanifest`), the
+  repo's `favicon.ico`, and the pages' inline icon. `website.py` serves `icons/` from the site root with `main`.
 
 `exports/step/` and `exports/stl/` hold one STEP and one STL per printed solid, plus the thread
 coupon, in print pose. `exports/step/nlb-scan-rig-assembly.step` has every part in place with a
@@ -46,11 +84,11 @@ side): each pair is one print, exported under both names.
 
 ## What the rig is
 
-A light-tight path for scanning a whole uncut roll of 35mm B&W film with a camera:
+A light-tight path for scanning a whole uncut roll of 35mm film with a camera:
 
-    Sony A7 + Laowa 90mm f/2.8 2X ── 1 lens adapter ── 2 tube ── 3 film gate ── 4 light dock + CineStill CS-Lite
-                                                                     ├ 5 film drive: sprockets, gears, knob
-                                                                     └ 6 spools, either side of the gate
+    Sony A7 + Laowa 90mm f/2.8 2X ── 1 lens adapter ── 1b tube ── 2 film gate ── 3 light dock + CineStill CS-Lite
+                                                                      ├ 4 film drive: sprockets, gears, knob
+                                                                      └ 5 spools, either side of the gate
 
 - Everything rests on one flat table. The camera sits on its own base. There's no cradle;
   the gate box carries the front end of the lens.
@@ -62,8 +100,10 @@ A light-tight path for scanning a whole uncut roll of 35mm B&W film with a camer
 
 ## Source of truth
 
-`rig/mockup/nlb-scan-rig.html` is a copy of the live mockup at
-https://tmp.jrwiv.com/a/nlb-scan-rig-zh2mb48s. Every dimension below comes from its script.
+`rig/mockup/nlb-scan-rig.html` is a copy of the three.js mockup that was published at
+https://tmp.jrwiv.com/a/nlb-scan-rig-zh2mb48s; that URL has since held the CAD viewer, so this copy
+is the only one. Every dimension below comes from its script. It draws the clamp gate, not the sprocket
+drive (see "Mockup differences to republish").
 
 | Lines | What |
 |---|---|
@@ -81,8 +121,8 @@ Read `rebuild()` before modelling a part: the CAD should reproduce it. When CAD 
 disagree on purpose, change the mockup too and republish it. The differences the build made
 are listed under "Mockup differences to republish"; they wait for the user.
 
-**Republishing:** use the `jta` skill and keep the same filename (`nlb-scan-rig.html`) so
-the URL stays the same. The skill pushes with `tmp-push`; it's not a claude.ai Artifact.
+**Republishing:** the mockup isn't published anywhere now. To show it again, add it to `website.py` as
+another page on nlb.jrwiv.com; don't push it to tmp.jrwiv.com.
 
 **Mockup coordinates:**
 - `x`: the optical axis, running from the camera (−) to the light (+). `x = 0` is the
@@ -97,13 +137,14 @@ All units are mm.
 Put these in `rig/params.py`. Every part reads from there, so nothing hard-codes a derived
 size.
 
-**User inputs.** The user set these defaults this session. The mockup still tags them
-"guess": ask whether they were measured.
+**User inputs.** Measured by the user on 2026-11-09, with the dimensions and the framing checked
+(C1 and C2 in "Check before printing"). They were the guesses 130 and 42.5. After the first print (of main's
+clamp gate) the user set `wd` 5 longer (2026-11-14, F24).
 
 | Parameter | Default |
 |---|---|
-| `wd`: lens front to film | 130 |
-| `axis`: table to lens centre | 42.5 |
+| `wd`: lens front to film | 116 (measured 111; +5 after the first print, F24) |
+| `axis`: table to lens centre | 40.5 |
 
 **Known values** (from datasheets):
 
@@ -121,11 +162,13 @@ size.
 | Constant | Value | Meaning |
 |---|---|---|
 | `GW` | 92 | Gate width |
-| `GATE_D` | 39 | Gate depth: `GATE_FRONT + GAP`, so the body ends on the lit face (F10; was 30) |
-| `GATE_FRONT` | 14 | Gate front's front face to film |
+| `GATE_D` | 49 | Gate depth: `GATE_FRONT + GAP`, so the body ends on the lit face (F10; was 30, then 39 until F24) |
+| `GATE_FRONT` | 24 | Gate front's front face to film (F24; was 14) |
+| `FRONT_WALL` | 9 | The gate front's tube socket, deep (F24; was 4) |
 | Window | 38 × 26 | Frame window, in the gate front |
 | `GAP` | 25 | Film to light face |
-| `TUBE_RO` / `TUBE_RI` | 36 / 32 | Tube outer / inner radius |
+| `TUBE_RO` / `TUBE_RI` | 34.25 / 32 | Tube outer / inner radius (was 36, R8; then 34 until F23) |
+| `FIT_CLEAR` | 0.05 | Tube to socket, radially: a friction fit in the Ø68.6 sockets (F23; was 0.3) |
 | `FLANGE` | 3 | Adapter flange thickness |
 | `THREAD_LEN` | 4.5 | Thread length |
 | `channel` | 0.3 | Fixed film channel, 35.2 tall (D2) |
@@ -138,12 +181,12 @@ size.
 
 | Value | Formula | Result |
 |---|---|---|
-| Film plane | `xFilm = 125 + wd` | 255 |
-| Gate box height | `GH = axis + 36` | 78.5 |
-| Tube length | `wd − 13` | 117 |
+| Film plane | `xFilm = 125 + wd` | 241 |
+| Gate box height | `GH = axis + 36` | 76.5 |
+| Tube length | `wd − 18`: `wd − FLANGE − GATE_FRONT + FRONT_WALL` (F24; was `wd − 13`) | 98 |
 | Dock width | `DOCK_W = 165 + 26` | 191 |
-| Sprocket centres | `x_film + r_pitch`, z = ±(2.375 + 6 × 4.75) | x 261.05, z ±30.875 |
-| Spool centres | `x_film − (15 + roll_r_full) / 2`, z = ±(46 + 3 + 21) | x 238.8, z ±70 |
+| Sprocket centres | `x_film + r_pitch`, z = ±(2.375 + 6 × 4.75) | x 247.05, z ±30.875 |
+| Spool centres | `x_film − (15 + roll_r_full) / 2`, z = ±(46 + 3 + 21) | x 224.8, z ±70 |
 
 The mockup's rail shows these live, and `updateText()` has the formulas.
 
@@ -151,7 +194,8 @@ The mockup's rail shows these live, and `updateText()` has the formulas.
 
 Each part gets `rig/parts/<part>/model.py`, which exposes `build(p, turn=0.0)`: a dict of the
 part's solids, in mockup coordinates, with the knob `turn` turns from a frame centred (only the drive moves). `PRINT_UP` says which side of each faces up
-on the bed. Folder numbers follow the mockup's labels.
+on the bed. Section numbers follow the print preview's groups: 1 · Lens adapter (with the tube), 2 · Film gate,
+3 · Light dock, as on main, then 4 · Film drive and 5 · Spools.
 
 ### 1 · Lens adapter (`parts/lens_adapter/`): build first
 
@@ -163,50 +207,55 @@ Screws into the Laowa's 67mm filter thread. The tube slides into the other end.
   - Give it about 0.1–0.2 radial clearance for FDM.
 - **Flange:** 3 thick, Ø78 OD, Ø62 bore. The bore must clear the lens front element; check
   it against the mockup's 31 inner radius.
-- **Socket:** 9 deep, Ø78 OD. Its ID is `2·TUBE_RO + 0.6` = 72.6, so the tube is a slip fit.
+- **Socket:** 9 deep, Ø78 OD. Its ID is `2·(TUBE_RO + FIT_CLEAR)` = 68.6, 0.1 over the Ø68.5 tube: a friction
+  fit (F23). The ledge the tube's end seats on is 3.3 wide.
 - **Overall:** Ø78 × 16.5.
 - **Printing:** flat, with the thread axis vertical, at 0.12–0.16 layers.
 - **Thread test coupon:** also export a short version (thread plus a thin grip ring) so the
   thread fit can be checked before the full part is printed. This is the riskiest geometry
   in the rig. At 0.75 pitch, FDM is marginal.
 
-### 2 · Tube (`parts/tube/`)
+### 1b · Tube (`parts/tube/`)
 
-- **Size:** Ø72 OD / Ø64 ID. Length is `wd − 13` (117 at the default).
-- **Ends:** one end slides into the adapter socket and the other into the gate's front-wall
-  hole (Ø72.6, 4 deep).
-- **Inside:** blocks room light and should cut flare. Consider internal baffle ribs or a
-  matte texture.
+- **Size:** Ø68.5 OD / Ø64 ID (F23; was Ø72, then Ø68). Length is `wd − 18` (98 at the default), with 12 baffle
+  ribs (R12).
+- **Ends:** one end pushes into the adapter socket and the other into the gate front's socket
+  (each Ø68.6, 9 deep: F24), a friction fit (F23). Each end seats on its socket's floor.
+- **Inside:** blocks room light and should cut flare: sawtooth baffle ribs (R12).
 - **Printing:** upright.
-- **Bed size:** 117 tall is fine. If `wd` grows past roughly 200, split the tube with a
+- **Bed size:** 98 tall is fine. If `wd` grows past about 238 (a 220 tube), split the tube with a
   spigot joint.
 
-### 3 · Film gate (`parts/film_gate/`)
+### 2 · Film gate (`parts/film_gate/`)
 
 Two printed pieces (D2): the gate front and the gate body, pressed together on four friction pegs.
 Nothing clamps the film: it runs in a fixed channel between the two.
 
 **Gate front** (solid block, prints with its rear face on the bed):
-- x_gate .. `x_ref` (13.85 deep), 78.5 tall, 92 wide.
-- Socket: Ø72.6, 4 deep, on the lens axis. The tube's end rests on its floor.
-- Light passage: flares from the socket's floor (the frame window scaled until its corners reach
+- x_gate .. `x_ref` (x 217 to 240.85, 23.85 deep), 76.5 tall, 92 wide.
+- Socket: Ø68.6, 9 deep (`front_wall`, F24), on the lens axis, closed all round with 1.7 of wall over it
+  (R8). The tube is a friction fit in it (F23) and its end rests on the socket's floor.
+- Light passage: flares over 13.05 from the socket's floor (the frame window scaled until its corners reach
   the tube's Ø64 bore) down to the 38 × 26 frame window, which runs straight for 1.8 to the
   rear face. The passage only narrows toward the film, so it prints without support.
+- A ▲, 3 × 3 and 0.36 deep (`mark_tri`, `mark_depth`), pointing up on the socket's floor between the light
+  passage's top and the tube's bore (F18): it shows down the tube which way up the front goes. The floor is a
+  top layer in the print. `mark_depth` 0 leaves it off.
 - Rear face: the film reference plane, `channel/2` (0.15) in front of the film plane. It's the
   first layer, so the film's front slides on bed-flat plastic.
 - Four tooth grooves in the rear face, one per sprocket per perforation row: 2.8 wide, 1.2 deep
   (0.35 past the tooth tips), from the gate's side to 1 past where the tips cross the face, then a
   45° ramp up toward the window. They print as 2.8 bridges in the first layers.
-- Four Ø4 holes right through, at y 10 and 70.5, z ±41, for the body's pegs. Same size as the pegs
+- Four Ø4 holes right through, at y 10 and 68.5, z ±41, for the body's pegs. Same size as the pegs
   (`peg_fit` 0): FDM prints holes a little small, so they press.
 
 **Gate body** (prints rear face down):
-- A block from `x_ref` to the CS-Lite's lit face: 25.15 deep, 92 wide, 78.5 tall.
+- A block from `x_ref` to the CS-Lite's lit face (x 240.85 to 266): 25.15 deep, 92 wide, 76.5 tall.
 - Film channel across its whole front face: 0.3 deep, 35.2 tall (0.1 beyond each film edge),
   opening to 1.0 deep over the last 3 at each side so the film's end finds its way in.
 - Light passage: 40 × 28 at the front face to 46 × 34 at the rear (the frame's chief rays and the
   lens cone, 25 behind the film). The panel closes it.
-- Two sprocket pockets, vertical, r 7.45, at (x 261.05, z ±30.875), from y 21.67 up through the
+- Two sprocket pockets, vertical, r 7.45, at (x 247.05, z ±30.875), from y 19.67 up through the
   top, where the sprockets drop in. Each breaks through the front face, so the teeth reach the film.
   Below each, a Ø6.4 bearing hole down to y 4: the shaft's foot stands on its floor.
 - The idler's axle hole: Ø6, 8 deep in the top, between the pockets (pressed).
@@ -215,20 +264,31 @@ Nothing clamps the film: it runs in a fixed channel between the two.
   gate front (`cadutil.teardrop_y`). Nothing overhangs.
 
 **Not designed yet:**
-- **Gate position along the tube.** Nothing locates the gate along the tube. The socket is a
-  slip fit, so the film plane sits wherever the gate is pushed. The floor's edge in front of the
-  gate front, 0.2 clear, now stops it moving toward the camera.
+- **Gate position along the tube.** The tube's end seats on the socket's floor, 9 deep, and the friction
+  fit (F23) holds it there, so the tube sets the film plane; nothing but friction keeps it seated. The floor's
+  edge in front of the gate front, 0.2 clear, stops the gate moving toward the camera.
+- **The tube against the pegs (a risk since F23).** The tube now grips the gate front's socket, but only the
+  four Ø4 × 6 friction pegs hold the gate front on the body, and only the dock floor's 4 tall edge, 0.2 away,
+  stops the front toward the camera. Pulling the tube out can pull the front off its pegs and open the film
+  channel, with a roll in it. On main the front is screwed on and stands behind a wall. Until it's designed:
+  hold the gate front, not the dock, when pulling the tube. Options for the user: a peg fit tighter than the
+  tube's (`peg_fit`, `fit_clear`: C7, C10), a latch or screws for the front, or a taller stop on the dock.
 - **Room light on the film's back.** The channel is open at both sides of the gate (the film runs
   through), and the film between the spools and the gate is in the open. Only the 25 between the
   film and the panel matters, and it's enclosed by the body.
 
-### 4 · Light dock (`parts/light_dock/`)
+### 3 · Light dock (`parts/light_dock/`)
 
 Holds the CS-Lite standing on its long edge, lit face toward the film, `GAP` (25) behind
 the film plane, with the gate standing in front of it and the spools beside the gate.
 
-- **Floor:** 4 thick, 191 wide. It runs along x from 4 in front of the spools' flanges (x 213.8)
-  to 6 past the slot's back edge (92.7 long).
+- **Floor:** 4 thick, 191 wide. It runs along x from 4 in front of the spools' flanges (x 199.8)
+  to 6 past the slot's back edge (x 292.5: 92.7 long).
+- **Tube trough** (F17): the floor runs under the tube from x 199.8 to the gate's notch. A round 1
+  (`dock_tube_clear`) outside the tube is cut from it, so the floor never comes within 1 of the tube. Its
+  bottom is axis − 35.25: at the default axis it is 5.25 above the table and takes nothing from the 4 thick
+  floor; at axis 39, the lowest allowed, it takes 0.25 off the floor's top (23.7 mm³). It opens upward, so it
+  prints without support, and it is cut before the spool stands go on.
 - **No front wall** (D5): the spools stand where it was. The floor's edge in front of the gate
   front (0.2 clear) locates the gate toward the camera; the friction pegs hold the front on.
 - **Lips:** front and back, 12 tall. Together they make a 20.5 wide slot for the light: its
@@ -237,8 +297,8 @@ the film plane, with the gate standing in front of it and the spools beside the 
 - **Gate notch** (F10): 92.4 wide (the gate's 92 plus `dock_gate_clear` 0.2 each side), through the
   floor and the front lip, from 0.2 in front of the gate front to the lit face. The whole gate
   stands on the table in it, its rear face flush on the panel.
-- **Spool stands** (D5): at (x 238.8, z ±70), a Ø16 pedestal up to y 22.5 and a Ø6 pin up to 1
-  under the cap's spigot (y 56.5), chamfered. At axis 50 the pins stand 64 tall, past the cheeks.
+- **Spool stands** (D5): at (x 224.8, z ±70), a Ø16 pedestal up to y 20.5 and a Ø6 pin up to 1
+  under the cap's spigot (y 54.5), chamfered. At axis 50 the pins stand 64 tall, past the cheeks.
 - **Bed size:** at 191 wide the dock is the largest footprint (29 to spare on a 220 bed).
   **Confirm the printer's bed size.**
 
@@ -248,7 +308,7 @@ the film plane, with the gate standing in front of it and the spools beside the 
 - Drag on the supply spool. It turns freely on its pin, 0.2 clear; hold it with a finger while
   winding on, or add a felt washer under it.
 
-### 5 · Film drive (`parts/film_drive/`)
+### 4 · Film drive (`parts/film_drive/`)
 
 Two sprockets drive the film by its perforations; three gears turn them together; the knob on the
 idler is turned by hand. One knob turn is one frame (D3, D4).
@@ -264,7 +324,7 @@ idler is turned by hand. One knob turn is one frame (D3, D4).
   perforation is 1.98) and comes to a 45° ridge across it (2.2–2.46 where it passes the film, in a
   2.79 perforation), so it finds the perforation's middle and prints without overhang. One or two
   teeth per row reach through the film at a time; the channel stops the film lifting off them.
-- Ø6 shaft from its foot on the bearing hole's floor (y 4) to the gear's top (y 87.5), with a
+- Ø6 shaft from its foot on the bearing hole's floor (y 4) to the gear's top (y 85.5: 81.5 long), with a
   0.5 D-flat above the deck. 45° cones under each ring.
 - Prints standing on its shaft's foot, at 0.12 layers.
 
@@ -289,7 +349,7 @@ on its axle.
 side, and turn the knob until the teeth catch the perforations; it comes out at +z. Tuck it in the
 take-up spool's slit and wind on a turn or two by the cap.
 
-### 6 · Spools (`parts/spools/`)
+### 5 · Spools (`parts/spools/`)
 
 Two the same (D5), each two prints: the spool (bottom flange, r 21 × 2, and a Ø30 core with a Ø6.4
 bore, a 1 × 6 slit for the film's end on the side away from the film, and a Ø16 × 3 socket in its
@@ -307,12 +367,19 @@ rig/
 ├── PLAN.md                 this file
 ├── pyproject.toml          its own uv project (cadquery, pytest), kept out of the nlb package
 ├── params.py               every dimension above, defaults plus derived values
-├── cadutil.py              shared helpers: measuring, print pose, export (ruling R11)
+├── cadutil.py              shared helpers: measuring, print pose, export (ruling R11), assembly marks (F18)
 ├── build.py                builds every part, writes exports/, prints sizes and checks
 ├── assembly.py             places all parts at mockup coordinates, interference check, assembly STEP
 ├── fits.py                 the mating fits, measured on the assembled solids
 ├── viewer.py               writes exports/nlb-scan-rig.html (the assembly)
-├── print_preview.py        writes exports/nlb-rig-print-preview.html (print direction per part)
+├── print_preview.py        writes exports/nlb-rig-print-preview.html (print direction per part, and the
+│                           "Latest feedback" findings)
+├── website.py              writes site-out/<slot>/: both pages for nlb.jrwiv.com, the STLs as files
+├── files_page.py           the site's files page and its zips
+├── publish.sh              build.py + website.py, then rsync to bunbun (nlb.jrwiv.com)
+├── slots.js                the branch switcher in every page's nav on the site
+├── make_icons.py, icons/   the site's icons, from icon-source.png
+├── deploy/                 the site's compose.yaml and nginx.conf, as they run on bunbun
 ├── mockup/
 │   ├── nlb-scan-rig.html   copy of the published mockup (source of the numbers)
 │   ├── viewer.html         template for viewer.py: the assembled CAD in three.js
@@ -320,7 +387,7 @@ rig/
 ├── parts/
 │   ├── lens_adapter/       model.py (+ thread_coupon in the same file)
 │   ├── tube/               model.py
-│   ├── film_gate/          model.py: gate_front, gate_body
+│   ├── film_gate/          model.py: gate_front (+ its assembly mark, F18), gate_body
 │   ├── film_drive/         model.py: sprocket_*, gear_*, idler, idler_axle, deck
 │   ├── spools/             model.py: spool_*, cap_*
 │   └── light_dock/         model.py: light_dock
@@ -352,8 +419,8 @@ from this machine, so it's deferred.
 ## Build order
 
 1. **Set up.** Create `pyproject.toml`, then `params.py` with every constant and derived
-   value. Check the derived values against the mockup's rail at the defaults: tube 117,
-   gate 92 × 78.5 × 30, dock 181 wide.
+   value. Check the derived values against the mockup's rail at the defaults: tube 98,
+   gate 92 × 76.5 × 49, dock 191 wide.
 2. **Lens adapter and thread coupon.** Export both. Stop and hand the coupon to the user
    for a test print before going further on threaded geometry.
 3. **Tube.**
@@ -370,7 +437,7 @@ Write these as pytest checks against the built solids:
 - Every solid is valid and closed (`shape.isValid()`) and its volume is greater than 0.
 - Bounding boxes match the dimensions above at the default params, within 0.05.
 - Mating fits:
-  - tube OD vs adapter socket ID and gate hole: 0.3 radial clearance
+  - tube OD vs adapter socket ID and gate front socket: 0.05 radial clearance, a friction fit (F23)
   - the film channel (0.3) and the film's 0.085 either side; peg holes the pegs' size
   - the drive: rings 0.05 behind the film, tooth tips 0.35 short of the grooves' floors and 0.4
     from the pockets, shafts 0.2 in their bearings, the D-bores 0.1 off the flats
@@ -401,8 +468,10 @@ number.
   centre. At SLIDE pads and ramps just touch; at LOCK they overlap by the 0.113 preload.
 - **The clamp in a rigid model (R7).** At LOCK the only overlap allowed is the pads in the
   ramps, 0.113 deep. The film lies on the front plate and is only touched.
-- **Gate height kept at `axis + 36` (R8).** The Ø72.6 socket then breaks 0.3 through the top
-  of the gate front. `gate_above_axis` ≥ 39.3 closes it with 3 of wall over the hole.
+- **Gate height kept at `axis + 36` (R8).** The Ø72.6 socket broke 0.3 through the top of the
+  gate front, a slit in the top edge. Closed on main 2026-11-10 by thinning the tube instead: `tube_ro`
+  36 → 34 (2 wall, the bore unchanged), so the Ø68.6 socket leaves 1.7 over the hole. F23 made the
+  tube Ø68.5 in the same socket. Ported here 2026-11-14: `fits.py` notes no open top.
 - **Shroud 67.5 tall (R9).** Superseded by F10: there's no shroud.
 - **Exports (R10).** Per-part STEP and STL are in print pose: `PRINT_UP` side up, on the bed,
   centred. The assembly STEP is in the Onshape frame (`assembly.to_onshape`): Z up, so the
@@ -423,7 +492,7 @@ number.
   reverses R16, which kept the slot at exactly 20. `fits.py` measures each one.
 - **Lowest axis 39 (F2).** `Params` refuses an `axis` below `adapter_r`: the Ø78 adapter would
   hit the table. Lower still,
-  the tube (36) and the gate hole (36.3) reach the table too.
+  the tube (34.25) and the gate hole (34.3) reach the table too.
 - **Film slots start at the front plate (F3).** Each side-wall slot runs from the front
   plate's rear face (`film_slot_x0`) to x 257.9, 3.2 along x. Centred on the film, as in the
   mockup, it opened a 0.4 × 37 slit into the lens-side chamber. Started at the plate's front
@@ -526,10 +595,63 @@ number.
   wall (F11) is gone to make room, and the dock grows to 191 wide and 92.7 long. The spools are turned by
   hand; nothing gears them to the drive, since the roll's radius changes as it winds.
 
+Main's rulings since this branch left it, F16 to F25, and how each lands on the sprocket design (ported
+2026-11-14). Main's `PLAN.md` has each in full.
+
+- **"Dimensions to confirm" on the print preview (F16).** Ported as far as it survives F19: `print_preview.py`
+  takes `--wd` and `--axis` like `build.py`, and refuses STLs built at others (it reads the tube's height and
+  the gate front's from the STLs). The tab itself was replaced by F19; its checklist is "Check before
+  printing" below.
+- **The tube stays 1 clear of the dock at every axis (F17).** Adapted. On main the round of the front wall's U
+  is cut through the floor too. This dock has no front wall (D5), but its floor still runs under the tube from
+  x 199.8 to the gate, and at axis 39 it would come within 1 of the Ø68.5 tube (0.75) without touching it. So
+  the same round, `tube_ro + dock_tube_clear`, is cut from the floor as a trough (`_tube_trough`), before the
+  spool stands are added. It takes 23.7 mm³ at axis 39 and nothing from 39.25 up.
+  `tests/test_light_dock.py` checks the clearance at axis 39, 40.5, 42.5 and 50.
+- **Assembly marks (F18).** Adapted: one of main's five. `cadutil` has main's mark helpers (`face_plane`,
+  `mark_triangle`, `mark_padlock`, `cut_marks`), and the gate front has its ▲ on the socket floor, 3 × 3
+  (`mark_tri`), 0.36 deep (`mark_depth`; 0 leaves it off), where it prints as a top layer. The padlocks went on
+  the lid and the other two ▲s on the plates, none of which exist here (D1); `mark_padlock` is kept unused so
+  a later merge is clean. The knob's turn-counting groove was `mark_w` / `mark_depth` on this branch: it is
+  now `knob_mark_w` / `knob_mark_depth` (1.2, 0.6), so main's `mark_depth` doesn't change it.
+  `tests/test_marks.py` checks the ▲'s place and depth, that it adds no overhang, and that `mark_depth` 0
+  leaves the knob's groove alone.
+- **"Latest feedback" on the print preview (F19).** Adapted. The tab, its machinery and main's template are
+  ported; of the review's sixteen findings the six that concern parts this rig has are carried under main's
+  numbers (FB1, FB9, FB10, FB14, FB15, FB16), with the `notch`, `thin` and `filament` drawings redrawn for the
+  pegged gate, the solid gate body and the dock without a front wall. `print_preview.DROPPED` and `REMEASURE`
+  say what became of the other ten. Keep "Latest feedback" below and `print_preview.feedback` in step
+  (`tests/test_print_preview.py`); replace the lot when this design is reviewed.
+- **A sill under the film (F20).** Not ported: already met another way. The sill was for FB5, a cut strip
+  lying on two 3 mm ledges. Here the channel's lower wall supports the film's edge across the whole gate body,
+  apart from about 9 at each sprocket pocket. A literal sill up to y 23 would fill the bottom 3.3 of each
+  pocket (their floors are at y 19.67), where the cone under the sprocket's lower ring runs. The backer step
+  and `pad_dy` belong to the clamp.
+- **The film slot only as deep as the channel (F21).** Not ported: already met. The channel is 0.3 deep and
+  funnels from 0.3 to 1.0 (`lead_in_depth`) over the last 3 (`lead_in`) at each side, with the reference
+  plane as its lens side, so the film goes in along the face it lies on. There is no pressure plate for
+  `plate_lead_in`, and nothing behind the channel for the film to stray into.
+- **Rails beside the lid (F22).** Not applicable: no lid (D1). The deck is located by the two sprocket shafts
+  and the pressed axle.
+- **The tube is a friction fit (F23).** Ported: `tube_ro` 34.25, `fit_clear` 0.05, so a Ø68.5 tube in Ø68.6
+  sockets; `fit_r` is still 34.3 and the gate front keeps 1.7 over its socket. Tested with masking tape on
+  main's print, not on this one. It brings a risk main doesn't have: see "The tube against the pegs" under the
+  film gate.
+- **A 9 deep gate socket, and wd 116 (F24).** Ported: `front_wall` 9, `gate_front` 24, `wd` 116, so the
+  tube keeps its 98 length and its place (x 128 to 226), the gate front grows 5 at each end (x 217 to
+  240.85) and its light passage flares over 13.05. The peg holes still run right through the deeper front.
+  Everything from the reference plane back moves 5 toward the light and keeps its shape: the gate body, the
+  deck, the sprockets, the gears, the idler and its axle, the spools and their caps
+  (`tests/test_first_print.py`). The dock keeps its 92.7 length; its notch is 49.2 and the floor in front of
+  the gate is 17 long (was 27). The spools' flanges stay 3 clear of the gate's sides. No counterbores here,
+  so no `cbore_depth`.
+- **The lid's slot is as wide as the tab (F25).** Not applicable: no lid and no tab (D1).
+
 ## Mockup differences to republish
 
-The CAD differs from the mockup on purpose here. The mockup hasn't been changed: republishing
-it is the user's call.
+The CAD differs from the mockup on purpose here. The mockup's shapes haven't been changed (the local
+copy's `wd` and `axis` sliders now start at 116 and 40.5, the CAD's defaults; the copy once published started
+at 130 and 42.5): republishing it is the user's call.
 
 | What | Mockup | CAD |
 |---|---|---|
@@ -537,12 +659,14 @@ it is the user's call.
 | Gate floor | full gate depth, under the front and rear walls | between the front and rear walls |
 | Pressure plate, wedge plate, lock switch, lid | present | none (D1): a fixed 0.3 channel, a sprocket drive and spools |
 | Tube | plain ring | baffle ribs inside |
+| Tube OD | Ø72 (`TUBE_RO` 36) | Ø68.5 (`tube_ro` 34.25, F23; Ø68 since R8), a friction fit in the Ø68.6 sockets, which stay 1.7 under the gate front's top |
+| Gate front socket | 4 deep, `GATE_FRONT` 14, tube `wd − 13` | 9 deep (`front_wall`), `gate_front` 24, tube `wd − 18` (F24) |
 | Film slots | centred on the film plane, x 252.5–257.5 | a channel across the gate body's front face |
 | Gate | one box with a thin front plate and a chamber in front of it | gate front (solid, flared light passage) + gate body (solid, sprocket pockets), pressed on four pegs, 92 wide |
 | Film | a 228 strip | an uncut roll on two spools, driven by two sprockets, three gears and a knob |
 | Lettering | on the lid | none |
 | Knob | 10 × 12 on the tab, grip ridges | none: the tab sticks 12.7 out of the lid and is the grip |
-| Shroud | part of the dock | none: the gate body (39 deep) stands in a notch in the dock, flush on the lit face |
+| Shroud | part of the dock | none: the gate (49 deep) stands in a notch in the dock, its body flush on the lit face |
 | CS-Lite slot | 20, dock 35 long | 20.5; the dock runs forward past the spools, 92.7 long, 191 wide, no front wall |
 | `axis` | slider 30–60 | 39 at least |
 
@@ -723,7 +847,7 @@ print notes").
 ## Tuning and print notes
 
 - **`thread_clear`** builds valid solids from 0.05 to 0.3. Print the coupon to choose.
-- **Supports:** only the adapter's socket ledge (a 5.3 wide annular overhang in the thread-up
+- **Supports:** only the adapter's socket ledge (a 3.3 wide annular overhang in the thread-up
   pose). The gate front's four tooth grooves are 2.8 wide bridges.
 - **First layer:** the gate front's first layer is the film's front surface. Level the bed, keep the
   plate clean, and turn off or compensate elephant's foot, which would put a lip on the frame
@@ -733,25 +857,39 @@ print notes").
   (0.2): FDM prints slots narrow; open it if the film's edges bind.
 - **`peg_fit`** (0): open it 0.05 at a time if the gate front won't press on.
 - **Sprockets:** print at 0.12 layers so the 1.0 teeth keep their shape; two at once, or a brim,
-  since each is Ø6 × 83.5. Print one first with a short test strip of film: if the teeth don't
+  since each is Ø6 × 81.5. Print one first with a short test strip of film: if the teeth don't
   enter the perforations cleanly, tune `tooth_tip`, `tooth_w` and `tooth_h`.
 - **Gears:** if they bind, open `gear_backlash`; if the knob feels loose, close it.
+- **Tube fit (F23):** Ø68.5 in Ø68.6, a friction fit. Push the tube home onto each socket's floor: nothing else sets
+  `wd`. Too tight: sand the tube's ends. Loose: `tube_ro` up 0.05. Hold the gate front when pulling the tube out:
+  only the pegs keep it on the body.
+- **Assembly mark (F18):** the gate front's ▲ is 0.36 deep, 2 layers at 0.2. Ironing doesn't fill it. If it
+  comes out too faint, raise `mark_depth`.
 - **Stale exports:** an invalid solid isn't exported, so the previous STEP/STL stays in
   `exports/`.
 
-## Questions for the user## Questions for the user
+## Questions for the user
 
 - **Printer:** bed size and build height. 220 × 220 is assumed. `tube_max_len` borrows the
   220 footprint as the height. The plan wants a spigot split past `wd` ≈ 200; that isn't built.
-- **`wd` and `axis`:** were they measured? The mockup still tags them "guess".
-- **Camera:** A7 or A7 IV? Nothing depends on it yet.
-- **Gate height (R8):** keep `gate_above_axis` at 36, or raise it to 39.3 to close the hole?
+- **Measurements:** `wd` and `axis` are measured (C1, C2), and `wd` set 5 longer after main's first print (F24).
+  The CS-Lite, the printer's bed and height, the thread and the rest: see "Check before printing" (C3–C12).
+- **Camera:** A7 or A7 IV? No part depends on it; with its base, it decides `axis` (C1).
+- **The tube against the pegs:** the friction-fit tube (F23) can pull the pegged gate front off the body. Accept it
+  and hold the front, or design a latch, screws or a taller stop? See the film gate's "Not designed yet".
+- **F23 and F24 on this design:** both came from a print of main's clamp gate. Keep them here untested, or go back
+  to a looser tube until this gate is printed?
 - **Mockup:** republish it with the differences above?
 - **Film direction:** the roll runs from −z to +z (left to right from the camera's side, looking at the
   gate). Should either end be the supply side for how the roll comes off the developing reel?
 - **Roll length:** `film_roll_len` is 1600 (36 frames plus leader and trailer). A 37 or 38 frame roll fits.
-- **Print preview:** republish it from this branch, or wait until the branch merges? The page's URL
-  shows main's design now.
+- **Publishing:** `./publish.sh` would put this branch at `nlb.jrwiv.com/rig-v2-sprocket-drive/` as a preview
+  beside main's pages. It hasn't been run from this branch.
+- **Part numbers on the viewer:** the print preview and this plan number the parts 1, 1b, 2, 3, 4, 5. The viewer's
+  tags still say 1 adapter, 2 tube, 3 film gate, 4 light dock, 5 knob, 6 spools (main's viewer kept the old
+  numbers too). Renumber the tags to match?
+- **A review of this design:** "Latest feedback" is main's review, cut down. FB4 and FB11 need measuring again
+  here, and the drive has never been reviewed.
 
 ## Conventions from this session
 
@@ -769,4 +907,4 @@ print notes").
 - `superpowers:test-driven-development`: write the geometry checks before each `model.py`.
 - `superpowers:verification-before-completion`: run `build.py` and the tests and quote the
   output before saying a part is done.
-- `jta`: republish the mockup to the same URL whenever a dimension or mechanism changes.
+- `jta`: only for one-off pages. The rig's pages go to nlb.jrwiv.com with `./publish.sh`, not to tmp.jrwiv.com.

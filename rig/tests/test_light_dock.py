@@ -23,9 +23,9 @@ p = DEFAULT
 EPS = 1e-6
 HW = p.dock_w / 2                                   # 90.5
 CHEEK_IN = p.csl_l / 2 + 0.5                        # 83: cheek inner faces
-X0 = 217.8                                          # the front wall's front face: x_gate (222) - 0.2 - 4
-NX = 221.8                                          # its rear face, where the notch starts: 0.2 in front of the gate front
-U_R = 35                                            # the tube's U: its 34 plus 1
+X0 = 212.8                                          # the front wall's front face: x_gate (217, F24) - 0.2 - 4
+NX = 216.8                                          # its rear face, where the notch starts: 0.2 in front of the gate front
+U_R = 35.25                                         # the tube's U: its 34.25 (F23) plus 1
 NOTCH = 55.2                                        # the notch's sides: the gate front's 110, plus 0.2 each side
 
 
@@ -101,10 +101,10 @@ def test_params_defaults():
     assert (p.floor_t, p.lip_h, p.lip_t, p.cheek_top, p.cheek_clear, p.dock_gate_clear) == (4, 12, 4, 62, 0.5, 0.2)
     assert (p.dock_extra_w, p.dock_tail, p.csl_clear) == (16, 6, 0.5)
     assert p.dock_w == p.csl_l + p.dock_extra_w == 181
-    assert p.dock_x1 == p.x_light + p.csl_t + p.csl_clear + p.dock_tail == 287.5
+    assert p.dock_x1 == p.x_light + p.csl_t + p.csl_clear + p.dock_tail == 292.5
     assert (p.dock_front_t, p.dock_tube_clear) == (4, 1)
     assert p.dock_x0 == pytest.approx(p.x_gate - p.dock_gate_clear - p.dock_front_t) == X0
-    assert p.gate_d == p.gate_front + p.gap == 39             # the gate reaches the lit face (F10)
+    assert p.gate_d == p.gate_front + p.gap == 49             # the gate reaches the lit face (F10); 39 until F24
     assert not hasattr(p, "shroud_w")
 
 
@@ -113,13 +113,13 @@ def test_params_defaults():
 
 def test_dock_bounds_at_defaults(dock):
     # x: the front wall's front face .. 6 past the slot's back edge; y: floor underside .. the cheeks' top
-    assert cadutil.bounds(dock) == pytest.approx((X0, 287.5, 0, 62, -90.5, 90.5), abs=EPS)
+    assert cadutil.bounds(dock) == pytest.approx((X0, 292.5, 0, 62, -90.5, 90.5), abs=EPS)
 
 
 def test_floor_is_4_thick_and_181_wide_with_the_gate_notch_cut_from_its_front_edge(dock):
-    floor = cadutil.common_bounds(dock, probe(201, 301, 0, 4, -100, 100))
-    assert floor == pytest.approx((X0, 287.5, 0, 4, -90.5, 90.5), abs=EPS)
-    assert_full(dock, p.x_light, 287.5, 0, 4, -90.5, 90.5)              # behind the lit face, full width
+    floor = cadutil.common_bounds(dock, probe(201, 306, 0, 4, -100, 100))
+    assert floor == pytest.approx((X0, 292.5, 0, 4, -90.5, 90.5), abs=EPS)
+    assert_full(dock, p.x_light, 292.5, 0, 4, -90.5, 90.5)              # behind the lit face, full width
     assert_full(dock, X0, p.x_light, 0, 4, NOTCH, 90.5)                 # the two arms beside the gate
     assert_full(dock, X0, p.x_light, 0, 4, -90.5, -NOTCH)
 
@@ -132,28 +132,28 @@ def test_the_gate_notch_runs_from_the_front_wall_to_the_lit_face_through_floor_a
 
 
 def test_the_floor_ends_6_past_the_slots_back_edge(dock):
-    back_lip_front = cadutil.common_bounds(dock, probe(p.x_light + 1, 301, 4.001, 15, -80, 80))[0]
+    back_lip_front = cadutil.common_bounds(dock, probe(p.x_light + 1, 306, 4.001, 15, -80, 80))[0]
     assert cadutil.bounds(dock)[1] - back_lip_front == pytest.approx(6, abs=EPS)
 
 
 def test_lips_are_12_tall_the_back_one_full_width_the_front_one_beside_the_notch(dock):
-    back = cadutil.common_bounds(dock, probe(271, 311, 4.001, 100, -CHEEK_IN + 0.001, CHEEK_IN - 0.001))
-    assert back == pytest.approx((281.5, 285.5, 4.001, 16, -CHEEK_IN + 0.001, CHEEK_IN - 0.001), abs=EPS)
-    assert_full(dock, 281.5, 285.5, 4, 16, -HW, HW)
+    back = cadutil.common_bounds(dock, probe(276, 316, 4.001, 100, -CHEEK_IN + 0.001, CHEEK_IN - 0.001))
+    assert back == pytest.approx((286.5, 290.5, 4.001, 16, -CHEEK_IN + 0.001, CHEEK_IN - 0.001), abs=EPS)
+    assert_full(dock, 286.5, 290.5, 4, 16, -HW, HW)
     for z in ((NOTCH, CHEEK_IN), (-CHEEK_IN, -NOTCH)):
         front = cadutil.common_bounds(dock, probe(NX, p.x_light, 4.001, 100, *z))
-        assert front == pytest.approx((257, 261, 4.001, 16, *z), abs=EPS)
+        assert front == pytest.approx((262, 266, 4.001, 16, *z), abs=EPS)
 
 
 def test_nothing_of_the_dock_stands_above_the_lips_between_the_cheeks(dock):
-    assert_void(dock, NX, 291, 16.001, 100, -CHEEK_IN + 0.001, CHEEK_IN - 0.001)
-    assert_void(dock, NX, 257, 4.001, 100, -HW, HW)                    # the arms are floor only
+    assert_void(dock, NX, 296, 16.001, 100, -CHEEK_IN + 0.001, CHEEK_IN - 0.001)
+    assert_void(dock, NX, 262, 4.001, 100, -HW, HW)                    # the arms are floor only
 
 
 def test_the_slot_between_the_lips_is_the_cs_lites_20_and_half_a_millimetre(dock):
     assert_void(dock, p.x_light, p.x_light + 20.5, 4.001, 100, -CHEEK_IN + 0.001, CHEEK_IN - 0.001)
-    back = cadutil.common_bounds(dock, probe(p.x_light, 291, 4.001, 15, -80, 80))
-    front = cadutil.common_bounds(dock, probe(221, p.x_light, 4.001, 15, -80, 80))
+    back = cadutil.common_bounds(dock, probe(p.x_light, 296, 4.001, 15, -80, 80))
+    front = cadutil.common_bounds(dock, probe(226, p.x_light, 4.001, 15, -80, 80))
     assert back[0] - front[1] == pytest.approx(20.5, abs=EPS)
     assert front[1] == pytest.approx(p.x_light, abs=EPS)          # the front lip, and so the lit face, has not moved
 
@@ -170,17 +170,17 @@ def test_the_cs_lite_drops_in_against_the_front_lip_with_half_a_millimetre_behin
 @pytest.mark.parametrize("sign", [-1, 1])
 def test_cheeks_are_62_tall_from_the_cs_lites_end_plus_half_a_millimetre_to_the_floors_edge(dock, sign):
     z0, z1 = sorted((sign * CHEEK_IN, sign * HW))
-    above_lips = cadutil.common_bounds(dock, probe(NX, 311, 16.001, 100, z0, z1))
-    assert above_lips == pytest.approx((257, 285.5, 16.001, 62, z0, z1), abs=EPS)
-    assert_full(dock, 257, 285.5, 4, 62, z0, z1)
-    assert_void(dock, 201, 311, 62.001, 100, z0, z1)
+    above_lips = cadutil.common_bounds(dock, probe(NX, 316, 16.001, 100, z0, z1))
+    assert above_lips == pytest.approx((262, 290.5, 16.001, 62, z0, z1), abs=EPS)
+    assert_full(dock, 262, 290.5, 4, 62, z0, z1)
+    assert_void(dock, 201, 316, 62.001, 100, z0, z1)
     assert z1 - z0 == pytest.approx(7.5, abs=EPS)
 
 
 def test_cheeks_span_the_lips_and_the_slot_in_x(dock):
-    assert_full(dock, 257, 285.5, 4, 62, CHEEK_IN, HW)
-    assert_void(dock, NX, 256.999, 4.001, 62, CHEEK_IN, HW)
-    assert_void(dock, 285.501, 287.5, 4.001, 62, CHEEK_IN, HW)
+    assert_full(dock, 262, 290.5, 4, 62, CHEEK_IN, HW)
+    assert_void(dock, NX, 261.999, 4.001, 62, CHEEK_IN, HW)
+    assert_void(dock, 290.501, 292.5, 4.001, 62, CHEEK_IN, HW)
 
 
 def test_cheek_inner_faces_are_half_a_millimetre_clear_of_the_cs_lites_ends(dock):
@@ -192,7 +192,7 @@ def test_cheek_inner_faces_are_half_a_millimetre_clear_of_the_cs_lites_ends(dock
 
 
 def test_dock_volume_is_floor_plus_front_wall_plus_cheeks_plus_lips_less_the_notch(dock):
-    floor = 69.7 * 4 * 181 - 39.2 * 4 * 110.4
+    floor = 79.7 * 4 * 181 - 49.2 * 4 * 110.4
     front = 4 * (58 * 181 - (math.pi * U_R**2 / 2 + 2 * U_R * (62 - p.axis)))     # above the floor, less the U, whose
     # round dips into the floor under the wall (F17): what it takes there is taken from the floor instead, so the sum holds
     cheeks = 2 * (28.5 * 58 * 7.5)
@@ -215,7 +215,7 @@ def test_front_wall_has_a_u_for_the_tube_1_clear_of_it(dock):
     u = (cq.Workplane("YZ", origin=(X0, 0, 0)).center(p.axis, 0).circle(U_R).extrude(4)
          .union(probe(X0, NX, p.axis, 100, -U_R, U_R)))
     assert cadutil.common_volume(dock, u) < 1e-3
-    # 0.01 bigger all round and it takes material: the U is exactly 35 around the axis, open at the top
+    # 0.01 bigger all round and it takes material: the U is exactly 35.25 around the axis, open at the top
     assert cadutil.common_volume(dock, probe(X0, NX, p.axis - U_R - 0.01, p.axis, -1, 1)) > 1e-4
     assert cadutil.common_volume(dock, probe(X0, NX, p.axis, 62, U_R, U_R + 0.01)) > 1e-4
     assert_void(dock, X0, NX, p.axis, 100, -U_R + 0.001, U_R - 0.001)
@@ -224,7 +224,7 @@ def test_front_wall_has_a_u_for_the_tube_1_clear_of_it(dock):
 @pytest.mark.parametrize("axis", [39, 40.5, 42.5, 50])      # 39: the lowest axis Params allows
 def test_the_tube_is_1_clear_of_the_dock_at_every_axis(axis):
     """The U's round goes through the floor under the front wall too (F17), so the floor never comes within 1 of the
-    tube. With the Ø68 tube it only touches the floor's top at axis 39, the lowest allowed."""
+    tube. With the Ø68.5 tube (F23) it dips 0.25 into the floor's top at axis 39, the lowest allowed, and nowhere else."""
     q = Params(wd=p.wd, axis=axis)
     d = model.build(q)["light_dock"]
     x0, x1 = q.dock_x0, q.x_gate - q.dock_gate_clear
@@ -292,8 +292,8 @@ def test_it_touches_none_of_the_other_printed_parts(lock, dock, gate, gate_lock,
 def test_dock_prints_floor_down_and_fits_the_bed(dock):
     posed = cadutil.print_pose(dock, model.PRINT_UP["light_dock"])
     assert cadutil.fits_bed(posed, p)
-    assert cadutil.size(posed) == pytest.approx((69.7, 181, 62), abs=EPS)
-    assert_full(posed, *(-34.85, 34.85, 55.2, 90.5, 0, 3))
+    assert cadutil.size(posed) == pytest.approx((79.7, 181, 62), abs=EPS)
+    assert_full(posed, *(-39.85, 39.85, 55.2, 90.5, 0, 3))
 
 
 def test_nothing_prints_over_air(dock):
@@ -308,7 +308,7 @@ def test_the_dock_and_gate_follow_wd_and_axis(q):
     d = model.build(q)["light_dock"]
     assert cadutil.solid(d).isValid()
     assert cadutil.bounds(d) == pytest.approx((q.x_gate - 4.2, q.dock_x1, 0, 62, -q.dock_w / 2, q.dock_w / 2), abs=EPS)
-    assert q.dock_x1 - q.dock_x0 == pytest.approx(69.7, abs=EPS)
+    assert q.dock_x1 - q.dock_x0 == pytest.approx(79.7, abs=EPS)
     assert cadutil.common_volume(d, gate_model.gate_front(q)) < 1e-3
     assert cadutil.common_volume(d, csl(q)) < 1e-3
     assert cadutil.common_volume(d, csl(q).translate((-0.01, 0, 0))) > 1e-3

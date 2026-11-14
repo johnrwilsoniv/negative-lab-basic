@@ -16,12 +16,12 @@ class Params:
     """The rig's dimensions.
 
     User inputs `wd` and `axis`: measured by the user on 2026-11-09, with the dimensions and the framing
-    checked (C1, C2). Constructing one with `axis` below `axis_min` raises ValueError: the lens adapter
-    would go through the table.
+    checked (C1, C2); after the first print the user set `wd` 5 longer (2026-11-14, F24). Constructing one with
+    `axis` below `axis_min` raises ValueError: the lens adapter would go through the table.
     """
 
     # ---- user inputs ----
-    wd: float = 111           # lens front to film plane (measured)
+    wd: float = 116           # lens front to film plane: measured 111, then 5 more after the first print (F24)
     axis: float = 40.5        # table to lens centre (measured)
 
     # ---- known (datasheets) ----
@@ -49,12 +49,12 @@ class Params:
 
     # ---- picks (chosen, not measured) ----
     gw: float = 92            # gate width
-    gate_front: float = 14    # gate front wall to film
+    gate_front: float = 24    # gate front wall to film: 14 until F24, which added 5 for the deeper socket and 5 for wd
     wall: float = 3
     win_w: float = 38         # gate window
     win_h: float = 26
     gap: float = 25           # film to light face
-    tube_ro: float = 34        # 2 wall: the Ø68.6 socket stays 1.7 under the gate front's top (R8, closed)
+    tube_ro: float = 34.25     # Ø68.5, a friction fit in the Ø68.6 sockets (F23; Ø68 until then, R8): 2.25 wall
     tube_ri: float = 32
     flange: float = 3         # adapter flange thickness
     thread_len: float = 4.5
@@ -62,7 +62,7 @@ class Params:
     thread_lead_in: float = 45    # chamfer on the thread's free end, degrees from the axis
     adapter_r: float = 39         # adapter OD 78
     adapter_bore_r: float = 31    # adapter bore 62, clears the lens front element
-    socket_depth: float = 9
+    socket_depth: float = 9       # the adapter's socket
     coupon_grip: float = 2        # thread test coupon: grip ring thickness (Ø78 / Ø62, as the flange)
     channel: float = 0.6      # film channel in slide mode
     sw_travel: float = 10     # lock switch travel
@@ -70,8 +70,9 @@ class Params:
     ramp_min: float = 0.1
     ramp_rise: float = 0.7
     gate_above_axis: float = 36   # gate box height above the lens axis
-    front_wall: float = 4         # gate front wall thickness
-    fit_clear: float = 0.3        # radial clearance of the tube in its sockets
+    front_wall: float = 9         # the gate front's tube socket, deep: 4 until F24, which added 5 toward the camera
+    fit_clear: float = 0.05       # radial clearance of the tube in its sockets: Ø68.6 sockets stay 1.7 under the gate
+                                  # front's top (R8); the tube's Ø68.5 makes it a friction fit (F23; 0.3 until then)
     plate_clear: float = 0.25     # pressure plate to the floor, the lid and each side wall: it drops in and floats
     lid_clear: float = 0.2        # gate lid to the front wall and to the rear wall, at each end
     lid_side_clear: float = 0.2   # ... and to the rail beside each side, which stops it along z, so the switch's tab
@@ -91,7 +92,8 @@ class Params:
     rear_win_w: float = 46        # rear wall window, toward the light
     rear_win_h: float = 34
     tab_t: float = 2              # lock switch tab thickness, x
-    tab_clear: float = 0.5        # clearance each side of the tab in the lid slot
+    tab_clear: float = 0          # clearance each side of the tab in the lid slot: none, so the tab locates the lid
+                                  # along x (F25; 0.5 until then)
     slot_end: float = 3           # the lid slot runs this far past the tab's travel at each end
     pad: float = 4                # pressure plate pad footprint, square
     pad_z: float = 22             # pad centres at z = +-pad_z
@@ -123,7 +125,8 @@ class Params:
     ear_h: float = 9              # ... and this tall in y, at the bottom and under the lid; 1.25 around the counterbore
     joint_hole_d: float = 3.4     # ... M3 clearance through the gate front, ...
     cbore_d: float = 6.5          # ... counterbored for the head, ...
-    cbore_depth: float = 3.5
+    cbore_depth: float = 13.5     # ... so an M3 x 20 still bites 9.8 into the pillar through the 23.7 gate front (F24;
+                                  # 3.5 until then)
     pilot_d: float = 2.5          # ... into a pilot the M3 self-taps (4.0 for an M3 heat-set insert), ...
     pilot_depth: float = 12       # ... this deep into the pillar
     mark_depth: float = 0.36      # assembly marks (F18), this deep: 3 layers at 0.12, 2 at 0.2. 0 leaves them off
@@ -202,7 +205,7 @@ class Params:
         return self.x_gate + self.front_wall
 
     @property
-    def tube_len(self) -> float:        # wd - 13
+    def tube_len(self) -> float:        # wd - 18
         return self.tube_x1 - self.tube_x0
 
     @property

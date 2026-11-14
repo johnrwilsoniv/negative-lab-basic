@@ -9,7 +9,7 @@ from params import DEFAULT, Params
 
 def test_default_is_a_params_with_the_user_inputs():
     assert isinstance(DEFAULT, Params)
-    assert (DEFAULT.wd, DEFAULT.axis) == (111, 40.5)
+    assert (DEFAULT.wd, DEFAULT.axis) == (116, 40.5)              # wd: measured 111, then 5 more (F24)
 
 
 def test_params_is_immutable():
@@ -20,7 +20,7 @@ def test_params_is_immutable():
 def test_callers_vary_inputs_by_constructing():
     p = Params(wd=150, axis=40)
     assert (p.wd, p.axis) == (150, 40)
-    assert DEFAULT.wd == 111
+    assert DEFAULT.wd == 116
 
 
 def test_plan_constants():
@@ -28,10 +28,10 @@ def test_plan_constants():
     assert (p.thread_major, p.thread_pitch, p.thread_len) == (67, 0.75, 4.5)
     assert p.thread_clear == 0.15
     assert (p.adapter_r, p.adapter_bore_r, p.socket_depth, p.flange) == (39, 31, 9, 3)
-    assert (p.tube_ro, p.tube_ri) == (34, 32)
-    assert (p.gw, p.gate_d, p.gate_front, p.wall) == (92, 39, 14, 3)     # gate_d = gate_front + gap (F10)
+    assert (p.tube_ro, p.tube_ri) == (34.25, 32)                   # Ø68.5 (F23)
+    assert (p.gw, p.gate_d, p.gate_front, p.wall) == (92, 49, 24, 3)     # gate_d = gate_front + gap (F10); 24 (F24)
     assert (p.win_w, p.win_h, p.gap) == (38, 26, 25)
-    assert (p.front_wall, p.fit_clear, p.plate_t, p.wedge_gap) == (4, 0.3, 1.8, 0.9)
+    assert (p.front_wall, p.fit_clear, p.plate_t, p.wedge_gap) == (9, 0.05, 1.8, 0.9)   # F24, F23
     assert p.gate_above_axis == 36
     assert (p.channel, p.sw_travel) == (0.6, 10)
     assert (p.ramp_len, p.ramp_min, p.ramp_rise) == (12, 0.1, 0.7)
@@ -60,24 +60,24 @@ def test_thread_profile():
 def test_rail_values_at_defaults():
     p = DEFAULT
     assert p.x_front == 125
-    assert p.x_film == 236
-    assert p.x_gate == 222
-    assert p.x_light == 261
+    assert p.x_film == 241
+    assert p.x_gate == 217
+    assert p.x_light == 266
     assert p.gh == pytest.approx(76.5)
     assert p.tube_x0 == 128
     assert p.tube_x1 == 226
     assert p.tube_len == 98
     assert p.fit_r == pytest.approx(34.3)
     assert p.dock_w == 181
-    assert p.dock_x0 == pytest.approx(217.8)          # the front wall's front face: 4.2 in front of the gate (F11)
-    assert p.dock_x1 == 287.5
-    assert p.dock_x1 - p.dock_x0 == pytest.approx(69.7)
+    assert p.dock_x0 == pytest.approx(212.8)          # the front wall's front face: 4.2 in front of the gate (F11)
+    assert p.dock_x1 == 292.5
+    assert p.dock_x1 - p.dock_x0 == pytest.approx(79.7)
 
 
 def test_lock_mechanism_x_stations():
     p = DEFAULT
-    assert p.x_pp == pytest.approx(238.1)
-    assert p.x_wedge == pytest.approx(239.0)
+    assert p.x_pp == pytest.approx(243.1)
+    assert p.x_wedge == pytest.approx(244.0)
 
 
 def test_ramp_thickness():
@@ -102,9 +102,9 @@ def test_pad_thickness():
 
 def test_tube_len_tracks_wd():
     p = Params(wd=150)
-    assert p.tube_len == p.wd - 13 == 137
+    assert p.tube_len == p.wd - 18 == 132                 # flange 3, gate front 24, less its 9 deep socket (F24)
     assert p.x_film == 275
-    assert p.dock_x1 - p.dock_x0 == pytest.approx(69.7)
+    assert p.dock_x1 - p.dock_x0 == pytest.approx(79.7)
 
 
 def test_baffles():
@@ -112,7 +112,7 @@ def test_baffles():
     assert (p.baffle_h, p.baffle_pitch, p.baffle_margin) == (1, 8, 2)
     assert p.tube_ri - p.baffle_h == p.adapter_bore_r     # the ribs never close in past the adapter bore
     assert p.baffle_count == 12                           # (98 - 2*2 - 1) / 8 = 11.6 -> 11 pitches, 12 ribs
-    assert Params(wd=150).baffle_count == 17              # (137 - 4 - 1) / 8 = 16.5 -> 16 pitches
+    assert Params(wd=150).baffle_count == 16              # (132 - 4 - 1) / 8 = 15.9 -> 15 pitches
     assert Params(baffle_h=0).baffle_count == 0
 
 
@@ -149,10 +149,10 @@ def test_the_film_slot_starts_at_the_front_plates_rear_face():
     # Flush with the front face, the side wall and the plate met only along an edge: a non-manifold solid
     # Onshape rejects. From the rear face, the side wall covers the plate's end.
     p = DEFAULT
-    assert p.x_front_plate == pytest.approx(p.x_film - p.channel / 2 - p.plate_t) == pytest.approx(233.9)
-    assert p.film_slot_x0 == pytest.approx(p.x_front_plate + p.plate_t) == pytest.approx(235.7)
+    assert p.x_front_plate == pytest.approx(p.x_film - p.channel / 2 - p.plate_t) == pytest.approx(238.9)
+    assert p.film_slot_x0 == pytest.approx(p.x_front_plate + p.plate_t) == pytest.approx(240.7)
     assert p.film_slot_x0 + p.channel == pytest.approx(p.x_film + p.channel / 2)    # at the wall's inner face it is the channel
-    assert p.film_slot_x0 + p.film_slot_mouth == pytest.approx(237.7)                 # (F21), and at its outer face this
+    assert p.film_slot_x0 + p.film_slot_mouth == pytest.approx(242.7)                 # (F21), and at its outer face this
 
 
 def test_ks_perforations_and_frame_pitch():

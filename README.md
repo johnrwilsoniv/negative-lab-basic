@@ -8,7 +8,7 @@ conversion. The name is a pun on Negative Lab Pro.
 
 A light-tight path from camera to film: Sony A7 IV + Laowa 90mm 2X macro → lens adapter → tube → film
 gate → light dock holding a CineStill CS-Lite. Strips slide sideways through the gate, and a switch on
-the lid clamps them flat. It's modelled in CadQuery; nothing has been printed yet.
+the lid clamps them flat. It's modelled in CadQuery, and the first print (November 2026) works.
 
 **See it at [nlb.jrwiv.com](https://nlb.jrwiv.com)**: the assembled model, a print preview, and
 every STL and STEP file.
@@ -18,7 +18,8 @@ Build the STLs yourself, from `rig/`:
     uv run python build.py [--wd W] [--axis A]   # STEP + STL per part into rig/exports/
     uv run pytest                                # checks on the built solids
 
-`--wd` (working distance) and `--axis` (table to lens centre) default to the measured 111 and 40.5.
+`--wd` (working distance) and `--axis` (table to lens centre) default to 116 and 40.5: `wd` was measured at 111,
+then set 5 longer after the first print.
 The design notes, rulings and pre-print checklist are in [rig/PLAN.md](rig/PLAN.md).
 
 ## Studio

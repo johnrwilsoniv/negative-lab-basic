@@ -98,7 +98,9 @@ def _light_passage(p: Params) -> cq.Workplane:
 
 
 def gate_front(p: Params = DEFAULT) -> cq.Workplane:
-    """x_gate .. x_ref, gh tall, gate_front_w wide: the tube socket, the light passage and the screw holes."""
+    """x_gate .. x_ref, gh tall, gate_front_w wide: the tube socket (front_wall deep, 9 since F24, where the tube is a
+    friction fit, F23), the light passage and the screw holes, counterbored cbore_depth so an M3 x 20 reaches the
+    pillar."""
     block = _box(p.x_gate, p.x_ref, 0, p.gh, -p.gate_front_w / 2, p.gate_front_w / 2)
     socket = cq.Workplane("YZ", origin=(p.x_gate - 1, 0, 0)).center(p.axis, 0).circle(p.fit_r).extrude(p.front_wall + 1)
     block = block.cut(socket).cut(_light_passage(p))
@@ -183,7 +185,8 @@ def gate_body(p: Params = DEFAULT) -> cq.Workplane:
 
 def gate_lid(p: Params = DEFAULT) -> cq.Workplane:
     """Between the gate front and the rear wall, lid_clear short of each, and between the rails, lid_side_clear inside
-    each (F22), on the side walls, with the switch slot (placed absolutely, not from the lid's ends)."""
+    each (F22), on the side walls, with the switch slot (placed absolutely, not from the lid's ends): tab_clear each
+    side of the tab, none since F25, so the tab holds the lid along x."""
     slot_x0 = p.x_wedge - p.tab_clear
     slot_w = p.tab_t + 2 * p.tab_clear
     slot_z = p.sw_travel / 2 + p.slot_end

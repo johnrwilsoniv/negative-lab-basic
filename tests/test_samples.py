@@ -8,7 +8,7 @@ from nlb.detect import detect_frame
 from nlb.heic import load_rgb
 from nlb.pipeline import process
 
-SAMPLES = Path(__file__).resolve().parent.parent / "iphone-negatives"
+SAMPLES = Path(__file__).resolve().parent.parent / "iphone-negatives" / "test"
 pytestmark = pytest.mark.skipif(not SAMPLES.is_dir(), reason="sample negatives not present")
 
 # Frame windows measured at 1008px working width (x, y, w, h).

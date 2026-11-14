@@ -7,8 +7,10 @@ conversion. The name is a pun on Negative Lab Pro.
 ## The rig
 
 A light-tight path from camera to film: Sony A7 IV + Laowa 90mm 2X macro → lens adapter → tube → film
-gate → light dock holding a CineStill CS-Lite. Strips slide sideways through the gate, and a switch on
-the lid clamps them flat. It's modelled in CadQuery; nothing has been printed yet.
+gate → light dock holding a CineStill CS-Lite. An uncut roll runs from one spool to the other through a
+fixed channel in the gate; two sprockets, geared to one knob, pull it by its perforations, one knob turn
+per frame. It's modelled in CadQuery. The earlier clamp design on `main` (cut strips, a lock switch on the
+lid) was printed in November 2026 and works; this sprocket drive has not been printed yet.
 
 **See it at [nlb.jrwiv.com](https://nlb.jrwiv.com)**: the assembled model, a print preview, and
 every STL and STEP file.
@@ -18,7 +20,8 @@ Build the STLs yourself, from `rig/`:
     uv run python build.py [--wd W] [--axis A]   # STEP + STL per part into rig/exports/
     uv run pytest                                # checks on the built solids
 
-`--wd` (working distance) and `--axis` (table to lens centre) default to the measured 111 and 40.5.
+`--wd` (working distance) and `--axis` (table to lens centre) default to 116 and 40.5: `wd` was measured at 111,
+then set 5 longer after the first print.
 The design notes, rulings and pre-print checklist are in [rig/PLAN.md](rig/PLAN.md).
 
 ## Studio

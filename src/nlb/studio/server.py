@@ -232,7 +232,7 @@ class Studio:
         dirs = sorted(d for d in self.test_dir.iterdir() if d.is_dir())
         for d in dirs[:-1]:
             shutil.rmtree(d, ignore_errors=True)
-        if dirs and (files := sorted(p for p in dirs[-1].iterdir() if p.is_file())):
+        if dirs and any(p.is_file() for p in dirs[-1].iterdir()):
             self.test_seq = int(dirs[-1].name) if dirs[-1].name.isdigit() else 0
             tmp = self.test_dir / ".restore"
             shutil.rmtree(tmp, ignore_errors=True)

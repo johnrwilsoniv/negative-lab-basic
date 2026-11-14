@@ -865,7 +865,7 @@ body.tab-fb .fb { display: block; }
         ['Overall, with film and CS-Lite', `${f2(c.size.x)} × ${f2(c.size.z)}`],
         ['Height', `${f2(c.size.y)} mm`],
         ['Plastic', `${(c.vol / 1000).toFixed(1)} cm³ solid`],
-        ['Hardware', '4 × M3 × 20'],
+        ['Hardware', 'none: pegs and press fits'],
       ];
       $('notes').outerHTML = `<ul class="asm" id="notes">${c.items.map((it) => {
         const p = PARTS[it.name];

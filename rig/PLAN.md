@@ -546,6 +546,180 @@ it is the user's call.
 | CS-Lite slot | 20, dock 35 long | 20.5; the dock runs forward past the spools, 92.7 long, 191 wide, no front wall |
 | `axis` | slider 30–60 | 39 at least |
 
+## Latest feedback
+
+The design review of 2026-11-11 (at wd 111, axis 40.5, commit `0e836e1`) was of **main's clamp gate**, not of
+this sprocket drive: every part and the assembly, measured on the built solids with scripts apart from the
+repo's tests. No slicer was run, so print effects are inferred. It found sixteen things (FB1–FB16), none of
+them certain to fail. Six concern parts this rig shares with main (the adapter, the tube, the gate front's
+socket and window, the dock's notch) and are carried here under their original numbers, so the numbers have
+gaps. The print preview's **Latest feedback** tab shows each with a drawing and its numbers
+(`print_preview.feedback`, F19); this list is numbered the same. The drive itself (sprockets, gears, deck,
+spools) has not been reviewed.
+
+### Likely trouble
+
+- **FB1 · The gate has no clearance at the dock floor's notch end.** The gate body's rear face and the
+  floor's notch end are both at x 266; the gate front has 0.2 to the floor's edge in front of it (on main, to
+  a front wall; here the stop is the 4 tall floor edge alone, D5). Both corners print on the bed, so
+  first-layer flare lands on a zero gap. The pocket is 49.2 for the 49 deep gate (39.2 and 39 when reviewed).
+
+### Minor
+
+- **FB9 · The perforations show in the frame window.** Their inner edges are at 12.7, the window's at 13:
+  0.3 of each row shows, 16 perforations, 9.5 mm² of bare light.
+- **FB10 · The adapter's socket ledge prints as a ceiling, and the tube seats on it.** Thread up, the
+  socket floor is a 3.3 wide ceiling 9 above the bed: it prints on supports, and it is the face the
+  tube's end seats on.
+- **FB14 · The thinnest section: over the tube's socket.** 1.7 of gate front over the Ø68.6 socket. The
+  review's other two (1.25 round the screws' counterbores, and the strip under the dock's U) are not on this
+  rig: the front is held by pegs, and the dock has no front wall.
+- **FB15 · The tube's baffle flanks are exactly 45°.** They pass `cadutil.overhangs` only by its 1e-6
+  tolerance.
+- **FB16 · PLAN never names a filament.** Light-tightness through 2.25 and 1.7 walls needs an opaque, matte
+  black one. About 56% of the panel's lit area shines past the gate and the deck (worked out for this gate;
+  the review measured 57% on main's).
+
+Not carried, because D1 removed the part: **FB2** (the clamp's margin), **FB3** (the lid as the lock's travel
+stop), **FB5** (the strip on two 3 mm ledges), **FB6** (a strip going behind the pressure plate), **FB7** (the
+lid's and the tab's openings), **FB8** (the wedge plate floating), **FB12** (notes written for the Ø72 tube:
+fixed on main, and the same notes are fixed here), **FB13** (the film 0.3 in front of `x_film`: here it runs
+in the middle of a 0.3 channel, 0.085 either side).
+
+To measure again on this gate before they can be carried or dropped: **FB4** (plastic on the image area: here
+every frame slides through the fixed 0.3 channel, on the gate front's bed-printed face and the channel's
+floor, with no relief over the 24 image band) and **FB11** (nothing checks `wd`, or an axis that is too high:
+the ranges that build, wd 40–233 and axis 39–62, were swept on main's dock, not this one; here `build.py`
+has been run at the defaults, at axis 39, and at wd 150 / axis 50).
+
+The review's design is `print_preview.reviewed()`: the review's wd and axis, and the defaults that have
+changed since (`print_preview.CHANGED_SINCE`: F23, F24). The page's numbers that follow from the dimensions
+are worked out at the build's wd and axis. Came out clean, on the shared parts: the lens side's
+light-tightness, the optics on the lens side, and printability bar the adapter's ledge, the thread and the
+tube's ribs. Not checked: the drive and the spools, slicing, the real hardware, the pages, and STEP import
+into Onshape.
+
+## Check before printing
+
+**This sprocket design has not been printed.** (Main's clamp gate was, on 2026-11-14, and it worked; F23 and
+F24 came from that print.) These are the sizes that come from outside the CAD (the camera and its base, the
+lens, the CS-Lite, the film and the printer) and that the prints depend on. Each is a param in `params.py`;
+the numbers below are at the defaults. "Changes" lists the printed solids whose shape changes with the
+value. Most important first.
+
+### Before printing anything
+
+One session at the bench with the camera on its base, the lens, the CS-Lite and the printer's spec
+sheet. These set most of the plastic, or decide whether it prints at all.
+
+- **C1 · `axis` 40.5 (measured 2026-11-09; was the guess 42.5): table to lens centre.** With a ruler.
+  - **Measure:** the camera and lens on the base they'll scan from, on the table. A steel rule
+    standing on the table (or the calipers' depth rod) to the underside and to the top of the lens's
+    front rim, averaged; or the underside plus 33.5. If the base adjusts (a rail, shims, a head),
+    `axis` is a choice instead: anything from 39 up (F2), and set the base to it. The base and the
+    body (A7 or A7 IV: see "Questions for the user") decide it.
+  - **If it's off:** the tube joins the lens to the gate rigidly, so the camera tilts or the gate and
+    dock lift off the table. The film isn't square to the sensor, and the gate's rear face leaves the
+    CS-Lite and leaks.
+  - **Changes:** gate front, gate body, both sprockets (their shafts), light dock (the spools' pedestals
+    and pins). Fix: `build.py --axis A`, then `print_preview.py --axis A`.
+- **C2 · `wd` 116 (measured 111 on 2026-11-09, was the guess 130; 5 more after main's first print, F24): lens
+  front to film plane, at 1:1.** With a ruler.
+  - **Measure:** from the lens's front rim (the filter-thread face, where the adapter's flange seats)
+    to the film's surface. Focus ring at 1:1, the camera on its base, a negative or a ruler lying on
+    the CS-Lite; move the camera until it's sharp and 36 mm of ruler fills the frame's width. Measure
+    three times. Check whether the front of the lens moves when you focus; if it does, measure with
+    the ring at 1:1.
+  - **If it's off:** the tube is `wd − 18` (98) long and nothing else adjusts along the axis: its ends
+    sit on the socket floors. A few mm off, the focus lands a little off 1:1, so the frame is cropped or
+    shows its borders. Further off, the lens can't focus on the film.
+  - **Changes:** the tube only, but it's the tallest print. Fix: `build.py --wd W`, then
+    `print_preview.py --wd W`.
+- **C3 · CS-Lite: `csl_l` × `csl_h` × `csl_t` 165 × 112 × 20, lit area `csl_lit_w` × `csl_lit_h`
+  149 × 95 (datasheet).** With calipers and a straightedge.
+  - **Measure:** length, height, and the thickness at its thickest point, feet and buttons included.
+    A straightedge across the lit face: the gate body's rear face (92 wide, from the table to 76.5)
+    lies on it from the panel's bottom edge, across the bezel, so the face must be flat edge to edge.
+    Where the lit area sits: the build assumes it's centred, its bottom 12.5 above the table, and the
+    gate's rear window is 23.5 to 57.5. Where the USB-C port and the button are: the cheeks cover the
+    panel's ends up to 62. The gears and the knob stand in front of the panel's top (y 80.5 to 95.5), the
+    gear tips 2.5 from its face.
+  - **If it's off:** thicker than the 20.5 slot or longer than the 166 between the cheeks, it doesn't
+    go in. Thinner, or a face that isn't flat, and the gate's rear face sits off it and leaks (see the
+    light dock's "Not designed yet"). A port at an end is blocked by a cheek. A lit area that doesn't
+    cover the rear window vignettes.
+  - **Changes:** the light dock (`csl_l`, `csl_t`). The height and the lit area change nothing printed.
+- **C4 · Printer: bed `bed_x` × `bed_y` 220 × 220 and build height (assumed).** From the spec sheet.
+  - **Measure:** the usable print area and height, not the plate's size, less any brim or skirt. Load
+    `light_dock.stl` in the slicer: it's the biggest footprint, 92.7 × 191. The tallest prints are the
+    tube, 98 upright, and the sprockets, 81.5; with no height given, `tube_max_len` borrows the bed's 220.
+  - **If it's off:** no shape changes, but a dock that doesn't fit doesn't print. `build.py` checks
+    square-on only (29 margin at 220); turned 45° the dock fits a 201 square bed. Past `wd` ≈ 238 the
+    tube wants a spigot split, which isn't built.
+  - **Changes:** nothing; it decides whether the light dock and the tube print. Fix: `bed_x`, `bed_y`.
+- **C5 · Filter thread M67 × 0.75, `thread_clear` 0.15: print the thread coupon.** A test print.
+  - **Measure:** confirm the lens takes 67 mm filters. Print `thread_coupon.stl` first (thread up,
+    0.12–0.16 layers) and screw it in by hand: it should turn smoothly, seat its ring flat on the
+    rim, and not wobble. Never force it.
+  - **If it's off:** too tight, it cross-threads or strips the lens's filter thread. Too loose, the
+    adapter sits crooked, the tube points off-axis and the film tilts. Tight: raise `thread_clear`
+    0.05; loose: lower it. It builds from 0.05 to 0.3 (R13).
+  - **Changes:** adapter, thread coupon.
+
+### Before a particular part
+
+- **C6 · Filter thread depth and front element: `thread_len` 4.5, `adapter_bore_r` 31 (Ø62).
+  Before the adapter.** With calipers. The depth rod from the rim to where the lens's thread stops;
+  the inside jaws across the retaining ring or whatever stands proud inside the thread. The coupon
+  tells too: its ring should seat on the rim. A thread shallower than 4.5 and the adapter bottoms out
+  before its flange seats (crooked, or pressing on the glass's ring); a bore smaller than the glass's
+  opening vignettes. **Changes:** adapter, thread coupon.
+- **C7 · Tube in its sockets: `fit_clear` 0.05 (Ø68.5 tube, Ø68.6 sockets, F23). Before the tube.** Checked on
+  main's first print: the Ø68 tube with a few layers of masking tape was a good friction fit, so the tube is now
+  Ø68.5. Holes print small and outer walls a little big, so before printing the whole tube, cut it to a 10 mm ring
+  in the slicer and try it in the printed adapter and gate front: it should push in firmly by hand and stay. Tight
+  and it won't go in or cracks the socket; loose and the gate and lens aren't on one axis, and light gets in at the
+  joint. On this gate it must also be looser than the pegs (C10). **Changes:** the tube (`tube_ro`); `fit_clear`
+  follows it, so the sockets keep their Ø68.6.
+- **C8 · The film channel: `film_w` 35, `channel_clear` 0.2 (35.2 tall), `channel` 0.3 deep, opening to
+  `lead_in_depth` 1.0 over `lead_in` 3 at each side (D2). Before the gate body.** Calipers across your film. There's
+  no channel coupon: model a 35.2 × 0.3 slot through a small block in the slicer, print it rear face down like the
+  gate body, and push the film's end through. FDM prints slots narrow, so the film drags or won't start; too tall
+  and it wanders in the window, and the teeth meet the perforations off centre (they have 0.17 to 0.3 each side).
+  Open `channel_clear` or `channel` by 0.05 at a time. **Changes:** gate body.
+- **C9 · Film thickness, the perforations and the first layer: `film_t` 0.13 in the 0.3 `channel`; `perf_pitch`
+  4.75, perforations `perf_l` × `perf_w` 1.98 × 2.79 (ISO 1007, KS). Before the gate front and the sprockets.**
+  Calipers or a micrometer on the film, in a few places: 0.085 is left either side of it, and thicker film (or a
+  splice) takes it up. Eight perforations should measure 38.0: the sprockets' pitch radius comes from it, one turn a
+  frame. The gate front's rear face is a first layer: level the bed, keep it clean, and turn off or compensate
+  elephant's foot, which puts a lip round the frame window and the tooth grooves. Print one sprocket and try it in a
+  strip of film before the rest (see "Tuning and print notes"). **Changes:** nothing from `film_t`; the sprockets
+  and the gate front's grooves from the perforation sizes.
+- **C10 · The friction pegs: four Ø4 × 6 (`peg_d`, `peg_len`), in holes of the same size right through the gate
+  front (`peg_fit` 0, D2). Before the gate front and body.** A test print: one peg on a small plate and one Ø4 hole
+  through a 6 thick block, both in the parts' print poses (the peg along the bed, the hole upright). It should
+  press on by hand and take a firm pull to come off. The pegs are all that holds the gate front on, and since F23
+  the tube grips the front's socket: the pegs must hold harder than the tube, or pulling the tube out opens the film
+  channel (see the film gate's "Not designed yet"). Too tight: `peg_fit` up 0.05. Too loose: a drop of glue, or
+  screws would have to come back. **Changes:** gate front (`peg_fit`), gate body (`peg_d`, `peg_len`).
+- **C11 · Bearing, press and standing fits: `bearing_clear` 0.2 (the Ø6 sprocket shafts in the body and the deck, the
+  idler on its axle, the spools on their pins), `flat_clear` 0.1 (the gears' D-bores), `pocket_clear` 0.4,
+  `gear_backlash` 0.15, the pressed fits at 0 (the idler's axle in the deck and the body, the caps' spigots),
+  `dock_gate_clear` 0.2, `csl_clear` 0.5. Before the drive, the spools and the dock.** A test print: a calibration
+  cube and a Ø6 pin in a Ø6.4 hole, measured with calipers. If the printer prints outer sizes big or holes small by
+  more than about 0.1, the shafts bind and the pressed fits won't go together. After the gate body prints, stand
+  both sprockets in it, lay the deck on and check they spin before printing the gears. **Changes:** gate body,
+  deck, gears, idler, spools, caps, light dock.
+
+### Worth measuring, but no print depends on it
+
+- **C12 · Lens barrel: `lens_len` 125, `lens_r` 37 (guesses).** Calipers: mount flange to front rim,
+  and the barrel's diameter. Nothing printed changes: the lens is reference geometry (R14), and x is
+  measured from its front. **Changes:** nothing.
+
+After printing, tune `channel`, `peg_fit`, the tooth sizes and `gear_backlash` against the parts ("Tuning and
+print notes").
+
 ## Tuning and print notes
 
 - **`thread_clear`** builds valid solids from 0.05 to 0.3. Print the coupon to choose.

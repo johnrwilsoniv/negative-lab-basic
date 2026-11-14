@@ -3,15 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>NLB Scan Rig · Print Direction Preview</title>
+<title>NLB Scan Rig · Print Preview</title>
+<meta name="description" content="Every printed part of the NLB scan rig on the bed, layer by layer, with the latest design review's findings and the STL and STEP files.">
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">
 <style>
-/* Template for print_preview.py, which embeds the print-pose STLs from exports/stl (viewed, and offered for download at the bottom). */
+/* Template for print_preview.py, which embeds the print-pose STLs from exports/stl (viewed, and offered for download at the bottom),
+   and the last design review's findings, each with a drawing made from the same Params (the second tab). */
 :root {
   --bg: #e8ebe9; --panel: #f5f7f6; --stage: #dde2df; --fg: #1a1f1d; --muted: #5a6460; --line: #cbd3cf;
-  --print: #d4891f; --cut: #8a5512; --layer: #f2c14e; --over: #c2362b; --bed: #b9c2be;
+  --print: #d4891f; --cut: #8a5512; --layer: #f2c14e; --over: #c2362b; --bed: #b9c2be; --ok: #2f8a5c;
   --f-ui: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
   --f-num: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
   color-scheme: light;
@@ -19,7 +22,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #111413; --panel: #171b1a; --stage: #0d100f; --fg: #e3e8e5; --muted: #95a19c; --line: #2a312e;
-    --print: #e9a23b; --cut: #7a4a10; --layer: #ffd36b; --over: #f2665a; --bed: #2b322f;
+    --print: #e9a23b; --cut: #7a4a10; --layer: #ffd36b; --over: #f2665a; --bed: #2b322f; --ok: #5cc28d;
     color-scheme: dark;
   }
 }
@@ -35,6 +38,15 @@ header {
 }
 header h1 { font: 700 19px/1.1 var(--f-ui); margin: 0; letter-spacing: -0.01em; }
 header h1 span { color: var(--muted); font-weight: 500; }
+header h1 a { color: inherit; text-decoration: none; }
+header h1 a:hover { color: var(--print); }
+/* the site's links, the same on every page; a preview slot (not main) says so */
+nav.site { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font: 500 13px/1.2 var(--f-ui); }
+nav.site a { color: var(--muted); text-decoration: none; }
+nav.site a:hover { color: var(--fg); }
+nav.site a[aria-current] { color: var(--fg); box-shadow: inset 0 -2px 0 var(--print); }
+nav.site a:focus-visible, header h1 a:focus-visible { outline: 2px solid var(--print); outline-offset: 2px; }
+nav.site .slot { font: 500 11.5px/1 var(--f-num); color: var(--print); border: 1px solid; border-radius: 3px; padding: 3px 5px; }
 .pick { display: flex; align-items: center; gap: 8px; }
 .pick label { font: 600 11.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); }
 select {
@@ -181,6 +193,150 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
 .dl .t small { display: block; font: 11.5px var(--f-num); color: var(--muted); font-weight: 400; }
 .dl .v { font: 12px var(--f-num); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .dl .v::after { content: " ↓"; color: var(--print); }
+.dl li { display: flex; align-items: baseline; gap: 4px; }
+.dl li > a:first-child { flex: 1; min-width: 0; }
+.dl a.alt { display: block; margin: 0; font: 12px var(--f-num); color: var(--muted); white-space: nowrap; }
+.dl a.alt::after { content: " ↓"; color: var(--print); }
+.dl > p a { color: inherit; }
+
+/* two views: the print preview (viewer + downloads) and "Latest feedback" */
+.tabs { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+.tabs button {
+  font: 600 13.5px/1 var(--f-ui); color: var(--muted); background: none; border: 0; border-radius: 4px;
+  padding: 8px 11px; cursor: pointer; white-space: nowrap;
+}
+.tabs button:hover { color: var(--fg); }
+.tabs button[aria-selected="true"] { background: var(--panel); color: var(--fg); box-shadow: inset 0 -2px 0 var(--print); }
+.tabs .c { font: 500 11.5px var(--f-num); color: var(--print); margin-left: 5px; font-variant-numeric: tabular-nums; }
+.fb { display: none; }
+body.tab-fb .view { height: auto; display: block; }
+body.tab-fb .app, body.tab-fb .dl, body.tab-fb .pick { display: none; }
+body.tab-fb .fb { display: block; }
+
+.fb { padding: 22px max(18px, env(safe-area-inset-left, 0px)) max(36px, env(safe-area-inset-bottom, 0px)); max-width: 1500px; margin: 0 auto; }
+.fb h2 { font: 600 11.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin: 0 0 8px; }
+.fb code { font: 12.5px var(--f-num); }
+.fhead { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: flex-start; justify-content: space-between; margin-bottom: 26px; }
+.fhead > div:first-child { flex: 1 1 520px; max-width: 860px; }
+.fhead p { margin: 0; color: var(--muted); font-size: 14px; }
+.fhead p b { color: var(--fg); font-weight: 600; }
+.fhead p.lead { color: var(--fg); font: 500 17px/1.4 var(--f-ui); margin-bottom: 8px; }
+.tally { display: flex; gap: 8px; }
+.tally a {
+  display: block; min-width: 104px; padding: 9px 12px 10px; background: var(--panel); border: 1px solid var(--line);
+  border-top: 3px solid var(--muted); border-radius: 6px; text-decoration: none; color: inherit;
+}
+.tally a:hover { border-color: var(--muted); }
+.tally a b { display: block; font: 500 26px/1.1 var(--f-num); font-variant-numeric: tabular-nums; }
+.tally a span { font: 600 11px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.tally a.fail { border-top-color: var(--over); }
+.tally a.trouble { border-top-color: var(--print); }
+.tally a.fail.none { border-top-color: var(--ok); }
+.tally a.fail.none b { color: var(--ok); }
+
+/* the findings, by severity */
+.fb header { padding: 0; border: 0; background: none; }
+.grp { scroll-margin-top: 12px; }
+.grp + .grp { margin-top: 30px; }
+.grp > header { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; margin-bottom: 10px; }
+.grp > header h3 { font: 700 20px/1.15 var(--f-ui); margin: 0; letter-spacing: -0.01em; }
+.grp > header .c { font: 500 12.5px var(--f-num); color: var(--muted); font-variant-numeric: tabular-nums; }
+.grp > header p { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 14px; }
+.grp .nil { margin: 0; padding: 10px 14px; background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--ok); border-radius: 6px; font-size: 14px; }
+.items { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 470px), 1fr)); gap: 14px; align-items: start; }
+.item { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--muted); border-radius: 6px; padding: 12px 14px; scroll-margin-top: 12px; min-width: 0; }
+.item.trouble { border-left-color: var(--print); }
+.item.fail { border-left-color: var(--over); }
+.item > header { display: flex; gap: 10px; align-items: flex-start; flex-wrap: nowrap; }
+.item h4 { flex: 1; margin: 0; font: 600 16px/1.25 var(--f-ui); }
+.item h4 .cn { font: 500 12.5px var(--f-num); color: var(--muted); margin-right: 8px; }
+.item.trouble h4 .cn { color: var(--print); }
+.item .sev { flex: none; font: 600 10.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 8px; margin-top: 1px; white-space: nowrap; }
+.item.trouble .sev { color: var(--print); border-color: color-mix(in srgb, var(--print) 50%, var(--line)); }
+.item.fail .sev { color: var(--over); border-color: var(--over); }
+.item .vals { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.item .vals li { display: inline-flex; gap: 6px; align-items: baseline; padding: 4px 8px; border-radius: 4px; background: var(--bg); font-size: 12px; color: var(--muted); }
+.item .vals b { font: 500 13.5px var(--f-num); font-variant-numeric: tabular-nums; color: var(--fg); }
+.item .vals li.bad b { color: var(--over); }
+.item dl { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 0 10px; margin: 0; }
+.item dt, .item dd { border-top: 1px solid var(--line); padding: 6px 0; margin: 0; font: 13.5px/1.4 var(--f-ui); text-align: left; }
+.item dt { font: 600 11px/1.7 var(--f-ui); text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.item dd code { font: 12px var(--f-num); }
+.item dd.status { color: var(--ok); }
+.item .chip {
+  display: inline-block; font: 500 12.5px/1 var(--f-ui); color: var(--fg); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px 8px; margin: 0 4px 2px 0; cursor: pointer;
+}
+.item .chip:hover { border-color: var(--print); }
+.item .chip .n { font: 500 11px var(--f-num); color: var(--print); margin-right: 4px; }
+
+/* the drawings */
+.fig { margin: 10px 0; background: var(--bg); border-radius: 5px; padding: 10px 10px 8px; min-width: 0; }
+.fig .svgbox { width: 100%; min-height: 60px; overflow-x: auto; overscroll-behavior-x: contain; }
+.fig svg { display: block; overflow: visible; }
+.fig .note { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
+.fig ol { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.fig ol li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; }
+.fig ol li .m { font: 600 11px/18px var(--f-num); width: 18px; height: 18px; border-radius: 50%; text-align: center; color: var(--bg); background: var(--print); }
+.fig ol li.bad .m { background: var(--over); }
+.fig ol li.good .m { background: var(--ok); }
+
+/* SVG: printed parts orange-tinted, references dashed, the problem red, what is right green */
+.fig svg text { font: 500 11.5px var(--f-num); fill: var(--fg); }
+.fig svg .tag { font: 600 11px var(--f-ui); fill: var(--muted); }
+.fig svg .tag.num { fill: var(--fg); font: 500 11.5px var(--f-num); }
+.fig svg .tag.badt { fill: var(--over); font: 500 11.5px var(--f-num); }
+.fig svg .tag.onframe { fill: #c9c2b8; }
+.fig svg .pr { fill: color-mix(in srgb, var(--print) 26%, var(--panel)); stroke: var(--print); stroke-width: 1.2; }
+.fig svg .pr2 { fill: color-mix(in srgb, var(--print) 12%, var(--panel)); stroke: color-mix(in srgb, var(--print) 70%, var(--muted)); stroke-width: 1; }
+.fig svg .solid { fill: var(--print); stroke: var(--cut); stroke-width: 1; }
+.fig svg .see { fill: color-mix(in srgb, var(--print) 22%, transparent); stroke: var(--print); stroke-width: 1.2; }
+.fig svg .ref { fill: color-mix(in srgb, var(--muted) 10%, transparent); stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; }
+.fig svg .ghost { fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 5 3; }
+.fig svg .ghostln { fill: none; stroke: var(--muted); stroke-width: 1.4; stroke-dasharray: 5 3; }
+.fig svg .sup { fill: color-mix(in srgb, var(--muted) 16%, transparent); stroke: var(--muted); stroke-width: 0.8; stroke-dasharray: 2 2; }
+.fig svg .csl { fill: color-mix(in srgb, #9aa3a0 30%, var(--panel)); stroke: var(--muted); stroke-width: 1; }
+.fig svg .lit { fill: color-mix(in srgb, var(--layer) 60%, transparent); stroke: none; }
+.fig svg .litln { stroke: var(--layer); stroke-width: 4; }
+.fig svg .bare { fill: var(--layer); stroke: var(--over); stroke-width: 1.2; }
+.fig svg .film { fill: color-mix(in srgb, #b39466 60%, transparent); stroke: #b39466; stroke-width: 1; }
+.fig svg .filmln { stroke: #b39466; stroke-width: 3; }
+.fig svg .frame { fill: #2b2622; fill-opacity: 0.82; stroke: none; }
+.fig svg .perf { fill: var(--bg); stroke: none; }
+.fig svg .hole { fill: var(--bg); stroke: var(--print); stroke-width: 1; }
+.fig svg .win { fill: var(--stage); stroke: var(--print); stroke-width: 1; }
+.fig svg rect.bad, .fig svg polygon.bad { fill: color-mix(in srgb, var(--over) 45%, transparent); stroke: var(--over); stroke-width: 1.2; }
+.fig svg .badln { stroke: var(--over); stroke-width: 3; stroke-linecap: round; }
+.fig svg .zok { fill: color-mix(in srgb, var(--ok) 40%, var(--panel)); stroke: var(--ok); stroke-width: 1; }
+.fig svg .zbad { fill: color-mix(in srgb, var(--over) 40%, var(--panel)); stroke: var(--over); stroke-width: 1; }
+.fig svg .zref { fill: color-mix(in srgb, var(--muted) 30%, var(--panel)); stroke: var(--muted); stroke-width: 1; }
+.fig svg .zunk { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 2; }
+.fig svg .now { stroke: var(--fg); stroke-width: 2; }
+.fig svg .table { stroke: var(--fg); stroke-width: 1.6; }
+.fig svg .axisln { stroke: var(--muted); stroke-width: 0.8; stroke-dasharray: 10 3 2 3; }
+.fig svg .lim { stroke: var(--over); stroke-width: 1.2; stroke-dasharray: 5 3; }
+.fig svg .ext { stroke: var(--muted); stroke-width: 0.7; stroke-dasharray: 2 2; }
+.fig svg .flow { color: var(--muted); }
+.fig svg .flow.good { color: var(--ok); }
+.fig svg .flow.bad { color: var(--over); }
+.fig svg .flow.lit { color: var(--layer); }
+.fig svg .flow .ln { stroke: currentColor; stroke-width: 2; }
+.fig svg .flow .ah { fill: currentColor; }
+.fig svg .d { color: var(--print); }
+.fig svg .d.bad { color: var(--over); }
+.fig svg .d.good { color: var(--ok); }
+.fig svg .d .ln { stroke: currentColor; stroke-width: 1.3; fill: none; }
+.fig svg .d .ah { fill: currentColor; }
+.fig svg .d rect { fill: var(--panel); stroke: currentColor; stroke-width: 1.2; }
+.fig svg .d circle { fill: currentColor; }
+.fig svg .d circle + text { fill: var(--panel); font-weight: 600; font-size: 11px; }
+
+/* what else the review said */
+.more { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 14px; margin-top: 30px; align-items: start; }
+.more section { background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--muted); border-radius: 6px; padding: 12px 14px; }
+.more section.clean { border-top-color: var(--ok); }
+.more h3 { font: 700 16px/1.2 var(--f-ui); margin: 0 0 8px; }
+.more ul { margin: 0; padding: 0 0 0 18px; font-size: 13.5px; display: flex; flex-direction: column; gap: 5px; }
 
 @media (max-width: 820px) {
   .app { grid-template-columns: 1fr; grid-template-rows: 68vh auto; }
@@ -190,19 +346,35 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   .meta, .hint { display: none; }
   .toolbar { right: 110px; }
 }
+@media (max-width: 520px) {
+  header { gap: 10px 14px; }
+  .tabs { order: 1; width: 100%; }
+  .pick { order: 2; }
+  .tabs button { flex: 1; padding: 9px 6px; }
+  .tally { width: 100%; }
+  .tally a { flex: 1; min-width: 0; }
+  .item dl { grid-template-columns: 1fr; }
+  .item dt { border-top: 1px solid var(--line); padding-bottom: 0; }
+  .item dd { border-top: 0; padding-top: 2px; }
+}
 </style>
 </head>
 <body>
 <div class="view">
 <header>
-  <h1>NLB scan rig <span>· print direction</span></h1>
+  <h1><a id="homeLink" href="nlb-scan-rig.html">NLB scan rig</a> <span>· print direction</span></h1>
+  <nav class="tabs" role="tablist" aria-label="View">
+    <button type="button" role="tab" id="tabPrint" aria-selected="true" aria-controls="printView">Print preview</button>
+    <button type="button" role="tab" id="tabFb" aria-selected="false" aria-controls="fb">Latest feedback<span class="c" id="tabCount"></span></button>
+  </nav>
   <div class="pick">
     <label for="part">Part</label>
     <select id="part"></select>
   </div>
   <div class="meta" id="meta"></div>
+  <nav class="site" id="siteNav" aria-label="Site"></nav>
 </header>
-<div class="app">
+<div class="app" id="printView" role="tabpanel" aria-labelledby="tabPrint">
   <div class="stage" id="stage">
     <div class="loading" id="loading">loading CAD…</div>
     <div class="tree" id="tree" hidden role="group" aria-label="Parts shown in the assembly"></div>
@@ -251,9 +423,21 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   </aside>
 </div>
 </div>
+<section class="fb" id="fb" role="tabpanel" aria-labelledby="tabFb">
+  <div class="fhead">
+    <div>
+      <h2>Latest feedback: design review</h2>
+      <p class="lead" id="fLead"></p>
+      <p id="fMeta"></p>
+    </div>
+    <nav class="tally" id="fTally" aria-label="Findings by severity"></nav>
+  </div>
+  <div id="findings"></div>
+  <div class="more" id="fMore"></div>
+</section>
 <section class="dl" aria-labelledby="dlH">
   <h2 id="dlH">Download STL</h2>
-  <p>One file per printed solid, in print pose (Z up, the bed at Z = 0), as <code>build.py</code> wrote them to <code>rig/exports/stl/</code>.</p>
+  <p id="dlNote">One file per printed solid, in print pose (Z up, the bed at Z = 0), as <code>build.py</code> wrote them to <code>rig/exports/stl/</code>.</p>
   <div class="cols" id="dl"></div>
 </section>
 
@@ -261,9 +445,34 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/STLLoader.js"></script>
 <script>
-(() => {
+(async () => {
   const DATA = /*__PRINT_DATA__*/null;
   const $ = (id) => document.getElementById(id);
+  // The site's links; opened from exports/ instead, the two pages link to each other there.
+  {
+    const L = Object.assign({ home: 'nlb-scan-rig.html', print_preview: 'nlb-rig-print-preview.html',
+                              repo: 'https://github.com/johnrwilsoniv/negative-lab-basic' }, (DATA && DATA.site) || {});
+    const items = [['home', 'Model'], ['print_preview', 'Print preview']].concat(L.files ? [['files', 'Files']] : [], [['repo', 'Source']]);
+    $('siteNav').innerHTML = items.map(([k, t]) => `<a href="${L[k]}"${k === 'print_preview' ? ' aria-current="page"' : ''}>${t}</a>`).join('') +
+      (L.slot && L.slot !== 'main' ? `<span class="slot" title="A design branch, not the current rig">preview: ${L.slot}</span>` : '');
+    $('homeLink').href = L.home;
+  }
+  // On nlb.jrwiv.com (website.py) each STL is a mesh file instead of embedded: fetch them all before drawing.
+  try {
+    const todo = [];
+    (function walk(o) {
+      if (Array.isArray(o)) o.forEach(walk);
+      else if (o && typeof o === 'object') { if (typeof o.mesh === 'string') todo.push(o); Object.values(o).forEach(walk); }
+    })(DATA);
+    await Promise.all(todo.map(async (o) => {
+      const r = await fetch(o.mesh);
+      if (!r.ok) throw new Error(`${o.mesh}: ${r.status}`);
+      o.buf = await r.arrayBuffer();
+    }));
+  } catch (err) {
+    $('loading').textContent = `Couldn't load the CAD (${err.message}). Reload to try again.`;
+    return;
+  }
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
   const f2 = (v) => v.toFixed(2);
 
@@ -335,6 +544,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   // ---- meshes ----
   const loader = new THREE.STLLoader();
   const COS45 = Math.cos(Math.PI / 4);
+  function stlBytes(o) { return o.buf || decode(o.stl); }     // fetched from the site, or embedded
   function decode(b64) {
     const s = atob(b64), u = new Uint8Array(s.length);
     for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
@@ -350,7 +560,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
     return Math.abs(vol);
   }
   function prepare(part) {
-    const g = loader.parse(decode(part.stl));
+    const g = loader.parse(stlBytes(part));
     g.rotateX(-Math.PI / 2);                  // STL is Z up (print pose); three is Y up
     g.computeBoundingBox();
     const bb = g.boundingBox;
@@ -399,7 +609,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   };
   function prepareAsm() {
     const items = DATA.assembly.solids.map((s, i) => {
-      const g = loader.parse(decode(s.stl));          // mockup coordinates already: y up, the table at y = 0
+      const g = loader.parse(stlBytes(s));          // mockup coordinates already: y up, the table at y = 0
       g.computeVertexNormals();
       return { name: s.name, g, colour: ASM_COLOURS[i % ASM_COLOURS.length], vol: volumeOf(g.attributes.position.array) };
     });
@@ -408,8 +618,8 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
     // references: a mesh (the perforated film, its exposures) or a box (the CS-Lite), each its own colour
     const refs = DATA.assembly.refs.map((r) => {
       let g;
-      if (r.stl) {
-        g = loader.parse(decode(r.stl));
+      if (r.stl || r.buf) {
+        g = loader.parse(stlBytes(r));
         g.computeVertexNormals();
       } else {
         const [x0, x1, y0, y1, z0, z1] = r.box;
@@ -507,7 +717,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
     };
     for (const it of c.items) add(PARTS[it.name].group, { name: it.name, label: PARTS[it.name].label, colour: it.colour });
     for (const r of c.refs) add(r.group, { name: r.name, label: r.label, colour: r.colour });
-    groups.sort((a, b) => parseFloat(a.label) - parseFloat(b.label));     // by subassembly number: "4 · …" before "5 · …"
+    groups.sort((a, b) => parseFloat(a.label) - parseFloat(b.label));     // by subassembly number: "2 · …" before "3 · …"
     return groups;
   }
   function buildTree() {
@@ -733,7 +943,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
     }
   }
   addEventListener('keydown', (e) => {
-    if (isAsm() || e.target === sel || e.target.closest('ul.asm')) return;
+    if (document.body.classList.contains('tab-fb') || isAsm() || e.target === sel || e.target.closest('ul.asm')) return;
     const s = $('layer');
     const d = { ArrowUp: 1, ArrowDown: -1, PageUp: 10, PageDown: -10 }[e.key];
     if (d && e.target !== s) { e.preventDefault(); stop(); s.value = +s.value + d; cut(); hash(); }
@@ -742,6 +952,7 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
 
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
+    if (!w || !h) return;                    // hidden: the other tab is showing
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     // with the part picker open, centre the model in the space to its left
@@ -753,7 +964,12 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   new ResizeObserver(resize).observe(stage);
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paint);
 
-  // ---- STL downloads: the embedded print-pose STLs, each turned into a file on first use ----
+  // ---- downloads: on the site, links to its STL and STEP files; standalone, the embedded STLs as files on first use ----
+  if (DATA.site) {
+    $('dlH').textContent = 'Download STL and STEP';
+    $('dlNote').innerHTML = 'One STL (for the slicer) and one STEP (for Onshape) per printed solid, in print pose (Z up, the bed at ' +
+      `Z = 0). The assembly STEP, and everything as one zip, are on <a href="${DATA.site.files}">Files</a>.`;
+  }
   {
     const kb = (b64) => Math.round((b64.length * 3 / 4 - (b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0)) / 1024);
     const cols = {};
@@ -766,8 +982,14 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
         ul = cols[p.group] = col.querySelector('ul');
       }
       const li = document.createElement('li');
-      li.innerHTML = `<a href="#" download="${p.name}.stl"><span class="n">${p.num}</span>` +
-        `<span class="t">${p.label}<small>${p.name}.stl</small></span><span class="v">${kb(p.stl)} KB</span></a>`;
+      const href = p.download ? p.download.stl : '#';
+      li.innerHTML = `<a href="${href}" download="${p.name}.stl"><span class="n">${p.num}</span>` +
+        `<span class="t">${p.label}<small>${p.name}.stl</small></span><span class="v">${p.download ? Math.round(p.bytes / 1024) : kb(p.stl)} KB</span></a>`;
+      if (p.download) {
+        li.insertAdjacentHTML('beforeend', `<a class="alt" href="${p.download.step}" download="${p.name}.step">STEP</a>`);
+        ul.append(li);
+        continue;
+      }
       const a = li.firstChild;
       const ready = () => {
         if (a.dataset.ready) return;
@@ -780,6 +1002,361 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
       ul.append(li);
     }
   }
+
+  // ---- "Latest feedback": the last design review's findings, each with a drawing made from the build's Params ----
+  const FB = DATA.feedback, P = FB.p, M = FB.m;
+  const num = (v) => String(+(+v).toFixed(3));
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const A = P.axis, XR = P.x_ref;                     // the lens axis's height, and the film reference plane
+
+  // ---- a little SVG kit: mm in, px out (y up), redrawn to the box's width so text stays 11.5 px ----
+  const NS = 'http://www.w3.org/2000/svg';
+  const CH = 6.9;                                     // IBM Plex Mono at 11.5 px: 0.6 em per character
+  function mk(tag, attrs, parent) {
+    const e = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) if (v !== undefined && v !== null) e.setAttribute(k, v);
+    if (parent) parent.append(e);
+    return e;
+  }
+  const arc = (cx, cy, r, a0, a1, n = 48) =>          // points along a circle from angle a0 to a1 (radians, y up)
+    Array.from({ length: n + 1 }, (_, i) => { const a = a0 + (a1 - a0) * i / n; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; });
+  function kit(svg, X, Y, s) {
+    const g0 = mk('g', {}, svg), g1 = mk('g', {}, svg), g2 = mk('g', {}, svg);   // shapes, arrows and extension lines, dimensions
+    const pts = (a) => a.map(([x, y]) => `${X(x).toFixed(1)},${Y(y).toFixed(1)}`).join(' ');
+    const head = (g, x, y, dx, dy) => {              // a filled arrowhead, its tip at (x, y) px, pointing along (dx, dy)
+      const L = 7, W = 3, px = -dy, py = dx;
+      mk('path', { class: 'ah', d: `M${x},${y} L${x - dx * L + px * W},${y - dy * L + py * W} L${x - dx * L - px * W},${y - dy * L - py * W}Z` }, g);
+    };
+    const label = (g, x, y, text, anchor = 'middle') => {   // a boxed label centred (or anchored) on (x, y) px
+      const w = text.length * CH + 10, h = 18;
+      const x0 = anchor === 'start' ? x : anchor === 'end' ? x - w : x - w / 2;
+      mk('rect', { x: x0, y: y - h / 2, width: w, height: h, rx: 3 }, g);
+      mk('text', { x: x0 + w / 2, y: y + 4, 'text-anchor': 'middle' }, g).textContent = text;
+    };
+    const group = (cls) => mk('g', { class: 'd' + (cls ? ' ' + cls : '') }, g2);
+    const ext = (x0, y0, x1, y1) => mk('line', { class: 'ext', x1: x0, y1: y0, x2: x1, y2: y1 }, g1);
+    return {
+      s, X, Y,
+      rect(x0, y0, x1, y1, cls) {
+        mk('rect', { class: cls, x: X(Math.min(x0, x1)), y: Y(Math.max(y0, y1)), width: Math.abs(x1 - x0) * s, height: Math.abs(y1 - y0) * s }, g0);
+      },
+      poly(a, cls, closed = true) { mk(closed ? 'polygon' : 'polyline', { class: cls, points: pts(a) }, g0); },
+      line(x0, y0, x1, y1, cls) { mk('line', { class: cls, x1: X(x0), y1: Y(y0), x2: X(x1), y2: Y(y1) }, g0); },
+      circle(cx, cy, r, cls) { mk('circle', { class: cls, cx: X(cx), cy: Y(cy), r: r * s }, g0); },
+      text(x, y, t, { cls = 'tag', anchor = 'middle', dx = 0, dy = 4 } = {}) {
+        mk('text', { class: cls, x: X(x) + dx, y: Y(y) + dy, 'text-anchor': anchor }, g1).textContent = t;
+      },
+      arrow(x0, y0, x1, y1, cls) {                   // a line from (x0, y0) to an arrowhead at (x1, y1)
+        const g = mk('g', { class: 'flow ' + cls }, g1);
+        const a = [X(x0), Y(y0)], b = [X(x1), Y(y1)], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        mk('line', { class: 'ln', x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, g);
+        head(g, b[0], b[1], (b[0] - a[0]) / L, (b[1] - a[1]) / L);
+      },
+      // horizontal dimension from x0 to x1, its line `off` px below (+) or above (-) height y; extension lines from ya, yb.
+      // Too short for its arrows, they point in from outside; a label that doesn't fit between them goes past the end.
+      hdim(x0, x1, y, off, text, { ya = y, yb = y, pos, cls } = {}) {
+        const g = group(cls), ly = Y(y) + off, a = X(x0), b = X(x1), sg = Math.sign(off) || 1;
+        const tiny = b - a < 18, w = text.length * CH + 10;
+        if (off) { ext(a, Y(ya), a, ly + sg * 4); ext(b, Y(yb), b, ly + sg * 4); }
+        mk('line', { class: 'ln', x1: tiny ? a - 14 : a, y1: ly, x2: tiny ? b + 14 : b, y2: ly }, g);
+        head(g, a, ly, tiny ? 1 : -1, 0); head(g, b, ly, tiny ? -1 : 1, 0);
+        const at = pos || (tiny || b - a < w + 18 ? 'end' : 'mid'), gap = tiny ? 18 : 5;
+        if (at === 'mid') label(g, (a + b) / 2, ly, text);
+        else if (at === 'end') label(g, b + gap, ly, text, 'start');
+        else if (at === 'start') label(g, a - gap, ly, text, 'end');
+        else label(g, (a + b) / 2, ly + (at === 'above' ? -15 : 15), text);
+      },
+      // vertical dimension from y0 up to y1 at x, `off` px right (+) or left (-); the label beside it (l / r) or past an end (t / b)
+      vdim(y0, y1, x, off, text, { xa = x, xb = x, pos = off < 0 ? 'l' : 'r', cls } = {}) {
+        const g = group(cls), lx = X(x) + off, a = Y(y0), b = Y(y1), tiny = a - b < 18;
+        if (off) { ext(X(xa), a, lx + Math.sign(off) * 4, a); ext(X(xb), b, lx + Math.sign(off) * 4, b); }
+        mk('line', { class: 'ln', x1: lx, y1: tiny ? a + 14 : a, x2: lx, y2: tiny ? b - 14 : b }, g);
+        head(g, lx, a, 0, tiny ? -1 : 1); head(g, lx, b, 0, tiny ? 1 : -1);
+        const mid = (a + b) / 2;
+        if (pos === 'l') label(g, lx - 6, mid, text, 'end');
+        else if (pos === 'r') label(g, lx + 6, mid, text, 'start');
+        else if (pos === 't') label(g, lx, b - (tiny ? 26 : 14), text);
+        else label(g, lx, a + (tiny ? 26 : 14), text);
+      },
+      // a lettered marker at (mx, my) mm + (dx, dy) px, with a leader to the target (tx, ty) mm
+      call(key, [tx, ty], [mx, my, dx = 0, dy = 0], cls) {
+        const g = group(cls), x = X(mx) + dx, y = Y(my) + dy;
+        mk('line', { class: 'ln', x1: X(tx), y1: Y(ty), x2: x, y2: y, 'stroke-dasharray': '3 2' }, g);
+        mk('circle', { cx: X(tx), cy: Y(ty), r: 2.2 }, g);
+        mk('circle', { cx: x, cy: y, r: 9 }, g);
+        mk('text', { x, y: y + 4, 'text-anchor': 'middle' }, g).textContent = key;
+      },
+    };
+  }
+
+  const LIT0 = P.floor_t + (P.csl_h - P.csl_lit_h) / 2;                 // the lit area's bottom edge, above the table
+  const U_R = P.tube_ro + P.dock_tube_clear;                            // the round of the trough in the dock's floor (F17)
+  const dockFloor = (hw) => {                                           // the floor in front of the gate, from the camera:
+    const dy = A - P.floor_t;                                           // the trough only cuts it when the axis is low
+    if (dy >= U_R) return [[-hw, 0], [hw, 0], [hw, P.floor_t], [-hw, P.floor_t]];
+    const a = Math.acos(dy / U_R);
+    return [[-hw, 0], [hw, 0], [hw, P.floor_t], ...arc(0, A, U_R, -Math.PI / 2 + a, -Math.PI / 2 - a, 12), [-hw, P.floor_t]];
+  };
+
+  // One drawing per finding this rig carries, keyed by its id: bounds in mm, padding in px, what to draw, and the key to
+  // its letters ([letter, text, colour class]). Red marks the problem; orange is printed plastic, grey dashed is reference.
+  const FIGS = {
+    notch: {
+      maxH: 300,
+      note: () => `Section along the axis, beside the tube, near the table. The gate stands on the table in the dock's notch; ` +
+                  `the dock's floor ends in front of it and starts again under the CS-Lite.`,
+      bounds: () => ({ x0: P.dock_x0 - 1.5, x1: P.dock_x1 + 1, y0: -1, y1: 21, pad: () => ({ l: 8, r: 8, t: 36, b: 64 }) }),
+      draw(d) {
+        const xl = P.x_light, xg = P.x_gate, c = P.dock_gate_clear, top = 21;
+        d.rect(P.dock_x0, 0, xg - c, P.floor_t, 'pr2');
+        d.rect(xg, 0, XR, top, 'pr');
+        d.rect(XR, 0, xl, top, 'pr');
+        d.line(XR, 0, XR, top, 'lim');
+        d.rect(xl, 0, P.dock_x1, P.floor_t, 'pr2');
+        d.rect(xl + P.csl_slot, P.floor_t, xl + P.csl_slot + P.lip_t, P.floor_t + P.lip_h, 'pr2');
+        d.rect(xl, P.floor_t, xl + P.csl_t, top, 'csl');
+        d.line(xl, LIT0, xl, top, 'litln');
+        d.rect(xl - 0.45, 0, xl + 0.45, P.floor_t, 'bad');
+        d.line(P.dock_x0 - 1.5, 0, P.dock_x1 + 1, 0, 'table');
+        d.text((xg + XR) / 2, 11, 'gate front');
+        d.text((XR + xl) / 2, 11, 'gate body');
+        d.text(xl + P.csl_t / 2, 13, 'CS-Lite');
+        d.text((P.dock_x0 + xg) / 2, P.floor_t, `the dock's floor`, { dy: -6 });
+        d.hdim(xg - c, xg, top, -16, num(c));
+        d.hdim(xg, xl, 0, 18, `gate ${num(P.gate_d)}`);
+        d.hdim(xg - c, xl, 0, 44, `pocket ${num(M.pocket)}`);
+        d.call('a', [xl, P.floor_t / 2], [xl + 9, 8], 'bad');
+        d.call('b', [xg - c, P.floor_t / 2], [xg - 8, 13]);
+      },
+      calls: () => [
+        ['a', `Gap ${num(M.notch_gap)}: the gate body's rear face and the end of the floor's notch are one plane, x ${num(P.x_light)}. Both corners print on the bed.`, 'bad'],
+        ['b', `The floor's edge, ${num(P.floor_t)} tall and ${num(P.dock_gate_clear)} in front of the gate front: all the play the gate has, and all that stops the gate front toward the camera`],
+      ],
+    },
+    perfs: {
+      maxH: 280,
+      note: () => `From the camera: the top edge of the frame window, stretched ×3 upward. Orange: the gate front. ` +
+                  `Yellow: bare panel light through the perforations.`,
+      bounds: () => ({ x0: -27, x1: 27, y0: 0, y1: 17.4, pad: () => ({ l: 8, r: 8, t: 8, b: 8 }) }),
+      draw(d) {
+        const Yr = (r) => (r - 10.5) * 3, ww = P.win_w / 2, we = Yr(P.win_h / 2), top = 17.4;
+        d.rect(-27, 0, 27, top, 'film');
+        d.rect(-P.frame_w / 2, 0, P.frame_w / 2, Yr(P.frame_h / 2), 'frame');
+        const zs = P.perf_zs.filter((z) => Math.abs(z) + P.perf_l / 2 < 27);
+        for (const z of zs) if (Math.abs(z) + P.perf_l / 2 <= ww) d.rect(z - P.perf_l / 2, Yr(P.perf_inner), z + P.perf_l / 2, we, 'bare');
+        d.rect(-27, we, 27, top, 'pr');
+        d.rect(-27, 0, -ww, we, 'pr'); d.rect(ww, 0, 27, we, 'pr');
+        for (const z of zs) d.rect(z - P.perf_l / 2, Math.abs(z) > ww ? Yr(P.perf_inner) : we, z + P.perf_l / 2, Yr(P.perf_inner + P.perf_w), 'ghost');
+        d.text(-23, Yr(11.2), 'gate'); d.text(0, Yr(11.2), 'the frame', { cls: 'tag onframe' });
+        d.vdim(Yr(P.perf_inner), we, -ww + 0.7, 0, num(M.perf_show), { pos: 'l', cls: 'bad' });
+        d.call('a', [P.perf_zs.find((z) => z > 0), (Yr(P.perf_inner) + we) / 2], [7, Yr(14.6)], 'bad');
+        d.call('b', [12, Yr(P.frame_h / 2)], [12, Yr(11.2)]);
+        d.call('c', [15.5, we], [20, Yr(14.6)]);
+      },
+      calls: () => [
+        ['a', `${num(M.perf_show)} of each perforation shows: ${M.perf_count} of them, ${M.perf_area.toFixed(1)} mm² of bare light`, 'bad'],
+        ['b', `The frame's edge, ${num(P.frame_h / 2)} from the axis; the perforations start at ${num(P.perf_inner)}`],
+        ['c', `The window's edge, ${num(P.win_h / 2)}`],
+      ],
+    },
+    ledge: {
+      maxH: 250,
+      note: () => `The adapter cut through its axis, as it prints: socket down on the bed, thread up. Hatched: the support the ledge needs.`,
+      bounds: () => ({ x0: -P.adapter_r - 3, x1: P.adapter_r + 3, y0: -1, y1: P.socket_depth + P.flange + P.thread_len + 1.5,
+                       pad: () => ({ l: 44, r: 44, t: 8, b: 40 }) }),
+      draw(d) {
+        const sd = P.socket_depth, base = sd + P.flange, top = base + P.thread_len, th = [];
+        for (let i = 0, h = base; h <= top + 1e-9; i++, h = base + i * P.thread_pitch / 2) th.push([i % 2 ? P.thread_crest_r : P.thread_root_r, Math.min(h, top)]);
+        const half = [[P.fit_r, 0], [P.adapter_r, 0], [P.adapter_r, base], ...th, [P.adapter_bore_r, top], [P.adapter_bore_r, sd], [P.fit_r, sd]];
+        for (const k of [-1, 1]) {
+          d.rect(k * P.adapter_bore_r, 0, k * P.fit_r, sd, 'sup');
+          d.poly(half.map(([r, h]) => [k * r, h]), 'pr');
+          d.line(k * P.adapter_bore_r, sd, k * P.fit_r, sd, 'badln');
+        }
+        d.line(0, -1, 0, top + 1.5, 'axisln');
+        d.line(-P.adapter_r - 3, 0, P.adapter_r + 3, 0, 'table');
+        d.text(0, sd / 2, 'the socket: the tube goes in here');
+        d.hdim(P.adapter_bore_r, P.fit_r, 0, 18, num(M.ledge), { ya: sd, yb: sd, cls: 'bad', pos: 'start' });
+        d.vdim(0, sd, -P.adapter_r, -10, num(sd));
+        d.call('a', [-(P.adapter_bore_r + P.fit_r) / 2, sd], [-P.adapter_bore_r + 6, sd + 6], 'bad');
+        d.call('b', [P.thread_crest_r, base + P.thread_len / 2], [P.adapter_r + 1, top]);
+      },
+      calls: () => [
+        ['a', `The ledge: a flat ceiling ${num(M.ledge)} wide, ${num(P.socket_depth)} above the bed, and the face the tube's end seats on`, 'bad'],
+        ['b', `The M${num(P.thread_major)} × ${num(P.thread_pitch)} thread: its flanks are 60° from vertical, normal for a printed thread`],
+      ],
+    },
+    thin: {
+      maxH: 330,
+      note: () => `From the camera: the gate front, with the dock's floor dashed in front of it.`,
+      bounds: () => ({ x0: -60, x1: 60, y0: -1, y1: P.gh + 2, pad: () => ({ l: 8, r: 8, t: 22, b: 8 }) }),
+      draw(d) {
+        const [yp, zp] = P.peg_points.reduce((a, b) => (b[0] >= a[0] && b[1] >= a[1] ? b : a));     // the upper peg at +z
+        d.rect(-P.gw / 2, 0, P.gw / 2, P.gh, 'pr');
+        d.circle(0, A, P.fit_r, 'hole');
+        d.rect(-P.win_w / 2, A - P.win_h / 2, P.win_w / 2, A + P.win_h / 2, 'win');
+        for (const [y, z] of P.peg_points) d.circle(z, y, P.peg_d / 2, 'hole');
+        d.poly(dockFloor(60), 'ghost');
+        d.line(-60, 0, 60, 0, 'table');
+        d.vdim(A + P.fit_r, P.gh, 0, 0, num(M.over_socket), { pos: 'r', cls: 'bad' });
+        d.call('a', [0, P.gh - M.over_socket / 2], [-12, P.gh - 12], 'bad');
+        d.call('b', [zp, yp], [zp - 9, yp - 13]);
+      },
+      calls: () => [
+        ['a', `${num(M.over_socket)} of gate front over the tube's Ø${num(2 * P.fit_r)} socket`, 'bad'],
+        ['b', `The four Ø${num(P.peg_d)} peg holes, right through: the pegs are all that holds the gate front on the body`],
+      ],
+    },
+    baffle: {
+      maxH: 300,
+      note: () => `The tube's wall cut through its axis, as it prints: upright, two of its ${P.baffle_count} ribs. The bore is to the left.`,
+      bounds: () => {
+        const span = (P.baffle_count - 1) * P.baffle_pitch + P.baffle_h;
+        const first = P.baffle_margin + (P.tube_len - 2 * P.baffle_margin - span) / 2;
+        return { x0: P.tube_ri - 12, x1: P.tube_ro + 1.5, y0: first - 2.5, y1: first + P.baffle_pitch + 3.5, first,
+                 pad: () => ({ l: 8, r: 70, t: 8, b: 8 }) };
+      },
+      draw(d) {
+        const { y0, y1, first: a1 } = this.bounds(), a2 = a1 + P.baffle_pitch, ri = P.tube_ri, h = P.baffle_h;
+        d.poly([[P.tube_ro, y0], [P.tube_ro, y1], [ri, y1], [ri, a2 + h], [ri - h, a2 + h], [ri, a2], [ri, a1 + h], [ri - h, a1 + h], [ri, a1], [ri, y0]], 'pr');
+        for (const a of [a1, a2]) d.line(ri, a, ri - h, a + h, 'badln');
+        d.text(ri - 8, (y0 + y1) / 2 + 1, 'the bore');
+        d.text(ri - 10.2, y0 + 1.1, 'up', { anchor: 'start', dx: 8 });
+        d.arrow(ri - 10.2, y0 + 0.4, ri - 10.2, y0 + 3.4, 'mute');
+        d.text(ri - h - 0.6, a2 + 0.5, '45°', { anchor: 'end', cls: 'tag badt' });
+        d.hdim(ri - h, ri, a2 + h, -14, num(h), { pos: 'start' });
+        d.vdim(a1, a2, P.tube_ro, 14, `pitch ${num(P.baffle_pitch)}`);
+        d.call('a', [ri - h / 2, a1 + h / 2], [ri - 4.5, a1 - 1.2], 'bad');
+        d.call('b', [ri - h / 2, a1 + h], [ri - 4.5, a1 + h + 2]);
+      },
+      calls: () => [
+        ['a', `A rib's lower flank: ${num(P.baffle_h)} up over ${num(P.baffle_h)} in, exactly 45°, the limit without supports`, 'bad'],
+        ['b', `Its top face is square to the axis and faces up: no overhang`],
+      ],
+    },
+    filament: {
+      maxH: 340,
+      note: () => `Side view, cut along the axis. The CS-Lite shines past the gate into the room; only these walls keep it out of the light path.`,
+      bounds: () => ({ x0: P.x_front - 12, x1: P.dock_x1 + 2, y0: -1, y1: P.floor_t + P.csl_h + 2, pad: () => ({ l: 8, r: 8, t: 8, b: 8 }) }),
+      draw(d) {
+        const xl = P.x_light, xg = P.x_gate, xs = xg + P.front_wall, xw = XR - P.win_depth, top = P.floor_t + P.csl_h;
+        const fl = P.flare_scale * P.win_h / 2;                  // the light passage's half height at the socket's floor
+        d.rect(P.x_front - 12, A - P.lens_r, P.x_front, A + P.lens_r, 'ref');
+        d.rect(P.x_front - P.thread_len, A - P.adapter_r, P.x_front + P.flange + P.socket_depth, A + P.adapter_r, 'pr');
+        d.rect(P.x_front - P.thread_len, A - P.adapter_bore_r, P.x_front + P.flange, A + P.adapter_bore_r, 'hole');
+        d.rect(xg, 0, XR, P.gh, 'pr');
+        d.rect(xg, A - P.fit_r, xs, A + P.fit_r, 'hole');
+        d.poly([[xs, A - fl], [xs, A + fl], [xw, A + P.win_h / 2], [XR, A + P.win_h / 2], [XR, A - P.win_h / 2], [xw, A - P.win_h / 2]], 'hole');
+        d.rect(P.tube_x0, A - P.tube_ro, P.tube_x1, A + P.tube_ro, 'pr');
+        d.rect(P.tube_x0, A - P.tube_ri, P.tube_x1, A + P.tube_ri, 'hole');
+        d.rect(XR, 0, xl, P.gh, 'pr');                           // the gate body: solid but for the light passage
+        d.poly([[XR, A - P.body_win_h / 2], [XR, A + P.body_win_h / 2], [xl, A + P.rear_win_h / 2], [xl, A - P.rear_win_h / 2]], 'hole');
+        d.rect(XR, P.y_deck, xl - P.deck_clear, P.y_deck + P.deck_t, 'pr2');
+        d.line(P.x_film, A - P.film_w / 2, P.x_film, A + P.film_w / 2, 'filmln');
+        d.rect(P.dock_x0, 0, xg - P.dock_gate_clear, Math.min(P.floor_t, A - U_R), 'pr2');
+        d.rect(xl, 0, P.dock_x1, P.floor_t, 'pr2');
+        d.rect(xl + P.csl_slot, P.floor_t, xl + P.csl_slot + P.lip_t, P.floor_t + P.lip_h, 'pr2');
+        d.rect(xl, P.floor_t, xl + P.csl_t, top, 'csl');
+        d.line(xl, LIT0, xl, LIT0 + P.csl_lit_h, 'litln');
+        d.line(P.x_front - 12, A, xl, A, 'axisln');
+        d.line(P.x_front - 12, 0, P.dock_x1 + 2, 0, 'table');
+        for (const y of [P.gh + 7, P.gh + 16, P.gh + 25]) d.arrow(xl - 1, y, xl - 46, y + 9, 'lit');
+        d.text(P.x_front - 6, A + 12, 'lens');
+        d.call('a', [(P.tube_x0 + P.tube_x1) / 2, A + (P.tube_ro + P.tube_ri) / 2], [(P.tube_x0 + P.tube_x1) / 2, A + P.tube_ro + 14]);
+        d.call('b', [xg + 2, P.gh - M.over_socket / 2], [xg - 12, P.gh + 12]);
+        d.call('c', [(XR + xl) / 2, A + P.rear_win_h / 2 + 5], [(XR + xl) / 2 - 2, P.gh + 16]);
+        d.call('d', [xl - 24, P.gh + 20.6], [xl - 44, P.gh + 34], 'bad');
+      },
+      calls: () => [
+        ['a', `The tube's wall: ${num(M.tube_wall)}`],
+        ['b', `The gate front over the socket: ${num(M.over_socket)}`],
+        ['c', `The gate body, solid round the light passage from the film to the lit face, with the deck on its top`],
+        ['d', `Panel light past the gate, ${M.past_pct.toFixed(0)}% of the lit area: a translucent filament glows in it`, 'bad'],
+      ],
+    },
+  };
+
+  // ---- the page: the verdict and the tally, then the findings by severity, each a card with its drawing ----
+  const PART_BY = Object.fromEntries(DATA.parts.map((p) => [p.name, p]));
+  const chips = (names) => names.map((n) => `<button type="button" class="chip" data-part="${n}"><span class="n">${PART_BY[n].num}</span>${esc(PART_BY[n].label)}</button>`).join('');
+  const SEV = Object.fromEntries(FB.severities.map((v) => [v.id, v]));
+  const R = FB.review, count = (sid) => FB.items.filter((it) => it.sev === sid).length;
+  $('fLead').textContent = R.verdict;
+  $('fMeta').innerHTML = `Reviewed <b>${esc(R.date)}</b> at wd ${num(R.wd)} · axis ${num(R.axis)} (<code>${esc(R.commit)}</code>). ` +
+    `${esc(R.how)} ${esc(R.ran)} The drawings are made from this build (<b>${esc(DATA.built)}</b>)` +
+    (FB.same ? '.' : `, which is not at the review's wd and axis: numbers the review measured are as it found them.`);
+  $('fTally').innerHTML = FB.severities.map((v) => `<a class="${v.id}${count(v.id) ? '' : ' none'}" href="#sev-${v.id}">` +
+    `<b>${count(v.id)}</b><span>${esc(v.title)}</span></a>`).join('');
+  $('tabCount').textContent = String(FB.items.length);
+
+  const figs = [];
+  $('findings').innerHTML = FB.severities.map((v) => {
+    const items = FB.items.filter((it) => it.sev === v.id);
+    return `<section class="grp" id="sev-${v.id}"><header><h3>${esc(v.title)}</h3><span class="c">${items.length}</span>` +
+      `<p>${esc(v.blurb)}</p></header>` + (items.length ? '<div class="items">' + items.map((it) => {
+        const f = FIGS[it.id];
+        const vals = it.nums.map((q) => `<li${q.tag ? ` class="${q.tag}"` : ''}><span>${esc(q.label)}</span><b>${esc(q.value)}</b></li>`).join('');
+        const calls = f.calls ? `<ol>${f.calls().map(([k, t, cls]) => `<li${cls ? ` class="${cls}"` : ''}><span class="m">${k}</span><span>${esc(t)}</span></li>`).join('')}</ol>` : '';
+        return `<article class="item ${it.sev}" id="fb-${it.id}"><header><h4><span class="cn">${it.num}</span>${esc(it.title)}</h4>` +
+          `<span class="sev">${esc(SEV[it.sev].title)}</span></header>` +
+          `<figure class="fig" data-fig="${it.id}"><div class="svgbox"></div><figcaption class="note">${esc(f.note())}</figcaption>${calls}</figure>` +
+          `<ul class="vals">${vals}</ul>` +
+          `<dl><dt>Found</dt><dd>${it.what}</dd><dt>Risk</dt><dd>${it.risk}</dd>` +
+          (it.status ? `<dt>Status</dt><dd class="status">${esc(it.status)}</dd>` : '') +
+          `<dt>Basis</dt><dd>${esc(it.basis)}</dd>` +
+          `<dt>Where</dt><dd>${it.where.map((w) => `<code>${esc(w)}</code>`).join('<br>')}</dd>` +
+          (it.parts.length ? `<dt>Parts</dt><dd>${chips(it.parts)}</dd>` : '') + `</dl></article>`;
+      }).join('') + '</div>' : `<p class="nil">None found.</p>`) + '</section>';
+  }).join('');
+  for (const el of document.querySelectorAll('#findings .fig')) figs.push({ f: FIGS[el.dataset.fig], box: el.querySelector('.svgbox'), title: el.closest('.item').querySelector('h4').textContent });
+  $('fMore').innerHTML = [['Came out clean', 'clean', FB.clean], ['Not carried over, or already in PLAN as unfinished', 'known', FB.known], ['Not checked', 'unchecked', FB.unchecked]]
+    .map(([title, cls, list]) => `<section class="${cls}"><h3>${title}</h3><ul>${list.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></section>`).join('');
+
+  function drawFig({ f, box, title }) {
+    if (!box.clientWidth) return;
+    const W = Math.max(box.clientWidth, f.minW || 0);          // narrower than minW: draw at minW, the box scrolls sideways
+    const b = f.bounds(), pl = b.pad(1);
+    let s = (W - pl.l - pl.r) / (b.x1 - b.x0);
+    let pad = b.pad(s);
+    const maxH = f.maxH || 440;
+    if ((b.y1 - b.y0) * s + pad.t + pad.b > maxH) { s = (maxH - pad.t - pad.b) / (b.y1 - b.y0); pad = b.pad(s); }
+    const H = Math.ceil((b.y1 - b.y0) * s + pad.t + pad.b);
+    const ox = pad.l + (W - pad.l - pad.r - (b.x1 - b.x0) * s) / 2;
+    const svg = mk('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'aria-label': title });
+    f.draw(kit(svg, (x) => ox + (x - b.x0) * s, (y) => pad.t + (b.y1 - y) * s, s));
+    box.replaceChildren(svg);
+  }
+  const drawAll = () => { if (document.body.classList.contains('tab-fb')) for (const g of figs) drawFig(g); };
+  new ResizeObserver(drawAll).observe($('findings'));
+
+  $('findings').addEventListener('click', (e) => {
+    const c = e.target.closest('.chip');
+    if (c) { setTab('print'); stop(); sel.value = c.dataset.part; show(PARTS[c.dataset.part]); scrollTo(0, 0); }
+  });
+  $('fTally').addEventListener('click', (e) => {
+    const a = e.target.closest('a');
+    if (a) { e.preventDefault(); $(a.getAttribute('href').slice(1)).scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  });
+
+  // ---- the two views ----
+  function setTab(tab) {
+    const fb = tab === 'feedback';
+    document.body.classList.toggle('tab-fb', fb);
+    $('tabPrint').setAttribute('aria-selected', String(!fb));
+    $('tabFb').setAttribute('aria-selected', String(fb));
+    if (fb) {
+      stop();
+      renderer.setAnimationLoop(null);
+      drawAll();
+      history.replaceState(null, '', '#tab=feedback');
+    } else {
+      resize();
+      renderer.setAnimationLoop(loop);
+      if (cur) hash();
+    }
+  }
+  $('tabPrint').addEventListener('click', () => setTab('print'));
+  $('tabFb').addEventListener('click', () => setTab('feedback'));
 
   $('meta').textContent = DATA.built;
   $('foot').innerHTML = DATA.foot;
@@ -796,7 +1373,9 @@ button:disabled, .seg select:disabled { opacity: 0.45; cursor: default; }
   hash();
   resize();
   $('loading').remove();
-  renderer.setAnimationLoop((now) => { step(now); controls.update(); renderer.render(scene, camera); });
+  function loop(now) { step(now); controls.update(); renderer.render(scene, camera); }
+  renderer.setAnimationLoop(loop);
+  if (['feedback', 'dims'].includes(q.get('tab'))) setTab('feedback');     // 'dims': links to the tab this one replaced
 })();
 </script>
 </body>

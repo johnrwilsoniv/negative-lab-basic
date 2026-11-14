@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>NLB Scan Rig CAD</title>
+<title>NLB Scan Rig</title>
+<meta name="description" content="A 3D-printed, light-tight rig for scanning a whole roll of 35mm negatives with a camera: the CadQuery model of every printed part, in place.">
+<meta property="og:title" content="NLB Scan Rig">
+<meta property="og:description" content="A 3D-printed, light-tight rig for scanning 35mm negatives with a camera.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&display=swap">
@@ -19,10 +24,6 @@
   --print: #d4891f;   /* safelight amber marks printed parts */
   --cut: #8a5512;     /* section faces in cutaway */
   --ref: #3a403e;     /* bought hardware */
-  --known: #2c7a58;
-  --guess: #b0601a;
-  --pick: #4a5fa8;
-  --bad: #b3261e;
   --f-ui: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
   --f-num: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
   color-scheme: light;
@@ -30,13 +31,13 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #111413; --panel: #171b1a; --stage: #0d100f; --fg: #e3e8e5; --muted: #95a19c;
-    --line: #2a312e; --print: #e9a23b; --cut: #7a4a10; --ref: #59615e; --known: #5cc497; --guess: #f0a259; --pick: #8fa3ec; --bad: #f2867d;
+    --line: #2a312e; --print: #e9a23b; --cut: #7a4a10; --ref: #59615e;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #111413; --panel: #171b1a; --stage: #0d100f; --fg: #e3e8e5; --muted: #95a19c;
-  --line: #2a312e; --print: #e9a23b; --cut: #7a4a10; --ref: #59615e; --known: #5cc497; --guess: #f0a259; --pick: #8fa3ec; --bad: #f2867d;
+  --line: #2a312e; --print: #e9a23b; --cut: #7a4a10; --ref: #59615e;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -68,7 +69,7 @@ body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--f-ui); }
 }
 .toolbar button[aria-pressed="true"] { border-color: var(--print); box-shadow: inset 0 -2px 0 var(--print); }
 .toolbar button:hover { border-color: var(--muted); }
-button:focus-visible, li[tabindex]:focus-visible { outline: 2px solid var(--print); outline-offset: 2px; }
+button:focus-visible { outline: 2px solid var(--print); outline-offset: 2px; }
 .hint { margin-left: auto; align-self: center; font: 12px var(--f-num); color: var(--muted); }
 .loading { position: absolute; inset: 0; display: grid; place-items: center; font: 13px var(--f-num); color: var(--muted); pointer-events: none; }
 
@@ -79,43 +80,26 @@ button:focus-visible, li[tabindex]:focus-visible { outline: 2px solid var(--prin
   display: flex; flex-direction: column; gap: 26px;
 }
 h1 { font: 700 26px/1.1 var(--f-ui); letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
-.sub { color: var(--muted); margin: 6px 0 0; font-size: 14px; }
-.sub code { font: 12.5px var(--f-num); }
+/* the site's links, the same on every page; a preview slot (not main) says so */
+nav.site { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 0 0 16px; font: 500 13px/1.2 var(--f-ui); }
+nav.site a { color: var(--muted); text-decoration: none; }
+nav.site a:hover { color: var(--fg); }
+nav.site a[aria-current] { color: var(--fg); box-shadow: inset 0 -2px 0 var(--print); }
+nav.site a:focus-visible, a.cta:focus-visible { outline: 2px solid var(--print); outline-offset: 2px; }
+nav.site .slot { font: 500 11.5px/1 var(--f-num); color: var(--print); border: 1px solid; border-radius: 3px; padding: 3px 5px; }
+.abstract { margin: 10px 0 0; font-size: 15.5px; line-height: 1.5; text-wrap: pretty; }
+a.cta {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 9px 13px; border-radius: 5px;
+  font: 600 14px/1 var(--f-ui); color: var(--fg); text-decoration: none;
+  border: 1px solid var(--print); background: color-mix(in srgb, var(--print) 12%, transparent);
+}
+a.cta:hover { background: color-mix(in srgb, var(--print) 22%, transparent); }
+a.cta span { color: var(--print); }
 h2 {
   font: 600 11.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.09em;
   color: var(--muted); margin: 0 0 10px;
 }
 section { min-width: 0; }
-.built { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: baseline; }
-.built span:nth-child(even) { font: 500 13px var(--f-num); font-variant-numeric: tabular-nums; }
-.cmd { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
-.cmd code { font: 12px var(--f-num); color: var(--fg); background: var(--bg); padding: 1px 4px; border-radius: 3px; }
-
-ul.parts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-ul.parts li {
-  display: grid; grid-template-columns: 22px 1fr; gap: 2px 8px; padding: 8px 8px; border-radius: 4px; cursor: pointer;
-}
-ul.parts li:hover, ul.parts li.hot { background: color-mix(in srgb, var(--print) 10%, transparent); }
-ul.parts .n { font: 500 13px var(--f-num); color: var(--print); padding-top: 1px; }
-ul.parts.ref .n { color: var(--muted); }
-ul.parts .t { font-weight: 600; }
-ul.parts .t code { font: 500 12px var(--f-num); color: var(--muted); margin-left: 4px; }
-ul.parts .d { grid-column: 2; color: var(--muted); font-size: 13.5px; }
-ul.parts .s { grid-column: 2; font: 12.5px var(--f-num); font-variant-numeric: tabular-nums; }
-ul.parts .s.bad { color: var(--bad); }
-
-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-td { padding: 6px 0; border-top: 1px solid var(--line); vertical-align: top; }
-td.v { font: 12.5px var(--f-num); font-variant-numeric: tabular-nums; text-align: right; padding: 7px 8px; white-space: nowrap; }
-td.c { text-align: right; width: 1%; }
-.chip { font: 600 10.5px/1 var(--f-ui); text-transform: uppercase; letter-spacing: 0.07em; padding: 3px 6px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
-.chip.known { color: var(--known); }
-.chip.guess { color: var(--guess); }
-.chip.pick { color: var(--pick); }
-.chip.bad { color: var(--bad); }
-.legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; color: var(--muted); font-size: 13px; align-items: center; }
-.notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
-.notes code { font: 12.5px var(--f-num); }
 
 @media (max-width: 820px) {
   .app { grid-template-columns: 1fr; grid-template-rows: 62vh auto; height: auto; }
@@ -143,51 +127,14 @@ td.c { text-align: right; width: 1%; }
 
   <aside class="rail">
     <header>
+      <nav class="site" id="siteNav" aria-label="Site"></nav>
       <h1>NLB Scan Rig</h1>
-      <p class="sub">CadQuery model · every printed solid as built by <code>build.py</code>, in place with a frame in the window</p>
+      <p class="abstract">A 3D-printed, light-tight rig for scanning a whole uncut roll of 35mm negatives with a
+        camera. A Sony A7 with a Laowa 90mm 2X macro looks down a baffled tube into a film gate over a CineStill
+        CS-Lite. The roll runs from one spool to the other through a fixed channel in the gate, and two sprockets
+        drive it by its perforations: one turn of the knob is one frame. This design has not been printed yet.</p>
+      <a class="cta" id="cta" href="nlb-rig-print-preview.html">Print preview &amp; dimensions <span aria-hidden="true">→</span></a>
     </header>
-
-    <section>
-      <h2>Built at</h2>
-      <div class="built">
-        <span>Lens front to film</span><span id="bWd"></span>
-        <span>Lens centre height</span><span id="bAxis"></span>
-      </div>
-      <p class="cmd">The CAD can't rebuild in the browser. For other values run <code>uv run python viewer.py --wd 150 --axis 45</code> in <code>rig/</code>.</p>
-    </section>
-
-    <section>
-      <h2>Printed parts</h2>
-      <ul class="parts" id="partList"></ul>
-    </section>
-
-    <section>
-      <h2>Bought, not printed</h2>
-      <ul class="parts ref">
-        <li tabindex="0" data-focus="cam"><span class="n">·</span><span class="t">Sony A7 + Laowa 90mm f/2.8 2X</span><span class="d">Drawn by the page, not CAD. Rests on the table; the gate box carries the front end.</span></li>
-        <li tabindex="0" data-focus="light"><span class="n">·</span><span class="t">CineStill CS-Lite</span><span class="d">The assembly's reference panel, stood on its long edge in the dock's slot.</span></li>
-        <li tabindex="0" data-focus="film"><span class="n">·</span><span class="t">Film</span><span class="d">The assembly's reference: the run through the gate's channel, and half the roll on each spool.</span></li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Fits, measured on the solids</h2>
-      <table><tbody id="fitRows"></tbody></table>
-      <div class="legend" id="interference"></div>
-    </section>
-
-    <section>
-      <h2>Notes for the printer</h2>
-      <ol class="notes">
-        <li>Real parts in matte black. The amber here only marks what gets printed.</li>
-        <li>Print <code>thread_coupon</code> first: the adapter's M67 × 0.75 thread on a 2mm grip ring. It tells us if the thread fits before anything bigger is printed.</li>
-        <li>Print the adapter flat, thread axis vertical, at 0.12–0.16mm layers.</li>
-        <li>The gate front and gate body print with their film faces on the bed, or as the last layer: rear face down for both.</li>
-        <li>Sprockets print standing on their shaft's foot; their teeth come to a 45° ridge, so nothing hangs over air. Print them at 0.12 layers.</li>
-        <li>One knob turn is one frame. Push the film's end into the channel and turn the knob until the teeth catch it.</li>
-        <li id="bedNote"></li>
-      </ol>
-    </section>
   </aside>
 </div>
 
@@ -196,34 +143,49 @@ td.c { text-align: right; width: 1%; }
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/STLLoader.js"></script>
 <script>
 const RIG = /*__RIG_DATA__*/null;
+// On nlb.jrwiv.com (website.py) each solid names a mesh file instead of embedding its STL: fetch them all first.
+async function loadMeshes(data) {
+  const todo = [];
+  (function walk(o) {
+    if (Array.isArray(o)) o.forEach(walk);
+    else if (o && typeof o === 'object') { if (typeof o.mesh === 'string') todo.push(o); Object.values(o).forEach(walk); }
+  })(data);
+  await Promise.all(todo.map(async (o) => {
+    const r = await fetch(o.mesh);
+    if (!r.ok) throw new Error(`${o.mesh}: ${r.status}`);
+    o.buf = await r.arrayBuffer();
+  }));
+}
+// The site's links; opened from exports/ instead, the two pages link to each other there.
+function siteNav(site) {
+  const L = Object.assign({ home: 'nlb-scan-rig.html', print_preview: 'nlb-rig-print-preview.html',
+                            repo: 'https://github.com/johnrwilsoniv/negative-lab-basic' }, site || {});
+  const items = [['home', 'Model'], ['print_preview', 'Print preview']].concat(L.files ? [['files', 'Files']] : [], [['repo', 'Source']]);
+  const nav = document.getElementById('siteNav');
+  nav.innerHTML = items.map(([k, t]) => `<a href="${L[k]}"${k === 'home' ? ' aria-current="page"' : ''}>${t}</a>`).join('') +
+    (L.slot && L.slot !== 'main' ? `<span class="slot" title="A design branch, not the current rig">preview: ${L.slot}</span>` : '');
+  document.getElementById('cta').href = L.print_preview;
+}
 </script>
 <script>
-(() => {
+(async () => {
   const $ = id => document.getElementById(id);
+  siteNav(RIG && RIG.site);
   if (!RIG) { $('loading').textContent = 'No CAD here: open exports/nlb-scan-rig.html, which viewer.py writes.'; return; }
+  try { await loadMeshes(RIG); }
+  catch (err) { $('loading').textContent = `Couldn't load the CAD (${err.message}). Reload to try again.`; return; }
   const p = RIG.p;
   const S = Object.fromEntries(RIG.solids.map(s => [s.name, s]));
 
-  // What each solid is, which mockup part it belongs to, and which explode group carries it
-  const INFO = {
-    adapter: ['1', 'Lens adapter', 'Screws into the 67mm filter thread. Modelled ISO thread, M67 × 0.75, 0.15 clearance.', 'adapter'],
-    tube: ['2', 'Tube', 'Blocks room light between lens and film. Sawtooth baffle ribs inside, 8mm apart.', 'tube'],
-    gate_front: ['3', 'Gate front', 'Tube socket, light passage and frame window. Its rear face is the film reference plane, printed on the bed. Presses onto the body\'s four pegs.', 'gate'],
-    gate_body: ['3', 'Gate body', 'The 0.3 film channel across its front face, the light passage, and the two sprocket pockets with their bearings.', 'gate'],
-    sprocket_supply: ['5', 'Sprocket, supply side', 'Eight teeth on each of two rings come up through the perforations: one turn, one frame.', 'gate'],
-    sprocket_takeup: ['5', 'Sprocket, take-up side', 'The same print as the supply side\'s, turned half round.', 'gate'],
-    gear_supply: ['5', 'Gear, supply side', '30 teeth, on the sprocket\'s D-flat.', 'gate'],
-    gear_takeup: ['5', 'Gear, take-up side', 'The same print, on the other sprocket.', 'gate'],
-    idler: ['5', 'Idler and knob', 'Turns both gears the same way. The groove on the knob counts turns: one per frame.', 'gate'],
-    idler_axle: ['5', 'Idler axle', 'Pressed through the deck into the gate body.', 'gate'],
-    deck: ['5', 'Deck', 'On the gate body\'s top: the sprocket shafts\' top bearings and the axle.', 'gate'],
-    spool_supply: ['6', 'Supply spool', 'The uncut roll, wound on a Ø30 core. Turns on a pin on the dock.', 'film'],
-    cap_supply: ['6', 'Supply spool cap', 'The top flange; presses on, scalloped for a grip.', 'film'],
-    spool_takeup: ['6', 'Take-up spool', 'Tuck the film\'s end in the slit in its core.', 'film'],
-    cap_takeup: ['6', 'Take-up spool cap', 'The same print as the supply\'s cap.', 'film'],
-    light_dock: ['4', 'Light dock', 'Holds the CS-Lite on its edge. The gate stands in a notch against the lit face; the spools stand on pins beside it.', 'dock'],
+  // Which explode group carries each solid, in assembly order: the drive rides with the gate, the spools with the film
+  const GROUP = {
+    adapter: 'adapter', tube: 'tube', gate_front: 'gate', gate_body: 'gate',
+    sprocket_supply: 'gate', sprocket_takeup: 'gate', gear_supply: 'gate', gear_takeup: 'gate', idler: 'gate',
+    idler_axle: 'gate', deck: 'gate',
+    spool_supply: 'film', cap_supply: 'film', spool_takeup: 'film', cap_takeup: 'film',
+    light_dock: 'dock',
   };
-  const ORDER = Object.keys(INFO);
+  const ORDER = Object.keys(GROUP);
   const CUT = new Set(['adapter', 'tube', 'gate_front', 'gate_body', 'deck', 'light_dock']);   // sectioned in cutaway
   const TURNING = { sprocket_supply: 1, sprocket_takeup: 1, gear_supply: 1, gear_takeup: 1, idler: -1 };   // sense, about +y
 
@@ -268,13 +230,10 @@ const RIG = /*__RIG_DATA__*/null;
   const grid = new THREE.GridHelper(1000, 50); grid.material.transparent = true; grid.material.opacity = 0.35;
   scene.add(grid);
 
-  let hot = null;
   function applyTheme() {
     scene.background = new THREE.Color(css('--stage'));
     for (const name of ORDER) {
       printMats[name].color.set(css('--print'));
-      printMats[name].emissive.set(name === hot ? css('--print') : '#000000');
-      printMats[name].emissiveIntensity = name === hot ? 0.35 : 0;
       edgeMats[name].color.set(css('--fg'));
     }
     M.cut.color.set(css('--cut'));
@@ -291,19 +250,20 @@ const RIG = /*__RIG_DATA__*/null;
   ['cam', 'adapter', 'tube', 'gate', 'film', 'dock'].forEach(k => { G[k] = new THREE.Group(); scene.add(G[k]); });
   const EXPLODE = { cam: -70, adapter: -32, tube: 0, gate: 45, film: 45, dock: 95 };
   let ex = P.exploded ? 1 : 0, turn = 0, turnGoal = 0;
-  const anchors = {};   // key -> [object, local Vector3] for leader lines and focus
+  const anchors = {};   // key -> [object, local Vector3] for leader lines
   const meshes = {};    // solid name -> mesh
 
   // ---- the CAD solids ----
   const loader = new THREE.STLLoader();
-  function stlGeometry(b64) {
-    const bin = atob(b64), bytes = new Uint8Array(bin.length);
+  function stlGeometry(s) {
+    if (s.buf) return loader.parse(s.buf);     // fetched from the site (website.py)
+    const bin = atob(s.stl), bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     return loader.parse(bytes.buffer);
   }
   for (const name of ORDER) {
     const s = S[name]; if (!s) continue;
-    const geo = stlGeometry(s.stl); geo.computeBoundingBox();
+    const geo = stlGeometry(s); geo.computeBoundingBox();
     const piv = TURNING[name] ? new THREE.Vector3(p.x_sprocket, 0, name === 'idler' ? 0 : (name.endsWith('supply') ? -1 : 1) * p.sprocket_z) : null;
     if (piv) { geo.translate(-piv.x, 0, -piv.z); geo.computeBoundingBox(); }   // turns about its own shaft
     const m = new THREE.Mesh(geo, printMats[name]);
@@ -312,7 +272,7 @@ const RIG = /*__RIG_DATA__*/null;
     if (CUT.has(name)) m.add(new THREE.Mesh(geo, M.cut));   // back faces show through the cut as section
     m.userData.base = m.userData.pivot ? m.userData.pivot.clone() : new THREE.Vector3();
     m.position.copy(m.userData.base);
-    G[INFO[name][3]].add(m);
+    G[GROUP[name]].add(m);
     meshes[name] = m;
   }
   const bb = name => { const b = meshes[name].geometry.boundingBox.clone(); return b.translate(meshes[name].userData.base); };
@@ -421,28 +381,6 @@ const RIG = /*__RIG_DATA__*/null;
     const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
     return t;
   }
-
-  // ---- rail ----
-  const f2 = v => (Math.round(v * 100) / 100).toString();
-  const dims = s => s.map(f2).join(' × ');
-  $('bWd').textContent = p.wd + ' mm';
-  $('bAxis').textContent = p.axis + ' mm';
-  $('partList').innerHTML = ORDER.filter(n => S[n]).map(n => {
-    const [num, title, desc] = INFO[n], s = S[n];
-    return `<li tabindex="0" data-focus="${n}" data-hot="${n}"><span class="n">${num}</span>` +
-      `<span class="t">${title}<code>${n}</code></span><span class="d">${desc}</span>` +
-      `<span class="s">${dims(s.size)} mm · ${Math.round(s.volume / 10) / 100} cm³</span>` +
-      `<span class="s${s.bed ? '' : ' bad'}">prints ${s.up} up, ${f2(s.print[0])} × ${f2(s.print[1])} on the bed${s.bed ? '' : ': too big'}</span></li>`;
-  }).join('');
-  $('fitRows').innerHTML = RIG.fits.map(f =>
-    `<tr><td>${f.label}</td><td class="v">${f.measured == null ? '–' : (Math.round(f.measured * 1e4) / 1e4 + 0).toFixed(4)}</td>` +
-    `<td class="c"><span class="chip ${f.ok ? 'known' : 'bad'}">${f.ok ? 'ok' : 'off'}</span></td></tr>`).join('');
-  const bad = Object.values(RIG.interference).flat();
-  $('interference').textContent = bad.length ? 'Interference: ' + bad.join('; ')
-    : `All in mm. No solids intersect with a frame in the window, nor half a sprocket tooth on (1/16 of a knob turn).`;
-  const big = RIG.solids.reduce((a, b) => Math.max(...b.print.slice(0, 2)) > Math.max(...a.print.slice(0, 2)) ? b : a);
-  $('bedNote').textContent = `Largest footprint is the ${INFO[big.name][1].toLowerCase()}, ${f2(big.print[0])} × ${f2(big.print[1])}. ` +
-    `Every part ${RIG.solids.every(s => s.bed) ? 'fits' : 'does not fit'} a ${p.bed_x} × ${p.bed_y} bed.`;
 
   // ---- tags ----
   const TAGS = [
@@ -569,14 +507,6 @@ const RIG = /*__RIG_DATA__*/null;
     else flyTo(target, pos);
   }
   controls.addEventListener('start', () => { userMoved = true; fly = null; });
-  const SMALL = new Set(['drive', 'spools', ...Object.keys(TURNING), 'idler_axle', 'deck', 'spool_supply', 'spool_takeup', 'cap_supply', 'cap_takeup']);
-  function focus(k) {
-    const target = worldAnchor(k === 'adapter' ? 'thread' : k).clone();
-    if (['gate', 'dock', 'tube', 'gate_front', 'gate_body', 'light_dock', 'sprocket_supply', 'sprocket_takeup'].includes(k)) target.y = p.axis;
-    const off = k === 'cam' ? new THREE.Vector3(-150, 180, 360) : SMALL.has(k) ? new THREE.Vector3(-45, 70, 95) : new THREE.Vector3(-90, 110, 220);
-    userMoved = true;
-    flyTo(target, target.clone().add(off));
-  }
 
   // ---- UI ----
   const refit = () => { if (!userMoved) homeView(); };
@@ -596,17 +526,6 @@ const RIG = /*__RIG_DATA__*/null;
     const t = new THREE.Vector3(bb('adapter').min.x + 2.5 + EXPLODE.adapter, p.axis, p.thread_major / 2);
     flyTo(t, t.clone().add(new THREE.Vector3(-30, 16, 40)));
   };
-  document.querySelectorAll('[data-focus]').forEach(li => {
-    const go = () => focus(li.dataset.focus);
-    li.addEventListener('click', go);
-    li.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
-    if (li.dataset.hot) {
-      const on = () => { hot = li.dataset.hot; applyTheme(); }, off = () => { if (hot === li.dataset.hot) { hot = null; applyTheme(); } };
-      li.addEventListener('mouseenter', on); li.addEventListener('focus', on);
-      li.addEventListener('mouseleave', off); li.addEventListener('blur', off);
-    }
-  });
-
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();

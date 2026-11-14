@@ -1,4 +1,4 @@
-"""Tube: placement, slip fits, the sawtooth baffle ribs inside, and printing upright without supports.
+"""Tube: placement, friction fits (F23), the sawtooth baffle ribs inside, and printing upright without supports.
 
 Rib positions and radii are read off the solid's circle edges (every rib is a revolved profile, so
 each corner is a full circle) and its face normals, not recomputed from the params.
@@ -94,28 +94,28 @@ def test_one_valid_closed_solid(tube):
 def test_bounds_at_default(tube):
     r = p.tube_ro
     assert cadutil.bounds(tube) == pytest.approx((128, 226, p.axis - r, p.axis + r, -r, r), abs=0.05)
-    assert cadutil.size(tube) == pytest.approx((98, 68, 68), abs=0.05)
+    assert cadutil.size(tube) == pytest.approx((98, 68.5, 68.5), abs=0.05)
     assert (p.tube_x0, p.tube_x1, p.tube_len) == (128, 226, 98)
 
 
 def test_length_follows_wd():
     q = Params(wd=150)
     tube = model.build(q)["tube"]
-    assert cadutil.size(tube) == pytest.approx((137, 68, 68), abs=0.05)
+    assert cadutil.size(tube) == pytest.approx((132, 68.5, 68.5), abs=0.05)
     assert cadutil.bounds(tube)[:2] == pytest.approx((q.tube_x0, q.tube_x1), abs=0.05)
 
 
 def test_prints_upright_and_fits_the_bed(tube):
     posed = cadutil.print_pose(tube, model.PRINT_UP["tube"])
     assert cadutil.fits_bed(posed, p)
-    assert cadutil.size(posed) == pytest.approx((68, 68, 98), abs=0.05)
+    assert cadutil.size(posed) == pytest.approx((68.5, 68.5, 98), abs=0.05)
 
 
 # ---- fits ----------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("wd", [p.wd, 150])
-def test_od_is_a_slip_fit_in_the_socket_and_the_gate_hole(wd):
+def test_od_is_a_friction_fit_in_the_socket_and_the_gate_hole(wd):
     q = Params(wd=wd)
     tube_r = max(e.radius() for e in circles(model.build(q)["tube"]))
     socket_r = min(
@@ -124,8 +124,8 @@ def test_od_is_a_slip_fit_in_the_socket_and_the_gate_hole(wd):
         if e.arcCenter().x >= q.tube_x0 - EDGE_TOL and e.radius() > tube_r
     )
     assert tube_r == pytest.approx(q.tube_ro, abs=EDGE_TOL)
-    assert socket_r - tube_r == pytest.approx(0.3, abs=EDGE_TOL)
-    assert q.fit_r - tube_r == pytest.approx(0.3, abs=EDGE_TOL)       # the gate's front-wall hole
+    assert socket_r - tube_r == pytest.approx(0.05, abs=EDGE_TOL)     # Ø68.5 in Ø68.6 (F23)
+    assert q.fit_r - tube_r == pytest.approx(0.05, abs=EDGE_TOL)      # the gate's front-wall hole
 
 
 def test_tube_end_sits_on_the_socket_floor_without_touching_the_adapter(tube, adapter):
@@ -157,7 +157,7 @@ def test_bore_between_ribs_is_r32(tube):
         assert cadutil.common_volume(tube, disc(x, p.tube_ri + 0.01, width / 2)) > 1.0
 
 
-@pytest.mark.parametrize("wd, count", [(p.wd, 12), (150, 17)])
+@pytest.mark.parametrize("wd, count", [(p.wd, 12), (150, 16)])
 def test_rib_layout(wd, count):
     q = Params(wd=wd)
     tube = model.build(q)["tube"]
@@ -190,7 +190,7 @@ def test_no_baffles_gives_the_plain_tube():
     q = Params(baffle_h=0)
     tube = model.build(q)["tube"]
     assert cadutil.is_valid(tube)
-    assert cadutil.volume(tube) == pytest.approx(math.pi * (34**2 - 32**2) * 98, rel=1e-3)
+    assert cadutil.volume(tube) == pytest.approx(math.pi * (34.25**2 - 32**2) * 98, rel=1e-3)
     assert ribs(tube, q) == []
     assert min(e.radius() for e in circles(tube)) == pytest.approx(q.tube_ri, abs=EDGE_TOL)
 

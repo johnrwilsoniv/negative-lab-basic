@@ -14,11 +14,11 @@ FIELDS = {f.name for f in dataclasses.fields(Params)}
 
 
 def sizes_at(p: Params) -> dict[str, list[float]]:
-    """Plausible print-pose sizes: the tube wd - 13 tall, the gate front gh tall on the bed, the rest as built."""
+    """Plausible print-pose sizes: the tube tube_len tall, the gate front gh tall on the bed, the rest as built."""
     sizes = {name: [50.0, 50.0, 10.0] for name in pp.ORDER}
-    sizes["tube"] = [68.0, 68.0, p.tube_len]
-    sizes["gate_front"] = [110.0, p.gh, 13.7]
-    sizes["light_dock"] = [69.7, 181.0, 62.0]
+    sizes["tube"] = [68.5, 68.5, p.tube_len]
+    sizes["gate_front"] = [110.0, p.gh, 23.7]
+    sizes["light_dock"] = [79.7, 181.0, 62.0]
     return sizes
 
 
@@ -56,10 +56,17 @@ def test_findings_are_numbered_most_serious_first():
     assert [sum(it["sev"] == s for it in fb["items"]) for s in order] == [0, 6, 10]
 
 
+def test_the_reviewed_design_is_todays_less_what_changed_after_the_first_print():
+    q = pp.reviewed()
+    assert (q.wd, q.axis) == (pp.REVIEW["wd"], pp.REVIEW["axis"]) == (111, 40.5)
+    changed = {f.name for f in dataclasses.fields(Params) if getattr(q, f.name) != getattr(DEFAULT, f.name)}
+    assert changed == set(pp.CHANGED_SINCE) | {"wd"}            # each one a field whose default has moved on (F23-F25)
+    assert (q.tube_len, q.x_gate, 2 * q.fit_r) == (98, 222, pytest.approx(68.6))     # the review's tube, gate and sockets
+
+
 def test_the_measures_are_the_reviews_at_its_wd_and_axis():
     """Each number the review measured on the built solids, against the same number worked out from Params."""
-    assert (DEFAULT.wd, DEFAULT.axis) == (pp.REVIEW["wd"], pp.REVIEW["axis"])
-    m = pp.measures(DEFAULT)
+    m = pp.measures(pp.reviewed())
     review = {
         "notch_gap": 0.0, "pocket": 39.2, "room": 5.350, "stack": 5.4133, "squeeze": 0.063, "squeeze_over": 0.122,
         "body_h": 25.30, "backer_h": 19.95, "reach": 8.06, "reach_play": 8.91, "tab_stop": 6, "wall_stop": 8,
@@ -80,7 +87,7 @@ def test_the_measures_are_the_reviews_at_its_wd_and_axis():
 def test_the_clamp_is_rounded_to_whole_layers():
     assert pp._to_layers(19.95, 0.2) == [20.0]
     assert pp._to_layers(25.3, 0.2) == [25.2, 25.4]                 # exactly half a layer: either
-    rows = {row["layer"]: row for row in pp.measures(DEFAULT)["layers"]}
+    rows = {row["layer"]: row for row in pp.measures(DEFAULT)["layers"]}           # nothing behind the gate front changed
     assert rows[0.12]["squeeze"] == pytest.approx([0.0133], abs=1e-3)
     assert rows[0.16]["squeeze"] == pytest.approx([0.1333], abs=1e-3)
     assert rows[0.2]["squeeze"] == pytest.approx([0.2133, 0.0133], abs=1e-3)
@@ -89,11 +96,22 @@ def test_the_clamp_is_rounded_to_whole_layers():
 def test_values_and_wording_follow_the_params():
     p = Params(wd=150, axis=45)
     fb = pp.feedback(p)
-    assert not fb["same"] and pp.feedback(DEFAULT)["same"]
-    assert (fb["p"]["wd"], fb["p"]["axis"], fb["p"]["tube_len"], fb["p"]["gh"]) == (150, 45, 137, 81)
+    assert not fb["same"] and pp.feedback(pp.reviewed())["same"] and not pp.feedback(DEFAULT)["same"]    # wd 116 (F24)
+    assert (fb["p"]["wd"], fb["p"]["axis"], fb["p"]["tube_len"], fb["p"]["gh"]) == (150, 45, 132, 81)
     xfilm = next(it for it in fb["items"] if it["id"] == "xfilm")
     assert "149.7 from the lens's rim, not 150" in xfilm["what"]
-    assert fb["m"]["u_bottom"] == 10
+    assert fb["m"]["u_bottom"] == 9.75
+
+
+def test_the_numbers_at_the_defaults_follow_the_first_print_changes():
+    m = pp.measures(DEFAULT)
+    assert (m["tab_slot"], m["tab_open"]) == (32, 24)                   # the slot as wide as the tab (F25): 2 x 16
+    assert (m["u_bottom"], m["tube_wall"]) == (5.25, 2.25)              # the Ø68.5 tube (F23)
+    assert m["rim_to_film"] == pytest.approx(115.7)                      # wd 116 (F24)
+    assert m["pocket"] == pytest.approx(49.2)                            # the gate, 10 deeper, in the dock's notch
+    assert m["over_socket"] == pytest.approx(1.7)                        # the sockets kept their Ø68.6
+    known = " ".join(pp.feedback(DEFAULT)["known"])
+    assert "0.5 play" not in known and "F25" in known and "F23" in known
 
 
 def test_the_drawings_get_every_param():
@@ -142,3 +160,10 @@ def test_an_axis_too_low_is_one_line_on_stderr(capsys):
     assert pp.main(["--axis", "35"]) == 2
     out, err = capsys.readouterr()
     assert out == "" and len(err.strip().splitlines()) == 1 and "adapter" in err
+
+
+def test_the_u_note_says_where_the_f17_cut_takes_from_the_floor():
+    docs = lambda q: next(it for it in pp.feedback(q)["items"] if it["id"] == "docs")["what"]
+    assert "takes nothing at any allowed axis" in docs(pp.reviewed())            # the Ø68 tube the review measured
+    assert "36 → 34 (R8)" in docs(pp.reviewed()) and "36 → 34 (R8; 34.25 since F23)" in docs(DEFAULT)
+    assert "only at axis 39, the lowest allowed, does the F17 cut take 0.25 off it" in docs(DEFAULT)     # Ø68.5 (F23)

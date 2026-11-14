@@ -1,6 +1,6 @@
 # NLB Scan Rig: CAD plan
 
-Status (2026-10-27): **the CAD exists; nothing has been printed yet.** Every printed part is
+Status (2026-10-27): **the CAD exists; nothing has been printed yet** (first printed 2026-11-14, below). Every printed part is
 modelled in CadQuery from the three.js mockup, put together in an assembly, and checked: one
 STEP file per printed part that the user can import into Onshape and edit, plus STL files for
 slicing. Some mechanisms are still undesigned (each part's "Not designed yet" below). Until
@@ -41,6 +41,13 @@ The drawings are `proposals/fb5-fb6.html`, published with the branch at `nlb.jrw
 2026-11-12, branch `feat/lid-rails`: the user found nothing held the lid when the tab slides the wedge plate (FB3). A
 rail on each of the gate body's upper pillars, beside the lid and up to its top, now stops the lid 0.2 along z (F22).
 Nothing holds it down yet.
+
+2026-11-14: **the rig has been printed, and it works.** Three changes from the first print, branch
+`feat/print-fit-tweaks`. The tube is Ø68.5, a friction fit in the Ø68.6 sockets, which keep their size (F23). The user
+tested that fit with masking tape. The gate front's socket is 9 deep, not 4: the extra 5 is added toward the camera, the
+tube keeps its 98 length and its place, and the film moves 5 further from the lens, so `wd` is 116 and the gate front grows
+from 13.7 to 23.7 deep (F24). The lid's slot is the tab's own 2 thick, so the tab holds the lid along x (F25). The tube,
+the gate front, the lid and the dock change shape; the gate body and both plates only move back 5; the adapter is the same.
 
 **Before printing anything, go through "Latest feedback" and "Check before printing" below**: the
 review's findings, and the sizes that come from the camera, lens, CS-Lite, film, screws and printer,
@@ -124,11 +131,12 @@ Put these in `rig/params.py`. Every part reads from there, so nothing hard-codes
 size.
 
 **User inputs.** Measured by the user on 2026-11-09, with the dimensions and the framing checked
-(C1 and C2 in "Check before printing"). They were the guesses 130 and 42.5.
+(C1 and C2 in "Check before printing"). They were the guesses 130 and 42.5. After the first print the user set `wd`
+5 longer (2026-11-14, F24).
 
 | Parameter | Default |
 |---|---|
-| `wd`: lens front to film | 111 |
+| `wd`: lens front to film | 116 (measured 111; +5 after the first print, F24) |
 | `axis`: table to lens centre | 40.5 |
 
 **Known values** (from datasheets):
@@ -147,12 +155,14 @@ size.
 | Constant | Value | Meaning |
 |---|---|---|
 | `GW` | 92 | Gate width |
-| `GATE_D` | 39 | Gate depth: `GATE_FRONT + GAP`, so the body ends on the lit face (F10; was 30) |
-| `GATE_FRONT` | 14 | Gate front wall to film |
+| `GATE_D` | 49 | Gate depth: `GATE_FRONT + GAP`, so the body ends on the lit face (F10; was 30, then 39 until F24) |
+| `GATE_FRONT` | 24 | Gate front's front face to film (F24; was 14) |
+| `FRONT_WALL` | 9 | The gate front's tube socket, deep (F24; was 4) |
 | `WALL` | 3 | Wall thickness |
 | Window | 38 × 26 | Gate window |
 | `GAP` | 25 | Film to light face |
-| `TUBE_RO` / `TUBE_RI` | 34 / 32 | Tube outer / inner radius (was 36: R8) |
+| `TUBE_RO` / `TUBE_RI` | 34.25 / 32 | Tube outer / inner radius (was 36, R8; then 34 until F23) |
+| `FIT_CLEAR` | 0.05 | Tube to socket, radially: a friction fit in the Ø68.6 sockets (F23; was 0.3) |
 | `FLANGE` | 3 | Adapter flange thickness |
 | `THREAD_LEN` | 4.5 | Thread length |
 | `CHANNEL` | 0.6 | Film channel in slide mode |
@@ -164,9 +174,9 @@ size.
 
 | Value | Formula | Result |
 |---|---|---|
-| Film plane | `xFilm = 125 + wd` | 236 |
+| Film plane | `xFilm = 125 + wd` | 241 |
 | Gate box height | `GH = axis + 36` | 76.5 |
-| Tube length | `wd − 13` | 98 |
+| Tube length | `wd − 18`: `wd − FLANGE − GATE_FRONT + FRONT_WALL` (F24; was `wd − 13`) | 98 |
 | Dock width | `DOCK_W = 165 + 16` | 181 |
 
 The mockup's rail shows these live, and `updateText()` has the formulas.
@@ -188,7 +198,8 @@ Screws into the Laowa's 67mm filter thread. The tube slides into the other end.
   - Give it about 0.1–0.2 radial clearance for FDM.
 - **Flange:** 3 thick, Ø78 OD, Ø62 bore. The bore must clear the lens front element; check
   it against the mockup's 31 inner radius.
-- **Socket:** 9 deep, Ø78 OD. Its ID is `2·TUBE_RO + 0.6` = 68.6, so the tube is a slip fit.
+- **Socket:** 9 deep, Ø78 OD. Its ID is `2·(TUBE_RO + FIT_CLEAR)` = 68.6, 0.1 over the Ø68.5 tube: a friction
+  fit (F23).
 - **Overall:** Ø78 × 16.5.
 - **Printing:** flat, with the thread axis vertical, at 0.12–0.16 layers.
 - **Thread test coupon:** also export a short version (thread plus a thin grip ring) so the
@@ -197,13 +208,13 @@ Screws into the Laowa's 67mm filter thread. The tube slides into the other end.
 
 ### 1b · Tube (`parts/tube/`)
 
-- **Size:** Ø68 OD / Ø64 ID. Length is `wd − 13` (98 at the default), with 12 baffle ribs.
-- **Ends:** one end slides into the adapter socket and the other into the gate's front-wall
-  hole (Ø68.6, 4 deep).
+- **Size:** Ø68.5 OD / Ø64 ID (F23; was Ø68). Length is `wd − 18` (98 at the default), with 12 baffle ribs.
+- **Ends:** one end pushes into the adapter socket and the other into the gate front's socket
+  (each Ø68.6, 9 deep: F24), a friction fit (F23). Each end seats on its socket's floor.
 - **Inside:** blocks room light and should cut flare. Consider internal baffle ribs or a
   matte texture.
 - **Printing:** upright.
-- **Bed size:** 98 tall is fine. If `wd` grows past roughly 200, split the tube with a
+- **Bed size:** 98 tall is fine. If `wd` grows past about 238 (a 220 tube), split the tube with a
   spigot joint.
 
 ### 2 · Film gate (`parts/film_gate/`)
@@ -211,15 +222,17 @@ Screws into the Laowa's 67mm filter thread. The tube slides into the other end.
 Four printed pieces (F5): the gate front, the gate body, the lid and the pressure plate.
 
 **Gate front** (solid block, prints with its rear face on the bed):
-- x_gate .. `x_ref` (13.7 deep), 76.5 tall, 110 wide (`gw` plus a screw pillar's width each side).
-- Socket: Ø68.6, 4 deep, on the lens axis. The tube's end rests on its floor.
-- Light passage: flares from the socket's floor (the frame window scaled until its corners reach
-  the tube's Ø64 bore) down to the 38 × 26 frame window, which runs straight for 1.8 to the
+- x_gate .. `x_ref` (23.7 deep; 13.7 until F24), 76.5 tall, 110 wide (`gw` plus a screw pillar's width each side).
+- Socket: Ø68.6, 9 deep (`front_wall`; 4 until F24), on the lens axis. The tube's end rests on its floor, a friction
+  fit (F23).
+- Light passage: flares over 12.9 (7.9 until F24) from the socket's floor (the frame window scaled until its corners
+  reach the tube's Ø64 bore) down to the 38 × 26 frame window, which runs straight for 1.8 to the
   rear face. The passage only narrows toward the film, so it prints without support.
 - Rear face: the film reference plane, `CHANNEL/2` (0.3) in front of the film plane. It's the
   first layer, so the film lies on bed-flat plastic, across the whole width, including where the
   film leaves through the side walls.
-- Four Ø3.4 holes for M3 × 20 screws, counterbored Ø6.5 × 3.5 from the front.
+- Four Ø3.4 holes for M3 × 20 screws, counterbored Ø6.5 × 13.5 from the front (3.5 until F24), so the
+  screw still bites 9.8 into the pillar.
 - Its top is plain (F14).
 - A 3 mm ▲ on the socket floor (F18), pointing up, centred between the light passage's top and the
   tube's bore (y 65.5), so it shows down the tube.
@@ -249,7 +262,8 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
 
 **Lid:** 3 thick, on the side walls, 0.2 short of the gate front and of the rear wall, and 0.2 inside each rail
 (91.6 wide, z ±45.8; was 92, F22). Slot
-3 × 16 for the lock switch's tab. Two padlocks on its top (F18): open at the −z end of the slot
+2 × 16 for the lock switch's tab: its own thickness, no clearance, so the tab holds the lid along x (F25; was 3,
+0.5 each side). Two padlocks on its top (F18): open at the −z end of the slot
 (SLIDE), shut at the +z end (LOCK).
 
 **Pressure plate:**
@@ -269,13 +283,15 @@ Four printed pieces (F5): the gate front, the gate body, the lid and the pressur
 - **Guides** that let the pressure plate move along x but stop it moving along y or z.
 - **Grooves** that guide the wedge plate along z. Below the film the backer (F12) now carries the
   clamp's reaction in x with 0.05 play. Above the film nothing does: the upper ramps (y 55.5) push
-  on a 2 thick plate held only by its tab, which has 0.5 play each side in the lid slot, more
-  than the 0.47 stroke. The upper ramps need backing too, outside the light path: at the sides
+  on a 2 thick plate held only by its tab. Since F25 the tab has no play in the lid slot, but the lid
+  has 0.2 to the gate front and to the rear wall, so the top of the plate can still back off by up to
+  0.4 against the 0.47 stroke. The upper ramps need backing too, outside the light path: at the sides
   (|z| > 26, beside the wedge window) or a lid-side rail.
 - **Lid retention.** Since F22 the rails stop the lid along z; nothing holds it down. It lifts straight
   off, which is how the plates go in, so a hold-down must leave that (a detent, a clip, or the dock).
-- **Gate position along the tube.** Nothing locates the gate along the tube. The socket is a
-  slip fit, so the film plane sits wherever the gate is pushed.
+- **Gate position along the tube.** Only the socket's floor locates the gate along the tube. Since
+  F23 the tube is a friction fit, so the gate stays wherever it is pushed: push it home onto the floor,
+  or the film sits short of `wd`.
 - **Light seal at the lid's front end.** The lid's 0.2 end clearance leaves a 0.2 × 86 slit
   from the top into the film chamber, on the light side of the film. Since F5 there is no
   lens-side chamber for it to open into, but it still lets room light onto the film's back.
@@ -299,7 +315,7 @@ There's no knob (F15).
   `min(rampT(−s) − rampT(SW_TRAVEL/2), CHANNEL − FILM_T)`.
 - The ramp slope (about 1:17) should be self-locking. Still add a detent bump at each end
   of the slot. Not designed yet: a working detent needs a compliant member, and the tab is
-  rigid with 0.5 play. The detents are what hold LOCK; the
+  rigid, with no play in the slot since F25. The detents are what hold LOCK; the
   leaf springs are what return the plate to SLIDE.
 
 **Assembly:** drop the wedge plate in, then lower the lid over it so the tab comes up through
@@ -318,12 +334,12 @@ Holds the CS-Lite standing on its long edge, lit face toward the film, `GAP` (25
 the film plane.
 
 - **Floor:** 4 thick, 181 wide. It runs along x from the front wall to 6 past the slot's back
-  edge (69.7 at the default).
+  edge (79.7 at the default; 69.7 until F24 made the gate front 10 deeper).
 - **Front wall** (F11): 4 thick, full width, 62 tall, 0.2 in front of the gate front. A U 1 clear
   of the tube (a half circle below the axis, straight up above it) lets the tube through. The half
-  circle is cut from the floor under the wall too (F17). Since the tube went to Ø68 (R8) the U's
-  bottom is axis − 35, at or above the floor's top at every allowed axis, so the cut takes nothing
-  from the floor: at axis 40.5 it is 5.5 above the table, 1 under the tube. The gate
+  circle is cut from the floor under the wall too (F17). With the Ø68.5 tube (F23) the U's
+  bottom is axis − 35.25: at axis 40.5 it is 5.25 above the table, 1 under the tube, and the cut takes
+  nothing from the floor; only at axis 39, the lowest allowed, does it take 0.25 off the floor's top. The gate
   front and the gate body are held between it and the CS-Lite, with 0.2 play. It covers the gate
   front's two lower screw heads: lift the gate out to reach them.
 - **Lips:** front and back, 12 tall. Together they make a 20.5 wide slot for the light: its
@@ -416,7 +432,7 @@ Write these as pytest checks against the built solids:
 - Every solid is valid and closed (`shape.isValid()`) and its volume is greater than 0.
 - Bounding boxes match the dimensions above at the default params, within 0.05.
 - Mating fits:
-  - tube OD vs adapter socket ID and gate hole: 0.3 radial clearance
+  - tube OD vs adapter socket ID and gate hole: 0.05 radial clearance, a friction fit (F23; was 0.3)
   - pressure plate face to front plate: `CHANNEL` (0.6)
   - drop-in and sliding fits: pressure plate 0.25 to the floor, lid and side walls; lid 0.2
     to the front and rear walls; CS-Lite slot 0.5 wider than the panel
@@ -447,7 +463,8 @@ number.
   ramps, 0.113 deep. The film lies on the front plate and is only touched.
 - **Gate height kept at `axis + 36` (R8).** The Ø72.6 socket broke 0.3 through the top of the
   gate front, a slit in the top edge. Closed 2026-11-10 by thinning the tube instead: `tube_ro`
-  36 → 34 (2 wall, the bore unchanged), so the Ø68.6 socket leaves 1.7 over the hole.
+  36 → 34 (2 wall, the bore unchanged), so the Ø68.6 socket leaves 1.7 over the hole. F23 made the
+  tube Ø68.5 in the same socket.
 - **Shroud 67.5 tall (R9).** Superseded by F10: there's no shroud.
 - **Exports (R10).** Per-part STEP and STL are in print pose: `PRINT_UP` side up, on the bed,
   centred. The assembly STEP is in the Onshape frame (`assembly.to_onshape`): Z up, so the
@@ -566,7 +583,8 @@ number.
   16 mm³ sliver and leaves 3.5 of floor under the tube; the trough opens upward, so it prints
   without support. `tests/test_light_dock.py` checks the clearance at axis 39, 40.5, 42.5 and 50.
   2026-11-10: with the tube at Ø68 (R8) the U's bottom is axis − 35, so the cut takes nothing from
-  the floor at any allowed axis (39 and up). It stays in the model as a guard.
+  the floor at any allowed axis (39 and up). It stays in the model as a guard. 2026-11-14: with the tube at
+  Ø68.5 (F23) it is axis − 35.25, so at axis 39 the cut takes 0.25 off the floor's top again; from 39.25 up, nothing.
 
 - **Assembly marks on the film gate (F18).** The user asked for small, sparse, inconspicuous marks so
   the gate goes together without instructions. Every mark is `mark_depth` (0.36: 3 layers at 0.12,
@@ -635,11 +653,38 @@ number.
   the strip's tip pushes it back instead of hitting its edge. The lead-ins print at 45°, on the bed. The
   0.6 is a whole number of layers at 0.2 and 0.12 only. Not yet printed: FB6 is fixed once a strip has been
   fed through.
+- **The tube is a friction fit (F23).** The user asked for it after the first print (2026-11-14): the Ø68 tube slid
+  in its Ø68.6 sockets, and a few layers of masking tape on it gave a good fit. The tube is now Ø68.5 (`tube_ro`
+  34.25, a 2.25 wall), and the sockets keep their Ø68.6: `fit_clear` is 0.05, so `fit_r` is still 34.3, the gate
+  front still has 1.7 over its socket (R8), and the adapter is unchanged. The bore is still Ø64 and the ribs still stop
+  at the adapter's Ø62 bore. The dock's U is 1 clear of the wider tube, so its bottom is axis − 35.25: 5.25 above the
+  table at axis 40.5, and at axis 39 the F17 cut takes 0.25 off the floor's top. +5.3 cm³ on the tube. How tight it
+  ends up depends on the printer: if it won't go in, sand the tube's ends rather than the sockets; if it's loose,
+  `tube_ro` up by 0.05.
+- **A 9 deep gate socket, and wd 116 (F24).** The user asked for it after the first print: the gate front's socket, 4
+  deep, held the gate on the tube's end only loosely. Asked whether the film should stay where it was or move, the user
+  chose: the socket 5 deeper toward the camera, the tube's length and diameter unchanged, and the film 5 further from
+  the lens, `wd` 111 → 116. So the socket's floor and the tube stay exactly where they were (x 128 to 226), and the gate
+  front grows 5 at each end: `gate_front` 14 → 24 (its front face at x 217, 5 nearer the camera) and `front_wall` 4 → 9.
+  The tube is 9 deep in each socket and `tube_len` is `wd − 18`. The light passage flares over 12.9 instead of 7.9, and
+  still only narrows toward the film. Everything from the reference plane back moves 5 toward the light; the gate body,
+  the lid and both plates keep their shapes. The dock's front wall follows the gate front, so the dock is 10 longer
+  (79.7) and its floor's notch 49.2 (+2.7 cm³). The gate front is 23.7 deep: 144 cm³ of plastic, +57. Its counterbores
+  are 13.5 deep (`cbore_depth`, was 3.5), so the M3 × 20 screws still pass 10.2 through it and bite 9.8 into the
+  pillars; a hex key reaches them down the counterbore. (Keeping 3.5 counterbores would have meant M3 × 30.) The new `wd` is the user's call from the
+  print, not a new measurement: C2 still applies.
+- **The lid's slot is as wide as the tab (F25).** The user asked for it after the first print: the wedge plate slid
+  well between SLIDE and LOCK, but the lid had too much play across its short side, x. The slot was the tab's 2 plus
+  `tab_clear` 0.5 each side; `tab_clear` is now 0, so the slot is 2 × 16 and the tab holds the lid along x, and with it
+  the top of the wedge plate. The lid's 0.2 to the gate front and to the rear wall (`lid_clear`) is unchanged, so the lid
+  can still shift up to 0.2 either way when the tab isn't holding it. The padlocks stay centred on the slot. Holes print
+  small, so a zero-clearance slot may bind: file its long sides, or set `tab_clear` 0.05. The tab-slot opening is 32 mm²,
+  24 of it round the tab (was 48 and 40, FB7).
 
 ## Mockup differences to republish
 
 The CAD differs from the mockup on purpose here. The mockup's shapes haven't been changed (the local
-copy's `wd` and `axis` sliders now start at the measured 111 and 40.5; the copy once published started
+copy's `wd` and `axis` sliders now start at 116 and 40.5, the CAD's defaults; the copy once published started
 at 130 and 42.5): republishing it is the user's call.
 
 | What | Mockup | CAD |
@@ -649,13 +694,15 @@ at 130 and 42.5): republishing it is the user's call.
 | Pressure plate | 86 × 72.5, flat pads `padT` thick | 85.5 × 50 (0.25 clearance, on the sill, F20), pads sloped like the ramps, lead-ins (F21) |
 | Gate interior | open from the floor up | filled up to the film's lower edge (the sill, F20) |
 | Tube | plain ring | baffle ribs inside |
-| Tube OD | Ø72 (`TUBE_RO` 36) | Ø68 (`tube_ro` 34, R8): the socket stays 1.7 under the gate front's top |
+| Tube OD | Ø72 (`TUBE_RO` 36) | Ø68.5 (`tube_ro` 34.25, F23; Ø68 since R8), a friction fit in the Ø68.6 sockets, which stay 1.7 under the gate front's top |
+| Gate front socket | 4 deep, `GATE_FRONT` 14, tube `wd − 13` | 9 deep (`front_wall`), `gate_front` 24, tube `wd − 18` (F24) |
+| Lid slot | 3 wide | 2, the tab's thickness (F25) |
 | Film slots | centred on the film plane, x 252.5–257.5 | notches from the reference plane, x 235.7–236.3 at the inner face, to 237.7 at the outer (F21) |
 | Gate | one box with a thin front plate and a chamber in front of it | gate front (solid, flared light passage) + gate body, M3 screws through side pillars, 110 wide |
 | Lettering | on the lid | none |
 | Knob | 10 × 12 on the tab, grip ridges | none: the tab sticks 12.7 out of the lid and is the grip |
 | Shroud | part of the dock | none: the gate body (39 deep) stands in a notch in the dock, flush on the lit face |
-| CS-Lite slot | 20, dock 35 long | 20.5; the dock runs forward under the gate to a front wall, 69.7 long |
+| CS-Lite slot | 20, dock 35 long | 20.5; the dock runs forward under the gate to a front wall, 79.7 long |
 | `axis` | slider 30–60 | 39 at least |
 
 ## Latest feedback
@@ -695,6 +742,13 @@ pressure plate (F21). Drawings and the alternatives (5B, longer slots; 6B, a fen
 Changed in CAD for FB3 (branch `feat/lid-rails`, not yet printed): rails on the gate body beside the lid stop it 0.2
 along z, so the tab stops at s = ±6.2 (F22).
 
+Changed after the first print (2026-11-14, F23–F25), none of them for a finding: the review's design is
+`print_preview.reviewed()` (the review's wd and axis, and `print_preview.CHANGED_SINCE`), and the page's numbers that
+follow from the dimensions are now worked out at wd 116. So FB7's tab slot reads 32 mm², 24 open (was 48 and 40);
+FB1's pocket is 49.2 for the 49 deep gate (was 39.2 and 39); FB13's film face is 115.7 from the rim, not 116; FB14's
+strip under the U is 4 × 5.25 (was 5.5); FB16's tube wall is 2.25. The review's own measurements (FB11's wd range,
+"Came out clean") are as it found them at wd 111.
+
 ### Minor
 
 - **FB7 · Openings on the light side that PLAN doesn't list.** The tab slot (48 mm², 40 open), a slit
@@ -728,7 +782,8 @@ checked: slicing, the real hardware, illumination clipping, flex, the pages, and
 
 ## Check before printing
 
-Nothing has been printed yet. These are the sizes that come from outside the CAD (the camera and its
+The rig was first printed on 2026-11-14, and it worked; F23–F25 came from that print, and the parts they change
+haven't been reprinted yet. These are the sizes that come from outside the CAD (the camera and its
 base, the lens, the CS-Lite, the film, the screws and the printer) and that the prints depend on.
 Each is a param in `params.py`; the numbers below are at the defaults. Until F19 the print preview
 drew them on a "Dimensions to confirm" tab (F16); this list is now the only copy. "Changes" lists
@@ -750,13 +805,14 @@ sheet. These set most of the plastic, or decide whether it prints at all.
     CS-Lite and leaks.
   - **Changes:** gate front, gate body, pressure plate, wedge plate, light dock.
     Fix: `build.py --axis A`, then `print_preview.py --axis A`.
-- **C2 · `wd` 111 (measured 2026-11-09; was the guess 130): lens front to film plane, at 1:1.** With a ruler.
+- **C2 · `wd` 116 (measured 111 on 2026-11-09, was the guess 130; 5 more after the first print, F24): lens front to
+  film plane, at 1:1.** With a ruler.
   - **Measure:** from the lens's front rim (the filter-thread face, where the adapter's flange seats)
     to the film's surface. Focus ring at 1:1, the camera on its base, a negative or a ruler lying on
     the CS-Lite; move the camera until it's sharp and 36 mm of ruler fills the frame's width. Measure
     three times. Check whether the front of the lens moves when you focus; if it does, measure with
     the ring at 1:1.
-  - **If it's off:** the tube is `wd − 13` (98) long and nothing else adjusts along the axis: its ends
+  - **If it's off:** the tube is `wd − 18` (98) long and nothing else adjusts along the axis: its ends
     sit on the socket floors. A few mm off, the focus lands a little off 1:1, so the frame is cropped or
     shows its borders. Further off, the lens can't focus on the film.
   - **Changes:** the tube only, but it's the tallest print. Fix: `build.py --wd W`, then
@@ -776,10 +832,10 @@ sheet. These set most of the plastic, or decide whether it prints at all.
   - **Changes:** the light dock (`csl_l`, `csl_t`). The height and the lit area change nothing printed.
 - **C4 · Printer: bed `bed_x` × `bed_y` 220 × 220 and build height (assumed).** From the spec sheet.
   - **Measure:** the usable print area and height, not the plate's size, less any brim or skirt. Load
-    `light_dock.stl` in the slicer: it's the biggest footprint, 69.7 × 181. The tallest print is the
+    `light_dock.stl` in the slicer: it's the biggest footprint, 79.7 × 181. The tallest print is the
     tube, 98 upright; with no height given, `tube_max_len` borrows the bed's 220.
   - **If it's off:** no shape changes, but a dock that doesn't fit doesn't print. `build.py` checks
-    square-on only (39 margin at 220); turned 45° the dock fits a 177 square bed. Past `wd` ≈ 200 the
+    square-on only (39 margin at 220); turned 45° the dock fits a 184 square bed. Past `wd` ≈ 238 the
     tube wants a spigot split, which isn't built.
   - **Changes:** nothing; it decides whether the light dock and the tube print. Fix: `bed_x`, `bed_y`.
 - **C5 · Filter thread M67 × 0.75, `thread_clear` 0.15: print the thread coupon.** A test print.
@@ -799,11 +855,12 @@ sheet. These set most of the plastic, or decide whether it prints at all.
   tells too: its ring should seat on the rim. A thread shallower than 4.5 and the adapter bottoms out
   before its flange seats (crooked, or pressing on the glass's ring); a bore smaller than the glass's
   opening vignettes. **Changes:** adapter, thread coupon.
-- **C7 · Tube in its sockets: `fit_clear` 0.3 (Ø68 tube, Ø68.6 sockets). Before the tube.** A test
-  print. Holes print small and outer walls a little big. Print the adapter, cut the tube to a 10 mm
-  ring in the slicer and try it in the socket: it should slide in by hand without rattling. Tight and
-  it won't go in or cracks the socket; loose and the gate and lens aren't on one axis, and light gets
-  in at the joint. **Changes:** adapter, gate front.
+- **C7 · Tube in its sockets: `fit_clear` 0.05 (Ø68.5 tube, Ø68.6 sockets, F23). Before the tube.** Checked on
+  the first print: the Ø68 tube with a few layers of masking tape was a good friction fit, so the tube is now Ø68.5.
+  Holes print small and outer walls a little big, so before reprinting the whole tube, cut it to a 10 mm ring in the
+  slicer and try it in the printed adapter and gate front: it should push in firmly by hand and stay. Tight and it
+  won't go in or cracks the socket; loose and the gate and lens aren't on one axis, and light gets in at the joint.
+  **Changes:** the tube (`tube_ro`); `fit_clear` follows it, so the sockets keep their Ø68.6.
 - **C8 · Film slots: `film_w` 35, `film_slot_clear` 0.2 (slot 35.2, F13). Before the gate body.**
   Calipers across a strip of your film. There's no slot coupon: model a 35.2 × 0.6 slot in a small
   block in the slicer, print it on its end like the gate body, and slide the strip through. Since F21
@@ -817,12 +874,12 @@ sheet. These set most of the plastic, or decide whether it prints at all.
   it clean, and turn off or compensate elephant's foot, which puts a lip round the frame window.
   **Changes:** nothing; it matters to the gate front, the pressure plate and the wedge plate.
 - **C10 · Gate joint screws: four M3 × 20, `pilot_d` 2.5, `pilot_depth` 12, counterbores `cbore_d` 6.5
-  × `cbore_depth` 3.5, `joint_hole_d` 3.4. Before the gate front and body.** Calipers on the screws you
-  have: a head no wider than 6.5 and no taller than 3.5 (socket and button heads fit). The shank runs
+  × `cbore_depth` 13.5 (3.5 until F24), `joint_hole_d` 3.4. Before the gate front and body.** Calipers on the screws you
+  have: a head no wider than 6.5 (socket and button heads fit), and a hex key that reaches 13.5 down. The shank runs
   10.2 through the gate front, so M3 × 20 bites 9.8; anything longer than 22.2 bottoms out in the
   pilot and won't pull the halves together. Decide: self-tap into Ø2.5, or heat-set inserts (`pilot_d`
   4.0: check the insert's hole size, and that it's under 12 long). **Changes:** gate front, gate body.
-- **C11 · Drop-in and sliding fits: `plate_clear` 0.25, `lid_clear` 0.2, `tab_clear` 0.5,
+- **C11 · Drop-in and sliding fits: `plate_clear` 0.25, `lid_clear` 0.2, `tab_clear` 0 (0.5 until F25),
   `wedge_clear` 0.5, `dock_gate_clear` 0.2, `csl_clear` 0.5 (F1). Before the gate body, lid, plates
   and dock.** A test print: a calibration cube, measured with calipers. If the printer prints outer
   sizes big or holes small by more than about 0.1, these bind. After the gate body prints, drop the
@@ -852,7 +909,11 @@ After printing, tune `ramp_rise` and `wedge_back_clear` against the parts ("Tuni
   which would put a lip on the frame window's edge.
 - **Pads and ramps:** both print as top layers, stepped (F7, F9). Use 0.12 layers or finer,
   and ironing.
-- **Gate screws:** four M3 × 20, socket or button head, from the front. They self-tap into the
+- **Tube fit (F23):** Ø68.5 in Ø68.6, a friction fit. Push the tube home onto each socket's floor: nothing else sets
+  `wd`. Too tight: sand the tube's ends. Loose: `tube_ro` up 0.05.
+- **Lid slot (F25):** the tab's own 2, no clearance. If the tab binds, file the slot's long sides, or set `tab_clear`
+  0.05 and reprint the lid.
+- **Gate screws:** four M3 × 20, socket or button head, from the front, in 13.5 deep counterbores (F24). They self-tap into the
   Ø2.5 pilots, so don't overtighten. For repeated assembly, use M3 heat-set inserts and
   `pilot_d` 4.0.
 - **Wedge window:** 26 tall, the same as the frame window, so there's no y margin. The ramps
@@ -865,7 +926,7 @@ After printing, tune `ramp_rise` and `wedge_back_clear` against the parts ("Tuni
 
 ## Questions for the user
 
-- **Measurements:** `wd` and `axis` are measured (C1, C2). The CS-Lite, the printer's bed and height,
+- **Measurements:** `wd` and `axis` are measured (C1, C2), and `wd` set 5 longer after the first print (F24). The CS-Lite, the printer's bed and height,
   the thread and the rest: see "Check before printing" (C3–C12).
 - **Camera:** A7 or A7 IV? No part depends on it; with its base, it decides `axis` (C1).
 - **Mockup:** republish it with the differences above?

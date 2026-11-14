@@ -119,7 +119,7 @@ def test_new_params_defaults():
     assert (p.tab_w, p.tab_reach) == (4, 12.7)
     assert not any(name.startswith(("knob_", "icon_")) for name in vars(p))      # the knob is gone (F15)
     # reused, not duplicated: the lid slot's tab values, the pad footprint, the window height
-    assert (p.tab_t, p.tab_clear, p.slot_end, p.pad, p.win_h) == (2, 0.5, 3, 4, 26)
+    assert (p.tab_t, p.tab_clear, p.slot_end, p.pad, p.win_h) == (2, 0, 3, 4, 26)      # tab_clear 0.5 until F25
 
 
 def test_lock_moves_the_switch_sw_travel_along_z_and_nothing_else(switch, switch_lock):
@@ -134,14 +134,14 @@ def test_lock_moves_the_switch_sw_travel_along_z_and_nothing_else(switch, switch
 
 def test_wedge_plate_bounds_at_slide(wedge):
     # plate 2 x 49.5 x 70 on the sill (F20), plus the 0.8 ramps in front and the tab above, 12.7 past the lid top
-    assert cadutil.bounds(wedge) == pytest.approx((238.2, 241, 23.5, TAB_TOP, -40, 30), abs=EPS)
+    assert cadutil.bounds(wedge) == pytest.approx((243.2, 246, 23.5, TAB_TOP, -40, 30), abs=EPS)
     assert cadutil.size(wedge) == pytest.approx((2.8, 65.7, 70), abs=EPS)
 
 
 def test_the_plate_is_2_thick_70_wide_and_49_5_tall(wedge):
     # the plate proper: behind the ramps' root and below the tab
-    plate = cadutil.common_bounds(wedge, probe(p.x_wedge, 251, 0, 73, -50, 50))
-    assert plate == pytest.approx((239, 241, 23.5, 73, -40, 30), abs=EPS)
+    plate = cadutil.common_bounds(wedge, probe(p.x_wedge, 256, 0, 73, -50, 50))
+    assert plate == pytest.approx((244, 246, 23.5, 73, -40, 30), abs=EPS)
     assert plate[3] - plate[2] == pytest.approx(49.5, abs=EPS)                   # sill + 0.5 to the lid - 0.5
     assert plate[5] - plate[4] == pytest.approx(70, abs=EPS)
     assert_full(wedge, p.x_wedge, p.x_wedge + 2, 23.5, 27.5, -40, 30)             # below the window: the lower ramps' strip
@@ -185,11 +185,11 @@ def test_the_shifted_window_still_clears_the_38_by_26_frame_window(lock):
 
 
 def test_the_tab_is_2_by_4_from_the_plates_top_to_half_an_inch_above_the_lid_top(wedge):
-    tab = cadutil.common_bounds(wedge, probe(231, 251, 73.01, 100, -50, 50))
-    assert tab == pytest.approx((239, 241, 73.01, TAB_TOP, -7, -3), abs=EPS)
-    assert_full(wedge, 239, 241, 73, TAB_TOP, -7, -3)
-    assert_void(wedge, 231, 251, 73.01, 100, -50, -7.01)
-    assert_void(wedge, 231, 251, 73.01, 100, -2.99, 50)
+    tab = cadutil.common_bounds(wedge, probe(236, 256, 73.01, 100, -50, 50))
+    assert tab == pytest.approx((244, 246, 73.01, TAB_TOP, -7, -3), abs=EPS)
+    assert_full(wedge, 244, 246, 73, TAB_TOP, -7, -3)
+    assert_void(wedge, 236, 256, 73.01, 100, -50, -7.01)
+    assert_void(wedge, 236, 256, 73.01, 100, -2.99, 50)
     assert cadutil.bounds(wedge)[3] - p.gh == pytest.approx(12.7, abs=EPS)           # 1/2 inch out of the lid
 
 
@@ -314,14 +314,13 @@ def test_pads_and_ramps_mate_wherever_the_rig_is_set(q):
 
 
 @pytest.mark.parametrize("lock", [False, True])
-def test_the_tab_clears_the_lid_slot_half_a_millimetre_each_side_in_x(lock, gate, switch, switch_lock):
+def test_the_tab_fills_the_lid_slot_in_x(lock, gate, switch, switch_lock):
+    # F25: the slot is the tab's own 2 (it had 0.5 each side), so the tab locates the lid along x
     w = (switch_lock if lock else switch)["wedge_plate"]
     lid = gate["gate_lid"]
     assert cadutil.common_volume(w, lid) < 1e-3
-    for dx in (-0.499, 0.499):
-        assert cadutil.common_volume(w.translate((dx, 0, 0)), lid) < 1e-3
-    for dx in (-0.501, 0.501):
-        assert cadutil.common_volume(w.translate((dx, 0, 0)), lid) > 1e-3
+    for dx in (-0.01, 0.01):
+        assert cadutil.common_volume(w.translate((dx, 0, 0)), lid) > 1e-3, dx
 
 
 @pytest.mark.parametrize("lock", [False, True])
@@ -346,7 +345,7 @@ def test_the_tab_stands_half_an_inch_proud_of_the_lid_at_both_ends(lock, gate, s
     lid_top = cadutil.bounds(gate["gate_lid"])[3]
     assert lid_top == pytest.approx(p.gh, abs=EPS)
     above = cadutil.common_bounds(w, probe(0, 400, lid_top, 200, -100, 100))
-    assert above == pytest.approx((239, 241, p.gh, TAB_TOP, s - 2, s + 2), abs=EPS)
+    assert above == pytest.approx((244, 246, p.gh, TAB_TOP, s - 2, s + 2), abs=EPS)
     assert cadutil.common_volume(w, probe(0, 400, lid_top, 200, -100, 100)) == pytest.approx(2 * 4 * 12.7, rel=1e-9)
 
 

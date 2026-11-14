@@ -522,8 +522,8 @@ def test_fit_labels_are_unique(report):
 
 def test_the_measured_numbers_are_the_designs(report):
     got = {f.label: f.measured for f in report}
-    assert got["tube / adapter socket, radial clearance"] == pytest.approx(0.3, abs=1e-5)
-    assert got["tube / gate front socket, radial clearance"] == pytest.approx(0.3, abs=1e-5)
+    assert got["tube / adapter socket, radial clearance"] == pytest.approx(0.05, abs=1e-5)        # a friction fit (F23)
+    assert got["tube / gate front socket, radial clearance"] == pytest.approx(0.05, abs=1e-5)
     assert got["film channel, SLIDE"] == pytest.approx(0.6, abs=1e-5)
     assert got["film channel, LOCK"] == pytest.approx(0.13, abs=1e-5)
     assert got["film / pressure plate, SLIDE"] == pytest.approx(0.47, abs=1e-5)
@@ -531,8 +531,8 @@ def test_the_measured_numbers_are_the_designs(report):
     assert got["film / gate front (reference plane)"] == pytest.approx(0, abs=1e-5)
     assert got["wedge window / frame window, z clearance, SLIDE"] == pytest.approx(2.0, abs=1e-5)
     assert got["wedge window / frame window, z clearance, LOCK"] == pytest.approx(2.0, abs=1e-5)
-    assert got["tab / lid slot, x clearance, front"] == pytest.approx(0.5, abs=1e-5)
-    assert got["tab / lid slot, x clearance, rear"] == pytest.approx(0.5, abs=1e-5)
+    assert got["tab / lid slot, x clearance, front"] == pytest.approx(0, abs=1e-5)                # none (F25)
+    assert got["tab / lid slot, x clearance, rear"] == pytest.approx(0, abs=1e-5)
     assert got["tab / lid slot, z clearance to the end, SLIDE"] == pytest.approx(1.0, abs=1e-5)
     assert got["tab / lid slot, z clearance to the end, LOCK"] == pytest.approx(1.0, abs=1e-5)
     assert got["pressure plate / sill, clearance"] == pytest.approx(0.25, abs=1e-5)
@@ -562,10 +562,10 @@ def test_a_fit_that_is_off_is_not_ok():
 
 
 def test_the_fits_measure_the_solids_not_the_params(slide, lock):
-    # a tube 0.1 too fat for its socket: the measured clearance drops, whatever params say
-    fat = cq.Workplane("YZ", origin=(p.tube_x0, p.axis, 0)).circle(p.tube_ro + 0.1).extrude(10)
+    # a tube 0.03 too fat for its socket: the measured clearance drops, whatever params say
+    fat = cq.Workplane("YZ", origin=(p.tube_x0, p.axis, 0)).circle(p.tube_ro + 0.03).extrude(10)
     report = by_label(fits.report(p, {**slide, "tube": fat}, lock))
-    assert report["tube / adapter socket, radial clearance"].measured == pytest.approx(0.2, abs=1e-5)
+    assert report["tube / adapter socket, radial clearance"].measured == pytest.approx(0.02, abs=1e-5)
     assert not report["tube / adapter socket, radial clearance"].ok
 
 

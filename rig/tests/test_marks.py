@@ -46,7 +46,7 @@ def test_the_padlocks_are_shallow_and_beside_the_slot(cut):
     x0, x1, y0, y1, z0, z1 = cut["gate_lid"][3]
     assert (y0, y1) == pytest.approx((p.gh - 0.36, p.gh), abs=EPS)                 # top face, 0.36 deep
     assert (z0, z1) == pytest.approx((-14.7, 14.7), abs=EPS)                       # slot end 8 + 4.5 + half of 4.4
-    assert x0 > p.x_ref + p.lid_clear and x1 < 245                                 # on the lid, at the slot
+    assert x0 > p.x_ref + p.lid_clear and x1 < 250                                 # on the lid, at the slot
     assert 8 < cut["gate_lid"][2] < 20                                             # two icons' worth, not a lid's
 
 

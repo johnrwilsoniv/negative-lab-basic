@@ -68,21 +68,24 @@ SOLIDS = {
     ),
     "tube": (
         "1b", "Tube", "1 · Lens adapter", 0.2,
-        "Ø68 / Ø64, <code>wd − 13</code> long, with sawtooth baffle ribs inside.",
+        "Ø68.5 / Ø64, <code>wd − 18</code> long, with sawtooth baffle ribs inside. A friction fit in the Ø68.6 sockets "
+        "(F23), 9 deep at each end.",
         [
             "Upright. The baffles' lower flanks are 45°, so no supports.",
+            "Ø68.5 in a Ø68.6 socket is 0.05 a side: tested with masking tape on the first print. If it won't go in, "
+            "sand the tube's ends rather than the sockets.",
         ],
     ),
     "gate_front": (
         "2", "Gate front", FILM_GROUP, 0.2,
-        "Solid block: tube socket, a light passage flaring down to the 38 × 26 frame window, and the film "
+        "Solid block: a 9 deep tube socket (F24), a light passage flaring down to the 38 × 26 frame window, and the film "
         "reference plane.",
         [
             "<b>Film face on the bed.</b> The rear face, which the film lies on, is the first layer: as flat and "
             "smooth as the bed. Keep the first layer clean (no elephant's foot) around the window.",
             "No supports. The passage and the socket only widen going up.",
-            "Four M3 × 20 screws, heads in the counterbores, self-tap into the body's pillars (or use heat-set inserts: "
-            "set <code>pilot_d</code> 4.0).",
+            "Four M3 × 20 screws, heads in the 13.5 deep counterbores, self-tap into the body's pillars (or use heat-set "
+            "inserts: set <code>pilot_d</code> 4.0). The hex key goes down the counterbore to the head.",
         ],
     ),
     "gate_body": (
@@ -105,9 +108,12 @@ SOLIDS = {
     "gate_lid": (
         "2c", "Gate lid", FILM_GROUP, 0.2,
         "Drops in between the gate front and the rear wall and between the body's two rails, on the side walls, with "
-        "the switch tab's slot. 0.2 to the rails each side: pushing the tab can't drag it along z (F22).",
+        "the switch tab's slot. 0.2 to the rails each side: pushing the tab can't drag it along z (F22). The slot is the "
+        "tab's own 2 thick, so the tab holds the lid along x (F25).",
         [
             "Flat, top up.",
+            "The slot has no clearance round the tab (F25). Holes print small: if the tab binds, file the slot's long "
+            "sides, or set <code>tab_clear</code> 0.05.",
         ],
     ),
     "pressure_plate": (
@@ -164,6 +170,9 @@ SEVERITIES = (
 # Dimensions the review measured that have changed since (F20, F21): the findings and their drawings describe the design
 # as it was reviewed, and each one that has changed says so in its status.
 AS_REVIEWED = {"film_slot_w": 3.2}
+# Defaults that were otherwise at the review's values and have changed since, after the first print (F23-F25): with
+# these and the review's wd and axis, `reviewed()` rebuilds the design the review measured.
+CHANGED_SINCE = {"gate_front": 14, "front_wall": 4, "tube_ro": 34, "fit_clear": 0.3, "tab_clear": 0.5, "cbore_depth": 3.5}
 LAYERS = (0.12, 0.16, 0.2)      # the layer heights the page offers for the gate body
 CLEAN = (                       # checked in the review, and fine
     "Printability: apart from the adapter's ledge, the thread's flanks and the tube's ribs, every layer of every "
@@ -178,9 +187,11 @@ CLEAN = (                       # checked in the review, and fine
     "Parameters: wd 40–233 and axis 39–62 all build valid, with no interference.",
 )
 KNOWN = (                       # already in PLAN.md as unfinished: not new findings
-    "LOCK can't clamp flat: the upper ramps have no backing, and the tab's 0.5 play is more than the 0.47 stroke.",
+    "LOCK can't clamp flat: the upper ramps' only backing is the tab in the lid's slot (no play there since F25), and "
+    "the lid has 0.2 to the gate front and to the rear wall, against the 0.47 stroke.",
     "No leaf springs, pressure-plate guides, wedge z-grooves or detents.",
-    "Nothing holds the lid down (since F22 its rails stop it along z), and the gate is not located along the tube.",
+    "Nothing holds the lid down (since F22 its rails stop it along z). Since F23 the tube is a friction fit, so the gate "
+    "stays where it is pushed, but nothing but its socket's floor locates it along the tube: push it home.",
     "The lid's front slit (0.2 × 86).",
     "The CS-Lite is not held forward (0.5 + 0.2 of play).",
     "The lower gate screws are hidden by the dock's front wall.",
@@ -195,6 +206,11 @@ UNCHECKED = (
     "Flex and tilt: the travel sweep was rigid-body, in 1 mm steps along z.",
     "The viewer and print-preview pages, the website, and STEP import into Onshape.",
 )
+
+
+def reviewed() -> Params:
+    """The design as the review measured it: today's defaults at the review's wd and axis, less what has changed since."""
+    return Params(wd=REVIEW["wd"], axis=REVIEW["axis"], **CHANGED_SINCE)
 
 
 def _n(v: float) -> str:
@@ -270,7 +286,7 @@ def measures(p: Params) -> dict:
         "settled": p.win_h / 2 - p.wedge_clear, "tab_proud": p.tab_reach - p.wedge_clear,
         "perf_show": show, "perf_count": 2 * len(shown), "perf_area": 2 * len(shown) * p.perf_l * show,
         "ledge": p.fit_r - p.adapter_bore_r, "ledge_area": math.pi * (p.fit_r ** 2 - p.adapter_bore_r ** 2),
-        "u_bottom": p.axis - p.tube_ro - p.dock_tube_clear,
+        "u_bottom": p.axis - p.tube_ro - p.dock_tube_clear, "u_lowest": p.axis_min - p.tube_ro - p.dock_tube_clear,
         "film_face": p.x_ref, "film_off": p.x_film - p.x_ref, "rim_to_film": p.x_ref - p.x_front,
         "over_socket": p.gh - p.axis - p.fit_r, "cbore_wall": (p.ear_w - p.cbore_d) / 2,
         "tube_wall": p.tube_ro - p.tube_ri,
@@ -287,6 +303,7 @@ def feedback(p: Params) -> dict:
     n, m = _n, measures(p)
     half = p.sw_travel / 2
     film_slot_w = AS_REVIEWED["film_slot_w"]
+    since_f23 = "" if p.tube_ro == CHANGED_SINCE["tube_ro"] else f"; {_n(p.tube_ro)} since F23"
     squeezes = "; ".join(
         f"{n(row['layer'])} layers: " + " or ".join(f"{v:+.3f}" for v in row["squeeze"]) for row in m["layers"]
     )
@@ -475,9 +492,12 @@ def feedback(p: Params) -> dict:
             "id": "docs", "sev": "minor", "title": "Notes still written for the Ø72 tube",
             "parts": ["light_dock", "adapter"],
             "nums": [num("U's bottom", m["u_bottom"]), num("floor's top", p.floor_t), num("ledge", f"{n(m['ledge'])}, not 5.3")],
-            "what": f"Since {_code('tube_ro')} went 36 → {n(p.tube_ro)} the round of the dock's U stops {n(m['u_bottom'])} above "
-                    f"the table, clear of the floor's top ({n(p.floor_t)}): the F17 cut takes nothing at any allowed axis. PLAN "
-                    "still described a trough 3.5 above the table and a 16 mm³ sliver, a 5.3 wide ledge, and tube 36 / hole "
+            "what": f"Since {_code('tube_ro')} went 36 → 34 (R8{since_f23}) the round of the dock's U stops "
+                    f"{n(m['u_bottom'])} above the table, clear of the floor's top ({n(p.floor_t)})"
+                    + (": the F17 cut takes nothing at any allowed axis. " if m["u_lowest"] >= p.floor_t else
+                       f"; only at axis {n(p.axis_min)}, the lowest allowed, does the F17 cut take "
+                       f"{n(p.floor_t - m['u_lowest'])} off it. ")
+                    + "PLAN still described a trough 3.5 above the table and a 16 mm³ sliver, a 5.3 wide ledge, and tube 36 / hole "
                     "36.3; the mockup still has TUBE_RO 36.",
             "risk": "Nothing printed changes. The notes disagreed with the build.",
             "basis": "Measured.",
@@ -602,7 +622,8 @@ def stl_size(path: Path) -> list[float]:
 
 
 def _check_built_at(p: Params, sizes: dict[str, list[float]]) -> None:
-    """The STLs were built at p's wd and axis: the tube prints wd - 13 tall, the gate front stands axis + 36 on the bed."""
+    """The STLs were built at p's wd and axis: the tube prints tube_len (wd - 18) tall, the gate front stands axis + 36
+    on the bed."""
     for name, axis, want, what in (("tube", 2, p.tube_len, "wd"), ("gate_front", 1, p.gh, "axis")):
         got = sizes[name][axis]
         if abs(got - want) > 0.05:

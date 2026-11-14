@@ -146,7 +146,7 @@ td.c { text-align: right; width: 1%; }
       <h2>Adjust</h2>
       <div class="ctl">
         <label for="wd">Lens front to film</label><output id="wdVal"></output>
-        <input id="wd" type="range" min="60" max="220" step="1" value="111">
+        <input id="wd" type="range" min="60" max="220" step="1" value="116">
         <small>Sets the tube length. Measured at 1:1, with the frame filling the screen.</small>
       </div>
       <div class="ctl">
@@ -228,7 +228,7 @@ td.c { text-align: right; width: 1%; }
   const rampT = u => RAMP_MIN + RAMP_RISE * (RAMP_LEN / 2 - u) / RAMP_LEN;   // thickness at u along a ramp
   const clampShift = s => Math.min(rampT(-s) - rampT(SW_TRAVEL / 2), CHANNEL - FILM_T);
 
-  const P = { wd: 111, axis: 40.5, exploded: true, cut: false, ref: true, lock: false };
+  const P = { wd: 116, axis: 40.5, exploded: true, cut: false, ref: true, lock: false };
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const $ = id => document.getElementById(id);
 

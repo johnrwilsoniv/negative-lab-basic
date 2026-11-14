@@ -151,10 +151,11 @@ def test_bore_clears_the_lens_front_element(adapter):
         assert min(r for _, r in section(adapter, degrees)) == pytest.approx(p.adapter_bore_r, abs=1e-6)
 
 
-def test_socket_is_a_slip_fit_on_the_tube(adapter):
+def test_socket_is_a_friction_fit_on_the_tube(adapter):
     socket_r = min(r for x, r in section(adapter, 0) if x > p.tube_x0 + 1e-6)
     assert socket_r - p.tube_ro == pytest.approx(p.fit_clear, abs=1e-6)
-    assert p.fit_clear == 0.3
+    assert p.fit_clear == 0.05                                       # the Ø68.5 tube in the Ø68.6 socket (F23)
+    assert 2 * socket_r == pytest.approx(68.6, abs=1e-6)
 
 
 # ---- the thread ----------------------------------------------------------------------
